@@ -363,9 +363,9 @@ Edge Params</string>
    <widget class="QLabel" name="timeLabel">
     <property name="geometry">
      <rect>
-      <x>1630</x>
+      <x>1540</x>
       <y>10</y>
-      <width>271</width>
+      <width>361</width>
       <height>51</height>
      </rect>
     </property>

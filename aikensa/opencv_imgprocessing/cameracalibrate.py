@@ -6,7 +6,7 @@ import os
 from dataclasses import dataclass
 
 
-dict_type = cv2.aruco.DICT_6X6_250
+dict_type = cv2.aruco.DICT_5X5_250
 squares = (24, 16)
 square_length = 0.020
 marker_length = 0.017

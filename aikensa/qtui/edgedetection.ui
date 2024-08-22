@@ -106,7 +106,7 @@ Save Params</string>
       <x>20</x>
       <y>150</y>
       <width>1811</width>
-      <height>751</height>
+      <height>691</height>
      </rect>
     </property>
     <property name="frameShape">
@@ -121,7 +121,7 @@ Save Params</string>
        <x>10</x>
        <y>10</y>
        <width>1791</width>
-       <height>731</height>
+       <height>671</height>
       </rect>
      </property>
      <property name="styleSheet">
@@ -579,6 +579,62 @@ Read Warp</string>
      <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
     </property>
    </widget>
+   <widget class="QLabel" name="status_sio">
+    <property name="geometry">
+     <rect>
+      <x>1760</x>
+      <y>860</y>
+      <width>61</width>
+      <height>41</height>
+     </rect>
+    </property>
+    <property name="font">
+     <font>
+      <family>Ubuntu Mono</family>
+      <pointsize>17</pointsize>
+      <weight>75</weight>
+      <bold>true</bold>
+      <underline>false</underline>
+     </font>
+    </property>
+    <property name="styleSheet">
+     <string notr="true">color: rgb(238, 15, 15);</string>
+    </property>
+    <property name="text">
+     <string>OFF</string>
+    </property>
+    <property name="alignment">
+     <set>Qt::AlignBottom|Qt::AlignHCenter</set>
+    </property>
+   </widget>
+   <widget class="QLabel" name="label_5">
+    <property name="geometry">
+     <rect>
+      <x>1610</x>
+      <y>860</y>
+      <width>141</width>
+      <height>41</height>
+     </rect>
+    </property>
+    <property name="font">
+     <font>
+      <family>Ubuntu Mono</family>
+      <pointsize>17</pointsize>
+      <weight>50</weight>
+      <bold>false</bold>
+      <underline>false</underline>
+     </font>
+    </property>
+    <property name="styleSheet">
+     <string notr="true">color: rgb(238, 238, 236);</string>
+    </property>
+    <property name="text">
+     <string>SiO Status:</string>
+    </property>
+    <property name="alignment">
+     <set>Qt::AlignBottom|Qt::AlignHCenter</set>
+    </property>
+   </widget>
   </widget>
   <widget class="QMenuBar" name="menubar">
    <property name="geometry">
@@ -586,7 +642,7 @@ Read Warp</string>
      <x>0</x>
      <y>0</y>
      <width>1920</width>
-     <height>22</height>
+     <height>21</height>
     </rect>
    </property>
   </widget>
