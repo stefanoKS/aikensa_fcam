@@ -6,10 +6,10 @@ import os
 from dataclasses import dataclass
 
 
-dict_type = cv2.aruco.DICT_5X5_250
+dict_type = cv2.aruco.DICT_4X4_250
 squares = (24, 16)
-square_length = 0.020
-marker_length = 0.017
+square_length = 0.025
+marker_length = 0.020
 aruco_dict = cv2.aruco.getPredefinedDictionary(dict_type)
 charboard = cv2.aruco.CharucoBoard(squares, square_length, marker_length, aruco_dict)
 detector = cv2.aruco.CharucoDetector(charboard)
@@ -59,7 +59,7 @@ def detectCharucoBoard(image):
     #Lets draw the markers
     image = cv2.aruco.drawDetectedMarkers(image, markerCorners, markersIds)
 
-    #print (allCharucoIds)
+    # print (allCharucoIds)
 
     return image, charucoCorners, charucoIds
 
@@ -131,12 +131,12 @@ def calculatecameramatrix():
 
         return calibration_data
     else:
-        print("Calibration was unsuccessful.")
+        print("Calibration failed.")
         return None
 
 def calculateHomography(img1, img2):
-    _, charucoCorners1, charucoIds1 = detectCharucoBoard(img1)
-    _, charucoCorners2, charucoIds2 = detectCharucoBoard(img2)
+    _, charucoCorners1, charucoIds1 = detectCharucoBoard_6_6(img1)
+    _, charucoCorners2, charucoIds2 = detectCharucoBoard_6_6(img2)
     print("calculating homography")
 
     if charucoCorners1 is not None and charucoCorners2 is not None:
@@ -212,6 +212,23 @@ def calculateHomography_template(img1, img2):
 
         return results, M
     
+def detectCharucoBoard_6_6(image):
+    dict_type = cv2.aruco.DICT_6X6_1000
+    squares = (67, 13)
+    square_length = 0.030
+    marker_length = 0.025
+    aruco_dict = cv2.aruco.getPredefinedDictionary(dict_type)
+    charboard = cv2.aruco.CharucoBoard(squares, square_length, marker_length, aruco_dict)
+    detector = cv2.aruco.CharucoDetector(charboard)
+
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    height, width = gray.shape
+    imageSize = (width, height)
+
+    charucoCorners, charucoIds, markerCorners, markersIds = detector.detectBoard(gray)   
+    image = cv2.aruco.drawDetectedMarkers(image, markerCorners, markersIds)
+
+    return image, charucoCorners, charucoIds
 
 def warpTwoImages(img1, img2, H):
     h1,w1 = img1.shape[:2]

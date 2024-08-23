@@ -233,7 +233,7 @@
      <string>Calibrate Cam 1</string>
     </property>
    </widget>
-   <widget class="QPushButton" name="takeImage">
+   <widget class="QPushButton" name="calibSingleFrame">
     <property name="geometry">
      <rect>
       <x>310</x>
@@ -252,6 +252,33 @@
     </property>
     <property name="text">
      <string>Calculate Frame</string>
+    </property>
+   </widget>
+   <widget class="QLabel" name="timeLabel">
+    <property name="geometry">
+     <rect>
+      <x>1170</x>
+      <y>10</y>
+      <width>361</width>
+      <height>51</height>
+     </rect>
+    </property>
+    <property name="font">
+     <font>
+      <family>Ubuntu Mono</family>
+      <pointsize>20</pointsize>
+      <weight>75</weight>
+      <bold>true</bold>
+     </font>
+    </property>
+    <property name="styleSheet">
+     <string notr="true">color: rgb(238, 238, 236);</string>
+    </property>
+    <property name="text">
+     <string>Time</string>
+    </property>
+    <property name="alignment">
+     <set>Qt::AlignCenter</set>
     </property>
    </widget>
   </widget>

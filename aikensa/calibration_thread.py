@@ -6,8 +6,9 @@ import numpy as np
 from sympy import fu
 import yaml
 import time
+import logging
 
-from PyQt5.QtCore import QThread, pyqtSignal, Qt
+from PyQt5.QtCore import QThread, pyqtSignal, Qt, QTimer
 from PyQt5.QtGui import QImage, QPixmap
 
 from aikensa.camscripts.cam_init import initialize_camera
@@ -29,6 +30,11 @@ class CalibrationConfig:
     calculateCamMatrix: bool = False
     delCamMatrix: bool = False
     savecalculatedCamImage: bool = False
+
+    calibrationMatrix: np.ndarray = field(default=None)
+    mapCalculated: list = field(default_factory=lambda: [False]*10) #for 10 cameras
+    map1: list = field(default_factory=lambda: [None]*10) #for 10 cameras
+    map2: list = field(default_factory=lambda: [None]*10) #for 10 cameras
 
     calculateHomo_cam1: bool = False
     calculateHomo_cam2: bool = False
@@ -58,6 +64,11 @@ class CalibrationConfig:
 class CalibrationThread(QThread):
 
     CalibCamStream = pyqtSignal(QImage)
+    CamMerge1 = pyqtSignal(QImage)
+    CamMerge2 = pyqtSignal(QImage)
+    CamMerge3 = pyqtSignal(QImage)
+    CamMerge4 = pyqtSignal(QImage)
+    CamMerge5 = pyqtSignal(QImage)
 
     def __init__(self, calib_config: CalibrationConfig = None):
         super(CalibrationThread, self).__init__()
@@ -83,15 +94,42 @@ class CalibrationThread(QThread):
         self.kanjiFontPath = "aikensa/font/NotoSansJP-ExtraBold.ttf"
         self.cap_cam = None
         self.frame  = None
+        self.frame_downsampled = None
+
+        self.multiCam_stream = False
+        self.cap_cam1 = None
+        self.cap_cam2 = None
+        self.cap_cam3 = None
+        self.cap_cam4 = None
+        self.cap_cam5 = None
+        self.mergeframe1 = None
+        self.mergeframe2 = None
+        self.mergeframe3 = None
+        self.mergeframe4 = None
+        self.mergeframe5 = None
+        self.mergeframe1_downsampled = None
+        self.mergeframe2_downsampled = None
+        self.mergeframe3_downsampled = None
+        self.mergeframe4_downsampled = None
+        self.mergeframe5_downsampled = None
+
+        self.homography_template = None
+        self.homography_matrix1 = None
+        self.homography_matrix2 = None
+        self.homography_matrix3 = None
+        self.homography_matrix4 = None
+        self.homography_matrix5 = None
+
 
     def initialize_camera(self, camID):
         if self.cap_cam is not None:
             self.cap_cam.release()  # Release the previous camera if it's already open
+            print(f"Camera {self.calib_config.cameraID} released.")
 
         if camID == -1:
             print("No valid camera selected, displaying placeholder.")
             self.cap_cam = None  # No camera initialized
-            self.frame = self.create_placeholder_image()
+            # self.frame = self.create_placeholder_image()
         else:
             self.cap_cam = initialize_camera(camID)
             if not self.cap_cam.isOpened():
@@ -99,73 +137,222 @@ class CalibrationThread(QThread):
                 self.cap_cam = None
             else:
                 print(f"Initialized Camera on ID {camID}")
+
+    def initialize_all_camera(self):
+        if self.cap_cam1 is not None:
+            self.cap_cam1.release()
+            print(f"Camera 1 released.")
+        if self.cap_cam2 is not None:
+            self.cap_cam2.release()
+            print(f"Camera 2 released.")
+        if self.cap_cam3 is not None:
+            self.cap_cam3.release()
+            print(f"Camera 3 released.")
+        if self.cap_cam4 is not None:
+            self.cap_cam4.release()
+            print(f"Camera 4 released.")
+        if self.cap_cam5 is not None:
+            self.cap_cam5.release()
+            print(f"Camera 5 released.")
+        
+        self.cap_cam1 = initialize_camera(1)
+        self.cap_cam2 = initialize_camera(2)
+        self.cap_cam3 = initialize_camera(3)
+        self.cap_cam4 = initialize_camera(4)
+        self.cap_cam5 = initialize_camera(5)
+
+        if not self.cap_cam1.isOpened():
+            print(f"Failed to open camera with ID 1")
+            self.cap_cam1 = None
+        else:
+            print(f"Initialized Camera on ID 1")
+        if not self.cap_cam2.isOpened():
+            print(f"Failed to open camera with ID 2")
+            self.cap_cam2 = None
+        else:
+            print(f"Initialized Camera on ID 2")
+        if not self.cap_cam3.isOpened():
+            print(f"Failed to open camera with ID 3")
+            self.cap_cam3 = None
+        else:
+            print(f"Initialized Camera on ID 3")
+        if not self.cap_cam4.isOpened():
+            print(f"Failed to open camera with ID 4")
+            self.cap_cam4 = None
+        else:
+            print(f"Initialized Camera on ID 4")
+        if not self.cap_cam5.isOpened():
+            print(f"Failed to open camera with ID 5")
+            self.cap_cam5 = None
+        else:
+            print(f"Initialized Camera on ID 5")
+
             
     def run(self):
 
         self.current_cameraID = self.calib_config.cameraID
         self.initialize_camera(self.current_cameraID)
+        self._save_dir = f"aikensa/cameracalibration/"
 
+        self.homography_template = cv2.imread("aikensa/homography_template/homography_template.png")
         
         while self.running:
 
-            if self.calib_config.cameraID != self.current_cameraID:
-                # Camera ID has changed, reinitialize the camera
-                self.current_cameraID = self.calib_config.cameraID
-                self.initialize_camera(self.current_cameraID)
-
-            if self.cap_cam is not None:
-                try:
-                    ret, self.frame = self.cap_cam.read()
-                    self.frame = cv2.cvtColor(self.frame, cv2.COLOR_BGR2RGB)
-                    if not ret:
-                        print("Failed to capture frame")
-                        continue
-                except cv2.error as e:
-                    print("An error occurred while reading frames from the cameras:", str(e))
-
-            if self.frame is None:
-                # Display a placeholder image if no frame is captured
-                self.frame = self.create_placeholder_image()
-
-            else:
-                self.frame = cv2.rotate(self.frame, cv2.ROTATE_180)
 
             if self.calib_config.widget == 0:
                 self.calib_config.cameraID = -1
 
-            if self.calib_config.widget == 1:
-                self.calib_config.cameraID = 1
-                #downsample to 1229 819
+            if self.calib_config.widget in [1, 2, 3, 4, 5]:
+                
+                if self.calib_config.cameraID != self.current_cameraID:
+                    # Camera ID has changed, reinitialize the camera
+                    if self.current_cameraID != -1:
+                        self.cap_cam.release()
+                        print(f"Camera {self.current_cameraID} released.")
+                    self.current_cameraID = self.calib_config.cameraID
+                    self.initialize_camera(self.current_cameraID)
+
+                if self.cap_cam is not None:
+                    try:
+                        ret, self.frame = self.cap_cam.read()
+                        self.frame = cv2.cvtColor(self.frame, cv2.COLOR_BGR2RGB)
+                        self.frame = cv2.rotate(self.frame, cv2.ROTATE_180)
+                        if not ret:
+                            print("Failed to capture frame")
+                            continue
+                    except cv2.error as e:
+                        print("An error occurred while reading frames from the cameras:", str(e))
+
+
+                self.calib_config.cameraID = self.calib_config.widget
+            
+                if self.calib_config.mapCalculated[self.calib_config.cameraID] is False and self.frame is not None:
+                    if os.path.exists(self._save_dir + f"Calibration_camera_{self.calib_config.cameraID}.yaml"):
+                        camera_matrix, dist_coeffs = self.load_matrix_from_yaml(self._save_dir + f"Calibration_camera_{self.calib_config.cameraID}.yaml")
+                        # Precompute the undistort and rectify map for faster processing
+                        h, w = self.frame.shape[:2]
+                        self.calib_config.map1[self.calib_config.cameraID], self.calib_config.map2[self.calib_config.cameraID] = cv2.initUndistortRectifyMap(camera_matrix, dist_coeffs, None, camera_matrix, (w, h), cv2.CV_16SC2)
+                        print(f"map1 and map2 value is calculated for camera {self.calib_config.cameraID}")
+                        self.calib_config.mapCalculated[self.calib_config.cameraID] = True
+                
+                if self.calib_config.mapCalculated[self.calib_config.cameraID] is True:
+                    self.frame = cv2.remap(self.frame, self.calib_config.map1[self.calib_config.cameraID], self.calib_config.map2[self.calib_config.cameraID], interpolation=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT)
+
                 if self.calib_config.calculateSingeFrameMatrix:
                     self.frame, _, _ = detectCharucoBoard(self.frame)
-
                     self.calib_config.calculateSingeFrameMatrix = False
 
-                self.frame = self.downSampling(self.frame, 1229, 819)
+                if self.calib_config.calculateCamMatrix:
+                    self.calib_config.calibrationMatrix = calculatecameramatrix()
+                    os.makedirs(self._save_dir, exist_ok=True)
+                    self.save_calibration_to_yaml(self.calib_config.calibrationMatrix, self._save_dir + f"Calibration_camera_{self.calib_config.cameraID}.yaml")
+                    self.calib_config.calculateCamMatrix = False
 
-            if self.calib_config.widget == 2:
-                self.calib_config.cameraID = 2
-                self.frame = self.downSampling(self.frame, 1229, 819)
+                if self.frame is not None:
+                    self.frame_downsampled = self.downSampling(self.frame, 1229, 819)
 
-                
-
-            if self.calib_config.widget == 3:
-                self.calib_config.cameraID = 3
-                self.frame = self.downSampling(self.frame, 1229, 819)
-
-            if self.calib_config.widget == 4:
-                self.calib_config.cameraID = 4
-                self.frame = self.downSampling(self.frame, 1229, 819)
-
-            if self.calib_config.widget == 5:
-                self.calib_config.cameraID = 5
-                self.frame = self.downSampling(self.frame, 1229, 819)
+                if self.frame is not None:
+                    self.CalibCamStream.emit(self.convertQImage(self.frame_downsampled))
             
-            self.CalibCamStream.emit(self.convertQImage(self.frame))
-            #check self.frame type and size
-            print(f"Frame type: {type(self.frame)}, Frame size: {self.frame.shape}")
+            if self.calib_config.widget == 6:
+                if self.multiCam_stream is False:
+                    self.multiCam_stream = True
+                    self.initialize_all_camera()
+                    
+                _, self.mergeframe1 = self.cap_cam1.read()
+                _, self.mergeframe2 = self.cap_cam2.read()
+                _, self.mergeframe3 = self.cap_cam3.read()
+                _, self.mergeframe4 = self.cap_cam4.read()
+                _, self.mergeframe5 = self.cap_cam5.read()
 
-                
+                for i in range(1, 6):
+                    if self.calib_config.mapCalculated[i] is False:
+                        if os.path.exists(self._save_dir + f"Calibration_camera_{i}.yaml"):
+                            camera_matrix, dist_coeffs = self.load_matrix_from_yaml(self._save_dir + f"Calibration_camera_{i}.yaml")
+                            # Precompute the undistort and rectify map for faster processing
+                            h, w = self.mergeframe1.shape[:2] #use mergeframe1 as reference
+                            self.calib_config.map1[i], self.calib_config.map2[i] = cv2.initUndistortRectifyMap(camera_matrix, dist_coeffs, None, camera_matrix, (w, h), cv2.CV_16SC2)
+                            print(f"map1 and map2 value is calculated")
+                            self.calib_config.mapCalculated[i] = True
+                            print(f"Calibration map is calculated for Camera {i}")
+
+                #if self.calib_config.mapCalculated 1,2,3,4,5 is true
+                if all(self.calib_config.mapCalculated[i] for i in range(1, 6)):
+                    # print("All calibration maps are calculated.")
+                    self.mergeframe1 = cv2.remap(self.mergeframe1, self.calib_config.map1[1], self.calib_config.map2[1], interpolation=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT)
+                    self.mergeframe2 = cv2.remap(self.mergeframe2, self.calib_config.map1[2], self.calib_config.map2[2], interpolation=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT)
+                    self.mergeframe3 = cv2.remap(self.mergeframe3, self.calib_config.map1[3], self.calib_config.map2[3], interpolation=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT)
+                    self.mergeframe4 = cv2.remap(self.mergeframe4, self.calib_config.map1[4], self.calib_config.map2[4], interpolation=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT)
+                    self.mergeframe5 = cv2.remap(self.mergeframe5, self.calib_config.map1[5], self.calib_config.map2[5], interpolation=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT)
+
+                self.mergeframe1 = cv2.cvtColor(self.mergeframe1, cv2.COLOR_BGR2RGB)
+                self.mergeframe2 = cv2.cvtColor(self.mergeframe2, cv2.COLOR_BGR2RGB)
+                self.mergeframe3 = cv2.cvtColor(self.mergeframe3, cv2.COLOR_BGR2RGB)
+                self.mergeframe4 = cv2.cvtColor(self.mergeframe4, cv2.COLOR_BGR2RGB)
+                self.mergeframe5 = cv2.cvtColor(self.mergeframe5, cv2.COLOR_BGR2RGB)
+
+                self.mergeframe1 = cv2.rotate(self.mergeframe1, cv2.ROTATE_180)
+                self.mergeframe2 = cv2.rotate(self.mergeframe2, cv2.ROTATE_180)
+                self.mergeframe3 = cv2.rotate(self.mergeframe3, cv2.ROTATE_180)
+                self.mergeframe4 = cv2.rotate(self.mergeframe4, cv2.ROTATE_180)
+                self.mergeframe5 = cv2.rotate(self.mergeframe5, cv2.ROTATE_180)
+
+                if self.calib_config.calculateHomo_cam1 is True:
+                    self.calib_config.calculateHomo_cam1 = False
+                    # cv2.imwrite("./homograhytemplate.png", self.homography_template)
+                    # cv2.imwrite("./mergeframe1.png", self.mergeframe1)
+                    _, self.homography_matrix1 = calculateHomography(self.homography_template, self.mergeframe1)
+                    print(f"Homography matrix is calculated for Camera 1 with value {self.homography_matrix1}")
+                if self.calib_config.calculateHomo_cam2 is True:
+                    self.calib_config.calculateHomo_cam2 = False
+                    _, self.homography_matrix2 = calculateHomography(self.homography_template, self.mergeframe2)
+                    print(f"Homography matrix is calculated for Camera 2 with value {self.homography_matrix2}")
+                if self.calib_config.calculateHomo_cam3 is True:
+                    self.calib_config.calculateHomo_cam3 = False
+                    _, self.homography_matrix3 = calculateHomography(self.homography_template, self.mergeframe3)
+                    print(f"Homography matrix is calculated for Camera 3 with value {self.homography_matrix3}")
+                if self.calib_config.calculateHomo_cam4 is True:
+                    self.calib_config.calculateHomo_cam4 = False
+                    _, self.homography_matrix4 = calculateHomography(self.homography_template, self.mergeframe4)
+                    print(f"Homography matrix is calculated for Camera 4 with value {self.homography_matrix4}")
+                if self.calib_config.calculateHomo_cam5 is True:
+                    self.calib_config.calculateHomo_cam5 = False
+                    _, self.homography_matrix5 = calculateHomography(self.homography_template, self.mergeframe5)
+                    print(f"Homography matrix is calculated for Camera 5 with value {self.homography_matrix5}")
+
+
+
+
+
+
+
+
+
+
+
+                self.mergeframe1_downsampled = self.downSampling(self.mergeframe1, 246, 163)
+                self.mergeframe2_downsampled = self.downSampling(self.mergeframe2, 246, 163)
+                self.mergeframe3_downsampled = self.downSampling(self.mergeframe3, 246, 163)
+                self.mergeframe4_downsampled = self.downSampling(self.mergeframe4, 246, 163)
+                self.mergeframe5_downsampled = self.downSampling(self.mergeframe5, 246, 163)
+
+                if self.mergeframe1_downsampled is not None:
+                    self.CamMerge1.emit(self.convertQImage(self.mergeframe1_downsampled))
+                if self.mergeframe2_downsampled is not None:
+                    self.CamMerge2.emit(self.convertQImage(self.mergeframe2_downsampled))
+                if self.mergeframe3_downsampled is not None:
+                    self.CamMerge3.emit(self.convertQImage(self.mergeframe3_downsampled))
+                if self.mergeframe4_downsampled is not None:
+                    self.CamMerge4.emit(self.convertQImage(self.mergeframe4_downsampled))
+                if self.mergeframe5_downsampled is not None:
+                    self.CamMerge5.emit(self.convertQImage(self.mergeframe5_downsampled))
+
+
+
+
+            #wait for 20ms
+            self.msleep(20)
+            
         print(f"Camera {self.calib_config.cameraID} released.")
 
     def create_placeholder_image(self):
@@ -189,22 +376,23 @@ class CalibrationThread(QThread):
 
     def stop(self):
         self.running = False
-        time.sleep(0.5)
     
-    def stop(self):
-        self.running = False
-        print(f"Running is set to {self.running}")
-        if self.cap_cam is not None:
-            self.cap_cam.release()
-
-  
-    def convertQImage(self, image):
-        # Convert resized cv2 image to QImage
-        h, w, ch = image.shape
-        bytesPerLine = ch * w
-        processed_image = QImage(image.data, w, h, bytesPerLine, QImage.Format_RGB888)
-        return processed_image
-
     def downSampling(self, image, width=384, height=256):
         resized_image = cv2.resize(image, (width, height), interpolation=cv2.INTER_LINEAR)
         return resized_image
+
+    def save_calibration_to_yaml(self, calibrationMatrix, filename):
+        with open(filename, 'w') as file:
+            yaml.dump(calibrationMatrix, file)
+
+    def load_matrix_from_yaml(self, filename):
+        with open(filename, 'r') as file:
+            calibration_param = yaml.load(file, Loader=yaml.FullLoader)
+            camera_matrix = np.array(calibration_param.get('camera_matrix'))
+            distortion_coeff = np.array(calibration_param.get('distortion_coefficients'))
+        return camera_matrix, distortion_coeff
+        
+    def initialize_maps(camera_matrix, dist_coeffs, image_size):
+        map1, map2 = cv2.initUndistortRectifyMap(
+            camera_matrix, dist_coeffs, None, camera_matrix, image_size, cv2.CV_16SC2)
+        return map1, map2
