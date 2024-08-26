@@ -95,6 +95,25 @@ def detectCharucoBoardLarge(image):
     calibration_image = 0
 
     return image, charucoCorners, charucoIds
+
+    
+def detectCharucoBoard_6_6(image):
+    dict_type = cv2.aruco.DICT_6X6_1000
+    squares = (67, 13)
+    square_length = 0.030
+    marker_length = 0.025
+    aruco_dict = cv2.aruco.getPredefinedDictionary(dict_type)
+    charboard = cv2.aruco.CharucoBoard(squares, square_length, marker_length, aruco_dict)
+    detector = cv2.aruco.CharucoDetector(charboard)
+
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    height, width = gray.shape
+    imageSize = (width, height)
+
+    charucoCorners, charucoIds, markerCorners, markersIds = detector.detectBoard(gray)   
+    # image = cv2.aruco.drawDetectedMarkers(image, markerCorners, markersIds)
+
+    return image, charucoCorners, charucoIds
     
 
 
@@ -173,9 +192,23 @@ def calculateHomography(img1, img2):
         return results, M
     
 def calculateHomography_template(img1, img2):
-    _, charucoCorners1, charucoIds1 = detectCharucoBoardLarge(img1)
-    _, charucoCorners2, charucoIds2 = detectCharucoBoardLarge(img2)
-    print("calculating homography")
+    #init corner and id as empty
+    charucoCorners1 = None
+    charucoCorners2 = None
+    charucoIds1 = None
+    charucoIds2 = None
+
+    _, charucoCorners1, charucoIds1 = detectCharucoBoard_6_6(img1)
+    _, charucoCorners2, charucoIds2 = detectCharucoBoard_6_6(img2)
+    print("Calculating homography...\n")
+    # #print image size
+    # print(f"Image 1 size: {img1.shape}")
+    # print(f"Image 2 size: {img2.shape}")
+
+    # print (f"charucoCorners1: {charucoCorners1}")
+    # print (f"charucoCorners2: {charucoCorners2}")
+    # print (f"charucoIds1: {charucoIds1}")
+    # print (f"charucoIds2: {charucoIds2}")
 
     if charucoCorners1 is not None and charucoCorners2 is not None:
 
@@ -211,24 +244,7 @@ def calculateHomography_template(img1, img2):
 
 
         return results, M
-    
-def detectCharucoBoard_6_6(image):
-    dict_type = cv2.aruco.DICT_6X6_1000
-    squares = (67, 13)
-    square_length = 0.030
-    marker_length = 0.025
-    aruco_dict = cv2.aruco.getPredefinedDictionary(dict_type)
-    charboard = cv2.aruco.CharucoBoard(squares, square_length, marker_length, aruco_dict)
-    detector = cv2.aruco.CharucoDetector(charboard)
 
-    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    height, width = gray.shape
-    imageSize = (width, height)
-
-    charucoCorners, charucoIds, markerCorners, markersIds = detector.detectBoard(gray)   
-    image = cv2.aruco.drawDetectedMarkers(image, markerCorners, markersIds)
-
-    return image, charucoCorners, charucoIds
 
 def warpTwoImages(img1, img2, H):
     h1,w1 = img1.shape[:2]

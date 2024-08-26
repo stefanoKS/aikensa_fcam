@@ -15,6 +15,7 @@ from aikensa.opencv_imgprocessing.cannydetect import canny_edge_detection
 from aikensa.opencv_imgprocessing.cameracalibrate import detectCharucoBoard, calculatecameramatrix
 from aikensa.cam_thread import CameraThread, CameraConfig
 from aikensa.calibration_thread import CalibrationThread, CalibrationConfig
+from aikensa.inspection_thread import InspectionThread, InspectionConfig
 
 from aikensa.sio_thread import ServerMonitorThread
 from aikensa.time_thread import TimeMonitorThread
@@ -54,9 +55,11 @@ class AIKensa(QMainWindow):
         super().__init__()
         # self.cam_thread = CameraThread(CameraConfig())
         self.calibration_thread = CalibrationThread(CalibrationConfig())
+        self.inspection_thread = InspectionThread(InspectionConfig())   
         self._setup_ui()
         # self.cam_thread.start()
         self.calibration_thread.start()
+        self.inspection_thread.start()
 
         # Thread for SiO
         HOST = '192.168.0.100'  # Use the IP address from SiO settings
@@ -115,6 +118,7 @@ class AIKensa(QMainWindow):
         self.calibration_thread.CamMerge3.connect(self._setMergeFrame3)
         self.calibration_thread.CamMerge4.connect(self._setMergeFrame4)
         self.calibration_thread.CamMerge5.connect(self._setMergeFrame5)
+        self.calibration_thread.CamMergeAll.connect(self._setMergeFrameAll)
 
         # self.cam_thread.camFrame1.connect(self._setFrameCam1)
         # self.cam_thread.camFrame2.connect(self._setFrameCam2)
@@ -160,11 +164,17 @@ class AIKensa(QMainWindow):
         cameraCalibration3_widget = self.stackedWidget.widget(3)
         cameraCalibration4_widget = self.stackedWidget.widget(4)
         cameraCalibration5_widget = self.stackedWidget.widget(5)
+        mergeCamera_widget = self.stackedWidget.widget(6)
+        partInspection_65820W030P = self.stackedWidget.widget(8)
+
+
         cameraCalibration1_button = main_widget.findChild(QPushButton, "camcalibrationbutton1")
         cameraCalibration2_button = main_widget.findChild(QPushButton, "camcalibrationbutton2")
         cameraCalibration3_button = main_widget.findChild(QPushButton, "camcalibrationbutton3")
         cameraCalibration4_button = main_widget.findChild(QPushButton, "camcalibrationbutton4")
         cameraCalibration5_button = main_widget.findChild(QPushButton, "camcalibrationbutton5")
+        mergeCamera_button = main_widget.findChild(QPushButton, "cameraMerge")
+        partInspection_65820W030P_button = main_widget.findChild(QPushButton, "P65820W030Pbutton")
 
 
         dailytenken01_widget = self.stackedWidget.widget(21)
@@ -176,7 +186,7 @@ class AIKensa(QMainWindow):
         button_dailytenken_kanryou = dailytenken03_widget.findChild(QPushButton, "finishButton")
 
         self.siostatus = main_widget.findChild(QLabel, "status_sio")
-        self.timeLabel = [self.stackedWidget.widget(i).findChild(QLabel, "timeLabel") for i in [0, 1, 2, 3, 4, 5, 6, 7]]
+        self.timeLabel = [self.stackedWidget.widget(i).findChild(QLabel, "timeLabel") for i in [0, 1, 2, 3, 4, 5, 6, 7, 8]]
 
         if cameraCalibration1_button:
             cameraCalibration1_button.clicked.connect(lambda: self.stackedWidget.setCurrentIndex(1))
@@ -193,6 +203,14 @@ class AIKensa(QMainWindow):
         if cameraCalibration5_button:
             cameraCalibration5_button.clicked.connect(lambda: self.stackedWidget.setCurrentIndex(5))
             cameraCalibration5_button.clicked.connect(lambda: self._set_calib_params(self.calibration_thread, 'widget', 5))
+        if mergeCamera_button:
+            mergeCamera_button.clicked.connect(lambda: self.stackedWidget.setCurrentIndex(6))
+            mergeCamera_button.clicked.connect(lambda: self._set_calib_params(self.calibration_thread, 'widget', 6))
+        if partInspection_65820W030P_button:
+            partInspection_65820W030P_button.clicked.connect(lambda: self.stackedWidget.setCurrentIndex(8))
+            partInspection_65820W030P_button.clicked.connect(lambda: self._set_inspection_params(self.inspection_thread, 'widget', 8))
+            #Closing the calibration thread once the inspection thread is started
+            partInspection_65820W030P_button.clicked.connect(self.calibration_thread.stop)
 
 
         for i in range(1, 6):
@@ -202,14 +220,7 @@ class AIKensa(QMainWindow):
             CalibrateFinalCameraMatrix = self.stackedWidget.widget(i).findChild(QPushButton, "calibCam")
             CalibrateFinalCameraMatrix.clicked.connect(lambda i=i: self._set_calib_params(self.calibration_thread, "calculateCamMatrix", True))
 
-            
-            
-        mergeCamera_widget = self.stackedWidget.widget(6)
-        mergeCamera_button = main_widget.findChild(QPushButton, "cameraMerge")
 
-        if mergeCamera_button:
-            mergeCamera_button.clicked.connect(lambda: self.stackedWidget.setCurrentIndex(6))
-            mergeCamera_button.clicked.connect(lambda: self._set_calib_params(self.calibration_thread, 'widget', 6))
 
         calcHomoCam1 = mergeCamera_widget.findChild(QPushButton, "calcH_cam1")
         calcHomoCam2 = mergeCamera_widget.findChild(QPushButton, "calcH_cam2")
@@ -222,6 +233,11 @@ class AIKensa(QMainWindow):
         calcHomoCam3.clicked.connect(lambda: self._set_calib_params(self.calibration_thread, "calculateHomo_cam3", True))
         calcHomoCam4.clicked.connect(lambda: self._set_calib_params(self.calibration_thread, "calculateHomo_cam4", True))
         calcHomoCam5.clicked.connect(lambda: self._set_calib_params(self.calibration_thread, "calculateHomo_cam5", True))
+
+        planarize_combined = mergeCamera_widget.findChild(QPushButton, "planarize")
+        planarize_combined.clicked.connect(lambda: self._set_calib_params(self.calibration_thread, "savePlanarize", True))
+
+
 
         # if button_calib:
         #     button_calib.clicked.connect(lambda: self.stackedWidget.setCurrentIndex(1))
@@ -458,6 +474,7 @@ class AIKensa(QMainWindow):
     def _close_app(self):
         # self.cam_thread.stop()
         self.calibration_thread.stop()
+        self.inspection_thread.stop()
         self.server_monitor_thread.stop()
         time.sleep(1.0)
         QCoreApplication.instance().quit()
@@ -555,6 +572,11 @@ class AIKensa(QMainWindow):
     def _setMergeFrame5(self, image):
         widget = self.stackedWidget.widget(6)
         label = widget.findChild(QLabel, "camMerge5")
+        label.setPixmap(QPixmap.fromImage(image))
+
+    def _setMergeFrameAll(self, image):
+        widget = self.stackedWidget.widget(6)
+        label = widget.findChild(QLabel, "camMergeAll")
         label.setPixmap(QPixmap.fromImage(image))
 
 
@@ -660,6 +682,9 @@ class AIKensa(QMainWindow):
             
     def _set_calib_params(self, thread, key, value):
         setattr(thread.calib_config, key, value)
+
+    def _set_inspection_params(self, thread, key, value):
+        setattr(thread.inspection_config, key, value)
 
 
 def main():

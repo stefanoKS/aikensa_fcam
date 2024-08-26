@@ -394,7 +394,7 @@ Cam5</string>
       <x>140</x>
       <y>430</y>
       <width>1600</width>
-      <height>273</height>
+      <height>216</height>
      </rect>
     </property>
     <property name="styleSheet">
@@ -545,6 +545,27 @@ Cam5</string>
     </property>
     <property name="alignment">
      <set>Qt::AlignCenter</set>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="planarize">
+    <property name="geometry">
+     <rect>
+      <x>1660</x>
+      <y>710</y>
+      <width>81</width>
+      <height>51</height>
+     </rect>
+    </property>
+    <property name="font">
+     <font>
+      <pointsize>9</pointsize>
+     </font>
+    </property>
+    <property name="styleSheet">
+     <string notr="true">background-color: rgb(255, 37, 21);</string>
+    </property>
+    <property name="text">
+     <string>Planarize</string>
     </property>
    </widget>
   </widget>
