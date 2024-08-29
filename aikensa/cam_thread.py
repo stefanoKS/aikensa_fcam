@@ -25,8 +25,8 @@ from typing import List, Tuple
 from aikensa.parts_config.sound import play_do_sound, play_picking_sound, play_re_sound, play_mi_sound, play_alarm_sound, play_konpou_sound, play_keisoku_sound
 
 from ultralytics import YOLO
-from aikensa.parts_config.ctrplr_8283XW0W0P import partcheck as ctrplrCheck
-from aikensa.parts_config.ctrplr_8283XW0W0P import dailytenkencheck
+# from aikensa.parts_config.hoodFr_8283XW0W0P import partcheck
+# from aikensa.parts_config.ctrplr_8283XW0W0P import dailytenkencheck
 
 from PIL import ImageFont, ImageDraw, Image
 

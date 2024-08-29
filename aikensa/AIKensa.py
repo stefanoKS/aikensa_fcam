@@ -58,8 +58,8 @@ class AIKensa(QMainWindow):
         self.inspection_thread = InspectionThread(InspectionConfig())   
         self._setup_ui()
         # self.cam_thread.start()
-        self.calibration_thread.start()
-        self.inspection_thread.start()
+        # self.calibration_thread.start()
+        # self.inspection_thread.start()
 
         # Thread for SiO
         HOST = '192.168.0.100'  # Use the IP address from SiO settings
@@ -119,6 +119,19 @@ class AIKensa(QMainWindow):
         self.calibration_thread.CamMerge4.connect(self._setMergeFrame4)
         self.calibration_thread.CamMerge5.connect(self._setMergeFrame5)
         self.calibration_thread.CamMergeAll.connect(self._setMergeFrameAll)
+
+        self.inspection_thread.part1Cam.connect(self._setPartFrame1)
+        self.inspection_thread.part2Cam.connect(self._setPartFrame2)
+        self.inspection_thread.part3Cam.connect(self._setPartFrame3)
+        self.inspection_thread.part4Cam.connect(self._setPartFrame4)
+        self.inspection_thread.part5Cam.connect(self._setPartFrame5)
+
+        self.inspection_thread.hole1Cam.connect(self._setHoleFrame1)
+        self.inspection_thread.hole2Cam.connect(self._setHoleFrame2)
+        self.inspection_thread.hole3Cam.connect(self._setHoleFrame3)
+        self.inspection_thread.hole4Cam.connect(self._setHoleFrame4)
+        self.inspection_thread.hole5Cam.connect(self._setHoleFrame5)
+
 
         # self.cam_thread.camFrame1.connect(self._setFrameCam1)
         # self.cam_thread.camFrame2.connect(self._setFrameCam2)
@@ -191,24 +204,32 @@ class AIKensa(QMainWindow):
         if cameraCalibration1_button:
             cameraCalibration1_button.clicked.connect(lambda: self.stackedWidget.setCurrentIndex(1))
             cameraCalibration1_button.clicked.connect(lambda: self._set_calib_params(self.calibration_thread, 'widget', 1))
+            cameraCalibration1_button.clicked.connect(self.calibration_thread.start)
         if cameraCalibration2_button:
             cameraCalibration2_button.clicked.connect(lambda: self.stackedWidget.setCurrentIndex(2))
             cameraCalibration2_button.clicked.connect(lambda: self._set_calib_params(self.calibration_thread, 'widget', 2))
+            cameraCalibration2_button.clicked.connect(self.calibration_thread.start)
         if cameraCalibration3_button:
             cameraCalibration3_button.clicked.connect(lambda: self.stackedWidget.setCurrentIndex(3))
             cameraCalibration3_button.clicked.connect(lambda: self._set_calib_params(self.calibration_thread, 'widget', 3))
+            cameraCalibration3_button.clicked.connect(self.calibration_thread.start)
         if cameraCalibration4_button:
             cameraCalibration4_button.clicked.connect(lambda: self.stackedWidget.setCurrentIndex(4))
             cameraCalibration4_button.clicked.connect(lambda: self._set_calib_params(self.calibration_thread, 'widget', 4))
+            cameraCalibration4_button.clicked.connect(self.calibration_thread.start)
         if cameraCalibration5_button:
             cameraCalibration5_button.clicked.connect(lambda: self.stackedWidget.setCurrentIndex(5))
             cameraCalibration5_button.clicked.connect(lambda: self._set_calib_params(self.calibration_thread, 'widget', 5))
+            cameraCalibration5_button.clicked.connect(self.calibration_thread.start)
         if mergeCamera_button:
             mergeCamera_button.clicked.connect(lambda: self.stackedWidget.setCurrentIndex(6))
             mergeCamera_button.clicked.connect(lambda: self._set_calib_params(self.calibration_thread, 'widget', 6))
+            mergeCamera_button.clicked.connect(self.calibration_thread.start)
         if partInspection_65820W030P_button:
             partInspection_65820W030P_button.clicked.connect(lambda: self.stackedWidget.setCurrentIndex(8))
             partInspection_65820W030P_button.clicked.connect(lambda: self._set_inspection_params(self.inspection_thread, 'widget', 8))
+            #Starting the inspection thread
+            partInspection_65820W030P_button.clicked.connect(self.inspection_thread.start)
             #Closing the calibration thread once the inspection thread is started
             partInspection_65820W030P_button.clicked.connect(self.calibration_thread.stop)
 
@@ -353,6 +374,10 @@ class AIKensa(QMainWindow):
 
         self.siostatus_server = [self.stackedWidget.widget(i).findChild(QLabel, "status_sio") for i in [0, 1, 2, 3, 4, 5, 6, 7, 21, 22, 23]]
 
+
+        inspectionButton = self.stackedWidget.widget(8).findChild(QPushButton, "InspectButton")
+        inspectionButton.clicked.connect(lambda: self._set_inspection_params(self.inspection_thread, "doInspection", True))
+
         # self.kanseihin_number_ctrplr_lh = self.stackedWidget.widget(3).findChild(QLabel, "status_kansei")
         # self.furyouhin_number_ctrplr_lh = self.stackedWidget.widget(3).findChild(QLabel, "status_furyou")
         # self.kanseihin_number_current_ctrplr_lh = self.stackedWidget.widget(3).findChild(QLabel, "current_kansei")
@@ -403,9 +428,7 @@ class AIKensa(QMainWindow):
                 button_dailytenken_kanryou.clicked.connect(lambda: self.stackedWidget.setCurrentIndex(0))
                 # button_dailytenken_kanryou.clicked.connect(lambda: self._set_cam_params(self.cam_thread, 'widget', 0))
 
-
-
-        self.stackedWidget.currentChanged.connect(self._on_widget_changed)
+        # self.stackedWidget.currentChanged.connect(self._on_widget_changed)
 
         self.setCentralWidget(self.stackedWidget)
         self.showFullScreen()
@@ -429,46 +452,46 @@ class AIKensa(QMainWindow):
         else:
             print(f"Button '{qtbutton}' not found.")
 
-    def connect_button_label_color_change(self, widget_index, qtbutton, cam_param):
-        widget = self.stackedWidget.widget(widget_index)
-        button = widget.findChild(QPushButton, qtbutton)
+    # def connect_button_label_color_change(self, widget_index, qtbutton, cam_param):
+    #     widget = self.stackedWidget.widget(widget_index)
+    #     button = widget.findChild(QPushButton, qtbutton)
 
-        if button:
-            button.setStyleSheet("color: red")
-            def toggle_font_color_and_param():
-                current_value = getattr(self.cam_thread.cam_config, cam_param, False)
-                new_value = not current_value
-                setattr(self.cam_thread.cam_config, cam_param, new_value)
-                self._set_cam_params(self.cam_thread, cam_param, new_value)
-                new_color = "green" if new_value else "red"
-                button.setStyleSheet(f"color: {new_color}")
+    #     if button:
+    #         button.setStyleSheet("color: red")
+    #         def toggle_font_color_and_param():
+    #             current_value = getattr(self.cam_thread.cam_config, cam_param, False)
+    #             new_value = not current_value
+    #             setattr(self.cam_thread.cam_config, cam_param, new_value)
+    #             self._set_cam_params(self.cam_thread, cam_param, new_value)
+    #             new_color = "green" if new_value else "red"
+    #             button.setStyleSheet(f"color: {new_color}")
 
-            button.pressed.connect(toggle_font_color_and_param)
-        else:
-            print(f"Button '{qtbutton}' not found.")
+    #         button.pressed.connect(toggle_font_color_and_param)
+    #     else:
+    #         print(f"Button '{qtbutton}' not found.")
 
-    def connect_line_edit_text_changed(self, widget_index, line_edit_name, cam_param):
-        widget = self.stackedWidget.widget(widget_index)
-        line_edit = widget.findChild(QLineEdit, line_edit_name)
-        if line_edit:
-            line_edit.textChanged.connect(lambda text: self._set_cam_params(self.cam_thread, cam_param, text))
+    # def connect_line_edit_text_changed(self, widget_index, line_edit_name, cam_param):
+    #     widget = self.stackedWidget.widget(widget_index)
+    #     line_edit = widget.findChild(QLineEdit, line_edit_name)
+    #     if line_edit:
+    #         line_edit.textChanged.connect(lambda text: self._set_cam_params(self.cam_thread, cam_param, text))
 
-    def connect_camparam_button(self, widget_index, button_name, cam_param, value):
-        widget = self.stackedWidget.widget(widget_index)
-        button = widget.findChild(QPushButton, button_name)
-        if button:
-            button.pressed.connect(lambda: self._set_cam_params(self.cam_thread, cam_param, value))
-            print(f"Button '{button_name}' connected to cam_param '{cam_param}' with value '{value}' in widget {widget_index}")
+    # def connect_camparam_button(self, widget_index, button_name, cam_param, value):
+    #     widget = self.stackedWidget.widget(widget_index)
+    #     button = widget.findChild(QPushButton, button_name)
+    #     if button:
+    #         button.pressed.connect(lambda: self._set_cam_params(self.cam_thread, cam_param, value))
+    #         print(f"Button '{button_name}' connected to cam_param '{cam_param}' with value '{value}' in widget {widget_index}")
 
     def simulateButtonKensaClicks(self):
         self.button_kensa3.click()
         self.button_kensa4.click()
 
-    def _on_widget_changed(self, idx: int):
-        if idx in [7, 21, 22, 23]:
-            #Change widget value to equal to index of stacked widget first
-            self._set_cam_params(self.cam_thread, 'widget', idx)
-            self.cam_thread.initialize_model()
+    # def _on_widget_changed(self, idx: int):
+    #     if idx in [7, 21, 22, 23]:
+    #         #Change widget value to equal to index of stacked widget first
+    #         self._set_cam_params(self.cam_thread, 'widget', idx)
+    #         self.cam_thread.initialize_model()
             
 
     def _close_app(self):
@@ -578,6 +601,56 @@ class AIKensa(QMainWindow):
         widget = self.stackedWidget.widget(6)
         label = widget.findChild(QLabel, "camMergeAll")
         label.setPixmap(QPixmap.fromImage(image))
+
+    def _setPartFrame1(self, image):
+        widget = self.stackedWidget.widget(8)
+        label1 = widget.findChild(QLabel, "FramePart1")
+        label1.setPixmap(QPixmap.fromImage(image))
+
+    def _setPartFrame2(self, image):
+        widget = self.stackedWidget.widget(8)
+        label2 = widget.findChild(QLabel, "FramePart2")
+        label2.setPixmap(QPixmap.fromImage(image))
+
+    def _setPartFrame3(self, image):
+        widget = self.stackedWidget.widget(8)
+        label3 = widget.findChild(QLabel, "FramePart3")
+        label3.setPixmap(QPixmap.fromImage(image))
+
+    def _setPartFrame4(self, image):
+        widget = self.stackedWidget.widget(8)
+        label4 = widget.findChild(QLabel, "FramePart4")
+        label4.setPixmap(QPixmap.fromImage(image))
+
+    def _setPartFrame5(self, image):
+        widget = self.stackedWidget.widget(8)
+        label5 = widget.findChild(QLabel, "FramePart5")
+        label5.setPixmap(QPixmap.fromImage(image))
+
+    def _setHoleFrame1(self, image):
+        widget = self.stackedWidget.widget(8)
+        label1 = widget.findChild(QLabel, "MizuAnaPart1")
+        label1.setPixmap(QPixmap.fromImage(image))
+        
+    def _setHoleFrame2(self, image):
+        widget = self.stackedWidget.widget(8)
+        label2 = widget.findChild(QLabel, "MizuAnaPart2")
+        label2.setPixmap(QPixmap.fromImage(image))
+
+    def _setHoleFrame3(self, image):
+        widget = self.stackedWidget.widget(8)
+        label3 = widget.findChild(QLabel, "MizuAnaPart3")
+        label3.setPixmap(QPixmap.fromImage(image))
+
+    def _setHoleFrame4(self, image):
+        widget = self.stackedWidget.widget(8)
+        label4 = widget.findChild(QLabel, "MizuAnaPart4")
+        label4.setPixmap(QPixmap.fromImage(image))
+
+    def _setHoleFrame5(self, image):
+        widget = self.stackedWidget.widget(8)
+        label5 = widget.findChild(QLabel, "MizuAnaPart5")
+        label5.setPixmap(QPixmap.fromImage(image))
 
 
     # def _setFrameCam1(self, image):

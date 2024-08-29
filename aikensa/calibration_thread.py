@@ -12,7 +12,7 @@ from PyQt5.QtCore import QThread, pyqtSignal, Qt, QTimer
 from PyQt5.QtGui import QImage, QPixmap
 
 from aikensa.camscripts.cam_init import initialize_camera
-from aikensa.opencv_imgprocessing.cameracalibrate import detectCharucoBoard , calculatecameramatrix, warpTwoImages, calculateHomography_template, warpTwoImages_template
+from aikensa.opencv_imgprocessing.cameracalibrate import detectCharucoBoard, detectCharucoBoard_scaledImage, calculatecameramatrix, calculatecameramatrix_scaledImage, warpTwoImages, calculateHomography_template, warpTwoImages_template
 from aikensa.opencv_imgprocessing.arucoplanarize import planarize, planarize_image
 from dataclasses import dataclass, field
 from typing import List, Tuple
@@ -34,6 +34,10 @@ class CalibrationConfig:
     mapCalculated: list = field(default_factory=lambda: [False]*10) #for 10 cameras
     map1: list = field(default_factory=lambda: [None]*10) #for 10 cameras
     map2: list = field(default_factory=lambda: [None]*10) #for 10 cameras
+
+    calibrationMatrix_scaled: np.ndarray = field(default=None)
+    map1_downscaled: list = field(default_factory=lambda: [None]*10) #for 10 cameras
+    map2_downscaled: list = field(default_factory=lambda: [None]*10) #for 10 cameras
 
     calculateHomo_cam1: bool = False
     calculateHomo_cam2: bool = False
@@ -93,6 +97,7 @@ class CalibrationThread(QThread):
         self.cap_cam = None
         self.frame  = None
         self.frame_downsampled = None
+        self.frame_scaled = None
 
         self.multiCam_stream = False
         self.cap_cam1 = None
@@ -262,7 +267,6 @@ class CalibrationThread(QThread):
 
 
         #INIT all variables
-
         if os.path.exists("./aikensa/cameracalibration/homography_param_cam1.yaml"):
             with open("./aikensa/cameracalibration/homography_param_cam1.yaml") as file:
                 self.homography_matrix1 = yaml.load(file, Loader=yaml.FullLoader)
@@ -345,6 +349,9 @@ class CalibrationThread(QThread):
                         ret, self.frame = self.cap_cam.read()
                         self.frame = cv2.cvtColor(self.frame, cv2.COLOR_BGR2RGB)
                         self.frame = cv2.rotate(self.frame, cv2.ROTATE_180)
+
+                        self.frame_scaled = cv2.resize(self.frame, (self.scaled_width, self.scaled_height), interpolation=cv2.INTER_LINEAR)
+
                         if not ret:
                             print("Failed to capture frame")
                             continue
@@ -368,12 +375,19 @@ class CalibrationThread(QThread):
 
                 if self.calib_config.calculateSingeFrameMatrix:
                     self.frame, _, _ = detectCharucoBoard(self.frame)
+                    self.frame_scaled, _, _ = detectCharucoBoard_scaledImage(self.frame_scaled)
                     self.calib_config.calculateSingeFrameMatrix = False
 
                 if self.calib_config.calculateCamMatrix:
                     self.calib_config.calibrationMatrix = calculatecameramatrix()
+                    self.calib_config.calibrationMatrix_scaled = calculatecameramatrix_scaledImage()
+
+                    print(f"Calibration Matrix Value: {self.calib_config.calibrationMatrix}")
+                    print(f"Calibration Matrix Scaled Value: {self.calib_config.calibrationMatrix_scaled}")
+                    
                     os.makedirs(self._save_dir, exist_ok=True)
                     self.save_calibration_to_yaml(self.calib_config.calibrationMatrix, self._save_dir + f"Calibration_camera_{self.calib_config.cameraID}.yaml")
+                    self.save_calibration_to_yaml(self.calib_config.calibrationMatrix_scaled, self._save_dir + f"Calibration_camera_scaled_{self.calib_config.cameraID}.yaml")
                     self.calib_config.calculateCamMatrix = False
 
                 if self.frame is not None:
@@ -436,12 +450,14 @@ class CalibrationThread(QThread):
                 if self.calib_config.calculateHomo_cam1 is True:
                     self.calib_config.calculateHomo_cam1 = False
                     _, self.homography_matrix1 = calculateHomography_template(self.homography_template, self.mergeframe1)
+                    self.H1 = np.array(self.homography_matrix1)
                     print(f"Homography matrix is calculated for Camera 1 with value {self.homography_matrix1}")
                     os.makedirs(self._save_dir, exist_ok=True)
                     with open("./aikensa/cameracalibration/homography_param_cam1.yaml", "w") as file:
                         yaml.dump(self.homography_matrix1.tolist(), file)
 
                     _, self.homography_matrix1_scaled = calculateHomography_template(self.homography_template_scaled, self.mergeframe1_scaled)
+                    self.H1_scaled = np.array(self.homography_matrix1_scaled)
                     print(f"Homography scaled matrix is calculated for Camera 1 with value {self.homography_matrix1_scaled}")
                     with open("./aikensa/cameracalibration/homography_param_cam1_scaled.yaml", "w") as file:
                         yaml.dump(self.homography_matrix1_scaled.tolist(), file) 
@@ -449,12 +465,14 @@ class CalibrationThread(QThread):
                 if self.calib_config.calculateHomo_cam2 is True:
                     self.calib_config.calculateHomo_cam2 = False
                     _, self.homography_matrix2 = calculateHomography_template(self.homography_template, self.mergeframe2)
+                    self.H2 = np.array(self.homography_matrix2)
                     print(f"Homography matrix is calculated for Camera 2 with value {self.homography_matrix2}")
                     os.makedirs(self._save_dir, exist_ok=True)
                     with open("./aikensa/cameracalibration/homography_param_cam2.yaml", "w") as file:
                         yaml.dump(self.homography_matrix2.tolist(), file)
 
                     _, self.homography_matrix2_scaled = calculateHomography_template(self.homography_template_scaled, self.mergeframe2_scaled)
+                    self.H2_scaled = np.array(self.homography_matrix2_scaled)
                     print(f"Homography scaled matrix is calculated for Camera 2 with value {self.homography_matrix2_scaled}")
                     with open("./aikensa/cameracalibration/homography_param_cam2_scaled.yaml", "w") as file:
                         yaml.dump(self.homography_matrix2_scaled.tolist(), file) 
@@ -462,12 +480,14 @@ class CalibrationThread(QThread):
                 if self.calib_config.calculateHomo_cam3 is True:
                     self.calib_config.calculateHomo_cam3 = False
                     _, self.homography_matrix3 = calculateHomography_template(self.homography_template, self.mergeframe3)
+                    self.H3 = np.array(self.homography_matrix3)
                     print(f"Homography matrix is calculated for Camera 3 with value {self.homography_matrix3}")
                     os.makedirs(self._save_dir, exist_ok=True)
                     with open("./aikensa/cameracalibration/homography_param_cam3.yaml", "w") as file:
                         yaml.dump(self.homography_matrix3.tolist(), file)
 
                     _, self.homography_matrix3_scaled = calculateHomography_template(self.homography_template_scaled, self.mergeframe3_scaled)
+                    self.H3_scaled = np.array(self.homography_matrix3_scaled)
                     print(f"Homography scaled matrix is calculated for Camera 3 with value {self.homography_matrix3_scaled}")
                     with open("./aikensa/cameracalibration/homography_param_cam3_scaled.yaml", "w") as file:
                         yaml.dump(self.homography_matrix3_scaled.tolist(), file)
@@ -475,12 +495,14 @@ class CalibrationThread(QThread):
                 if self.calib_config.calculateHomo_cam4 is True:
                     self.calib_config.calculateHomo_cam4 = False
                     _, self.homography_matrix4 = calculateHomography_template(self.homography_template, self.mergeframe4)
+                    self.H4 = np.array(self.homography_matrix4)
                     print(f"Homography matrix is calculated for Camera 4 with value {self.homography_matrix4}")
                     os.makedirs(self._save_dir, exist_ok=True)
                     with open("./aikensa/cameracalibration/homography_param_cam4.yaml", "w") as file:
                         yaml.dump(self.homography_matrix4.tolist(), file)
 
                     _, self.homography_matrix4_scaled = calculateHomography_template(self.homography_template_scaled, self.mergeframe4_scaled)
+                    self.H4_scaled = np.array(self.homography_matrix4_scaled)
                     print(f"Homography scaled matrix is calculated for Camera 4 with value {self.homography_matrix4_scaled}")
                     with open("./aikensa/cameracalibration/homography_param_cam4_scaled.yaml", "w") as file:
                         yaml.dump(self.homography_matrix4_scaled.tolist(), file)
@@ -488,12 +510,14 @@ class CalibrationThread(QThread):
                 if self.calib_config.calculateHomo_cam5 is True:
                     self.calib_config.calculateHomo_cam5 = False
                     _, self.homography_matrix5 = calculateHomography_template(self.homography_template, self.mergeframe5)
+                    self.H5 = np.array(self.homography_matrix5)
                     print(f"Homography matrix is calculated for Camera 5 with value {self.homography_matrix5}")
                     os.makedirs(self._save_dir, exist_ok=True)
                     with open("./aikensa/cameracalibration/homography_param_cam5.yaml", "w") as file:
                         yaml.dump(self.homography_matrix5.tolist(), file)
 
                     _, self.homography_matrix5_scaled = calculateHomography_template(self.homography_template_scaled, self.mergeframe5_scaled)
+                    self.H5_scaled = np.array(self.homography_matrix5_scaled)
                     print(f"Homography scaled matrix is calculated for Camera 5 with value {self.homography_matrix5_scaled}")
                     with open("./aikensa/cameracalibration/homography_param_cam5_scaled.yaml", "w") as file:
                         yaml.dump(self.homography_matrix5_scaled.tolist(), file)
@@ -562,11 +586,11 @@ class CalibrationThread(QThread):
                             self.homography_matrix5_scaled = yaml.load(file, Loader=yaml.FullLoader)
                             self.H5_scaled = np.array(self.homography_matrix5_scaled)
 
-                # self.combinedImage = warpTwoImages_template(self.homography_blank_canvas, self.mergeframe1, self.H1)
-                # self.combinedImage = warpTwoImages_template(self.combinedImage, self.mergeframe2, self.H2)
-                # self.combinedImage = warpTwoImages_template(self.combinedImage, self.mergeframe3, self.H3)
-                # self.combinedImage = warpTwoImages_template(self.combinedImage, self.mergeframe4, self.H4)
-                # self.combinedImage = warpTwoImages_template(self.combinedImage, self.mergeframe5, self.H5)
+                self.combinedImage = warpTwoImages_template(self.homography_blank_canvas, self.mergeframe1, self.H1)
+                self.combinedImage = warpTwoImages_template(self.combinedImage, self.mergeframe2, self.H2)
+                self.combinedImage = warpTwoImages_template(self.combinedImage, self.mergeframe3, self.H3)
+                self.combinedImage = warpTwoImages_template(self.combinedImage, self.mergeframe4, self.H4)
+                self.combinedImage = warpTwoImages_template(self.combinedImage, self.mergeframe5, self.H5)
 
                 self.combinedImage_scaled = warpTwoImages_template(self.homography_blank_canvas_scaled, self.mergeframe1_scaled, self.H1_scaled)
                 self.combinedImage_scaled = warpTwoImages_template(self.combinedImage_scaled, self.mergeframe2_scaled, self.H2_scaled)
@@ -574,19 +598,26 @@ class CalibrationThread(QThread):
                 self.combinedImage_scaled = warpTwoImages_template(self.combinedImage_scaled, self.mergeframe4_scaled, self.H4_scaled)
                 self.combinedImage_scaled = warpTwoImages_template(self.combinedImage_scaled, self.mergeframe5_scaled, self.H5_scaled)
 
+                # cv2.imwrite("combinedImage_scaled.png", self.combinedImage_scaled)
+
                 if self.calib_config.savePlanarize is True:
                     self.calib_config.savePlanarize = False
                     self.combinedImage, self.planarizeTransform = planarize_image(self.combinedImage, 
                                                                                   target_width=self.homography_size[1], target_height=self.homography_size[0], 
-                                                                                  top_offset=200, bottom_offset=200)
+                                                                                  top_offset=250, bottom_offset=250)
                     self.combinedImage_scaled, self.planarizeTransform_scaled = planarize_image(self.combinedImage_scaled,
                                                                                                   target_width=int(self.homography_size[1]/self.scale_factor), target_height=int(self.homography_size[0]/self.scale_factor),
-                                                                                                  top_offset=int(200/self.scale_factor), bottom_offset=int(200/self.scale_factor))
+                                                                                                  top_offset=int(250/self.scale_factor), bottom_offset=int(250/self.scale_factor))
                     os.makedirs(self._save_dir, exist_ok=True)
                     with open("./aikensa/cameracalibration/planarizeTransform.yaml", "w") as file:  
                         yaml.dump(self.planarizeTransform.tolist(), file)
                     with open("./aikensa/cameracalibration/planarizeTransform_scaled.yaml", "w") as file:
                         yaml.dump(self.planarizeTransform_scaled.tolist(), file)
+
+                    print(f"Image size after warping is {self.combinedImage.shape}")
+                    cv2.imwrite("combinedImage.png", self.combinedImage)
+                    cv2.imwrite("combinedImage_scaled.png", self.combinedImage_scaled)
+
 
                 # if self.planarizeTransform is not None:
                 #     self.combinedImage = cv2.warpPerspective(self.combinedImage, self.planarizeTransform, (self.homography_size[1],self.homography_size[0]))
@@ -617,7 +648,7 @@ class CalibrationThread(QThread):
                     self.CamMergeAll.emit(self.convertQImage(self.combinedImage_scaled))
 
             #wait for 5ms
-            self.msleep(5)
+            self.msleep(2)
             
         print(f"Camera {self.calib_config.cameraID} released.")
 

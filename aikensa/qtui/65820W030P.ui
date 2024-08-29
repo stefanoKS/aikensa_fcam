@@ -82,7 +82,7 @@
       <x>20</x>
       <y>130</y>
       <width>1861</width>
-      <height>691</height>
+      <height>701</height>
      </rect>
     </property>
     <property name="frameShape">
@@ -95,9 +95,9 @@
      <property name="geometry">
       <rect>
        <x>11</x>
-       <y>40</y>
+       <y>50</y>
        <width>1771</width>
-       <height>61</height>
+       <height>24</height>
       </rect>
      </property>
      <property name="styleSheet">
@@ -114,9 +114,9 @@
      <property name="geometry">
       <rect>
        <x>10</x>
-       <y>190</y>
+       <y>200</y>
        <width>1771</width>
-       <height>61</height>
+       <height>24</height>
       </rect>
      </property>
      <property name="styleSheet">
@@ -133,9 +133,9 @@
      <property name="geometry">
       <rect>
        <x>11</x>
-       <y>340</y>
+       <y>350</y>
        <width>1771</width>
-       <height>61</height>
+       <height>24</height>
       </rect>
      </property>
      <property name="styleSheet">
@@ -152,9 +152,9 @@
      <property name="geometry">
       <rect>
        <x>10</x>
-       <y>480</y>
+       <y>490</y>
        <width>1771</width>
-       <height>61</height>
+       <height>24</height>
       </rect>
      </property>
      <property name="styleSheet">
@@ -171,85 +171,9 @@
      <property name="geometry">
       <rect>
        <x>10</x>
-       <y>620</y>
+       <y>630</y>
        <width>1771</width>
-       <height>61</height>
-      </rect>
-     </property>
-     <property name="styleSheet">
-      <string notr="true">background-color: rgb(46, 52, 54);</string>
-     </property>
-     <property name="text">
-      <string/>
-     </property>
-     <property name="alignment">
-      <set>Qt::AlignCenter</set>
-     </property>
-    </widget>
-    <widget class="QLabel" name="mergeFrame_6">
-     <property name="geometry">
-      <rect>
-       <x>1800</x>
-       <y>620</y>
-       <width>51</width>
-       <height>61</height>
-      </rect>
-     </property>
-     <property name="styleSheet">
-      <string notr="true">background-color: rgb(46, 52, 54);</string>
-     </property>
-     <property name="text">
-      <string/>
-     </property>
-     <property name="alignment">
-      <set>Qt::AlignCenter</set>
-     </property>
-    </widget>
-    <widget class="QLabel" name="MizuAnaPart4">
-     <property name="geometry">
-      <rect>
-       <x>1800</x>
-       <y>480</y>
-       <width>51</width>
-       <height>61</height>
-      </rect>
-     </property>
-     <property name="styleSheet">
-      <string notr="true">background-color: rgb(46, 52, 54);</string>
-     </property>
-     <property name="text">
-      <string/>
-     </property>
-     <property name="alignment">
-      <set>Qt::AlignCenter</set>
-     </property>
-    </widget>
-    <widget class="QLabel" name="MizuAnaPart3">
-     <property name="geometry">
-      <rect>
-       <x>1800</x>
-       <y>340</y>
-       <width>51</width>
-       <height>61</height>
-      </rect>
-     </property>
-     <property name="styleSheet">
-      <string notr="true">background-color: rgb(46, 52, 54);</string>
-     </property>
-     <property name="text">
-      <string/>
-     </property>
-     <property name="alignment">
-      <set>Qt::AlignCenter</set>
-     </property>
-    </widget>
-    <widget class="QLabel" name="MizuAnaPart2">
-     <property name="geometry">
-      <rect>
-       <x>1800</x>
-       <y>190</y>
-       <width>51</width>
-       <height>61</height>
+       <height>24</height>
       </rect>
      </property>
      <property name="styleSheet">
@@ -265,10 +189,10 @@
     <widget class="QLabel" name="MizuAnaPart1">
      <property name="geometry">
       <rect>
-       <x>1800</x>
-       <y>40</y>
-       <width>51</width>
-       <height>61</height>
+       <x>800</x>
+       <y>80</y>
+       <width>93</width>
+       <height>30</height>
       </rect>
      </property>
      <property name="styleSheet">
@@ -1013,8 +937,8 @@
     <widget class="QLabel" name="MizuLabel5">
      <property name="geometry">
       <rect>
-       <x>1810</x>
-       <y>600</y>
+       <x>900</x>
+       <y>680</y>
        <width>31</width>
        <height>20</height>
       </rect>
@@ -1092,8 +1016,8 @@
     <widget class="QLabel" name="MizuLabel4">
      <property name="geometry">
       <rect>
-       <x>1810</x>
-       <y>460</y>
+       <x>900</x>
+       <y>540</y>
        <width>31</width>
        <height>20</height>
       </rect>
@@ -1119,8 +1043,8 @@
     <widget class="QLabel" name="MizuLabel3">
      <property name="geometry">
       <rect>
-       <x>1810</x>
-       <y>320</y>
+       <x>900</x>
+       <y>400</y>
        <width>31</width>
        <height>20</height>
       </rect>
@@ -1146,8 +1070,8 @@
     <widget class="QLabel" name="MizuLabel2">
      <property name="geometry">
       <rect>
-       <x>1810</x>
-       <y>170</y>
+       <x>900</x>
+       <y>250</y>
        <width>31</width>
        <height>20</height>
       </rect>
@@ -1173,8 +1097,8 @@
     <widget class="QLabel" name="MizuLabel1">
      <property name="geometry">
       <rect>
-       <x>1810</x>
-       <y>20</y>
+       <x>900</x>
+       <y>100</y>
        <width>31</width>
        <height>20</height>
       </rect>
@@ -1200,86 +1124,10 @@
     <widget class="QLabel" name="MizuAnaStatus1">
      <property name="geometry">
       <rect>
-       <x>1800</x>
-       <y>100</y>
-       <width>51</width>
-       <height>10</height>
-      </rect>
-     </property>
-     <property name="styleSheet">
-      <string notr="true">background-color: rgb(255, 0, 4);</string>
-     </property>
-     <property name="text">
-      <string/>
-     </property>
-     <property name="alignment">
-      <set>Qt::AlignCenter</set>
-     </property>
-    </widget>
-    <widget class="QLabel" name="MizuAnaStatus2">
-     <property name="geometry">
-      <rect>
-       <x>1800</x>
-       <y>250</y>
-       <width>51</width>
-       <height>10</height>
-      </rect>
-     </property>
-     <property name="styleSheet">
-      <string notr="true">background-color: rgb(255, 0, 4);</string>
-     </property>
-     <property name="text">
-      <string/>
-     </property>
-     <property name="alignment">
-      <set>Qt::AlignCenter</set>
-     </property>
-    </widget>
-    <widget class="QLabel" name="MizuAnaStatus3">
-     <property name="geometry">
-      <rect>
-       <x>1800</x>
-       <y>400</y>
-       <width>51</width>
-       <height>10</height>
-      </rect>
-     </property>
-     <property name="styleSheet">
-      <string notr="true">background-color: rgb(255, 0, 4);</string>
-     </property>
-     <property name="text">
-      <string/>
-     </property>
-     <property name="alignment">
-      <set>Qt::AlignCenter</set>
-     </property>
-    </widget>
-    <widget class="QLabel" name="MizuAnaStatus4">
-     <property name="geometry">
-      <rect>
-       <x>1800</x>
-       <y>540</y>
-       <width>51</width>
-       <height>10</height>
-      </rect>
-     </property>
-     <property name="styleSheet">
-      <string notr="true">background-color: rgb(255, 0, 4);</string>
-     </property>
-     <property name="text">
-      <string/>
-     </property>
-     <property name="alignment">
-      <set>Qt::AlignCenter</set>
-     </property>
-    </widget>
-    <widget class="QLabel" name="MizuAnaStatus5">
-     <property name="geometry">
-      <rect>
-       <x>1800</x>
-       <y>680</y>
-       <width>51</width>
-       <height>10</height>
+       <x>800</x>
+       <y>110</y>
+       <width>93</width>
+       <height>6</height>
       </rect>
      </property>
      <property name="styleSheet">
@@ -7988,6 +7836,158 @@ border-color: rgb(36, 36, 36);</string>
       <set>Qt::AlignCenter</set>
      </property>
     </widget>
+    <widget class="QLabel" name="MizuAnaPart2">
+     <property name="geometry">
+      <rect>
+       <x>800</x>
+       <y>230</y>
+       <width>93</width>
+       <height>30</height>
+      </rect>
+     </property>
+     <property name="styleSheet">
+      <string notr="true">background-color: rgb(46, 52, 54);</string>
+     </property>
+     <property name="text">
+      <string/>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignCenter</set>
+     </property>
+    </widget>
+    <widget class="QLabel" name="MizuAnaPart3">
+     <property name="geometry">
+      <rect>
+       <x>800</x>
+       <y>380</y>
+       <width>93</width>
+       <height>30</height>
+      </rect>
+     </property>
+     <property name="styleSheet">
+      <string notr="true">background-color: rgb(46, 52, 54);</string>
+     </property>
+     <property name="text">
+      <string/>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignCenter</set>
+     </property>
+    </widget>
+    <widget class="QLabel" name="MizuAnaPart4">
+     <property name="geometry">
+      <rect>
+       <x>800</x>
+       <y>520</y>
+       <width>93</width>
+       <height>30</height>
+      </rect>
+     </property>
+     <property name="styleSheet">
+      <string notr="true">background-color: rgb(46, 52, 54);</string>
+     </property>
+     <property name="text">
+      <string/>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignCenter</set>
+     </property>
+    </widget>
+    <widget class="QLabel" name="MizuAnaPart5">
+     <property name="geometry">
+      <rect>
+       <x>800</x>
+       <y>660</y>
+       <width>93</width>
+       <height>30</height>
+      </rect>
+     </property>
+     <property name="styleSheet">
+      <string notr="true">background-color: rgb(46, 52, 54);</string>
+     </property>
+     <property name="text">
+      <string/>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignCenter</set>
+     </property>
+    </widget>
+    <widget class="QLabel" name="MizuAnaStatus2">
+     <property name="geometry">
+      <rect>
+       <x>800</x>
+       <y>260</y>
+       <width>93</width>
+       <height>6</height>
+      </rect>
+     </property>
+     <property name="styleSheet">
+      <string notr="true">background-color: rgb(255, 0, 4);</string>
+     </property>
+     <property name="text">
+      <string/>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignCenter</set>
+     </property>
+    </widget>
+    <widget class="QLabel" name="MizuAnaStatus3">
+     <property name="geometry">
+      <rect>
+       <x>800</x>
+       <y>410</y>
+       <width>93</width>
+       <height>6</height>
+      </rect>
+     </property>
+     <property name="styleSheet">
+      <string notr="true">background-color: rgb(255, 0, 4);</string>
+     </property>
+     <property name="text">
+      <string/>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignCenter</set>
+     </property>
+    </widget>
+    <widget class="QLabel" name="MizuAnaStatus4">
+     <property name="geometry">
+      <rect>
+       <x>800</x>
+       <y>550</y>
+       <width>93</width>
+       <height>6</height>
+      </rect>
+     </property>
+     <property name="styleSheet">
+      <string notr="true">background-color: rgb(255, 0, 4);</string>
+     </property>
+     <property name="text">
+      <string/>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignCenter</set>
+     </property>
+    </widget>
+    <widget class="QLabel" name="MizuAnaStatus5">
+     <property name="geometry">
+      <rect>
+       <x>800</x>
+       <y>690</y>
+       <width>93</width>
+       <height>6</height>
+      </rect>
+     </property>
+     <property name="styleSheet">
+      <string notr="true">background-color: rgb(255, 0, 4);</string>
+     </property>
+     <property name="text">
+      <string/>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignCenter</set>
+     </property>
+    </widget>
    </widget>
    <widget class="QPushButton" name="mainmenubutton">
     <property name="geometry">
@@ -8146,7 +8146,7 @@ border-color: rgb(36, 36, 36);</string>
      <set>Qt::AlignCenter</set>
     </property>
    </widget>
-   <widget class="QPushButton" name="kensaButton">
+   <widget class="QPushButton" name="InspectButton">
     <property name="geometry">
      <rect>
       <x>30</x>
@@ -8892,7 +8892,7 @@ background-color: rgb(38, 162, 105);</string>
    <zorder>partlabel_4</zorder>
    <zorder>partlabel_5</zorder>
    <zorder>partlabel_6</zorder>
-   <zorder>kensaButton</zorder>
+   <zorder>InspectButton</zorder>
    <zorder>partlabel_7</zorder>
    <zorder>partlabel_8</zorder>
    <zorder>status_sio</zorder>
