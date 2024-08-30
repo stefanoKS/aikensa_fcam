@@ -29,6 +29,7 @@ from ultralytics import YOLO
 from aikensa.parts_config.hoodFR_65820W030P import partcheck
 
 from PIL import ImageFont, ImageDraw, Image
+import datetime
 
 @dataclass
 class InspectionConfig:
@@ -58,6 +59,9 @@ class InspectionThread(QThread):
     hole3Cam = pyqtSignal(QImage)
     hole4Cam = pyqtSignal(QImage)
     hole5Cam = pyqtSignal(QImage)
+    
+    hoodFR_InspectionResult_PitchMeasured = pyqtSignal(list)
+    hoodFR_InspectionResult_PitchResult = pyqtSignal(list)
 
     def __init__(self, inspection_config: InspectionConfig = None):
         super(InspectionThread, self).__init__()
@@ -197,8 +201,11 @@ class InspectionThread(QThread):
         self.InspectionImages = [None]*5
 
         self.InspectionResult_ClipDetection = [None]*5
-        self.InspectionResult_PitchDetection = [None]*5
-        self.InspectionResult_DeltaDetection = [None]*5
+
+        self.InspectionResult_PitchMeasured = [None]*5
+        self.InspectionResult_PitchResult = [None]*5
+        self.InspectionResult_DetectionID = [None]*5
+        self.InspectionResult_Status = [None]*5
 
         self.DetectionResult_HoleDetection = [None]*5
 
@@ -518,6 +525,14 @@ class InspectionThread(QThread):
                             self.hole4Cam.emit(self.convertQImage(self.holeFrame4))
                         if self.holeFrame5 is not None:
                             self.hole5Cam.emit(self.convertQImage(self.holeFrame5))
+
+
+                        #Empty the Inspection Result
+                        self.InspectionResult_PitchMeasured = [None]*5
+                        self.InspectionResult_PitchResult = [None]*5
+                        
+                        self.hoodFR_InspectionResult_PitchMeasured.emit(self.InspectionResult_PitchMeasured)
+                        self.hoodFR_InspectionResult_PitchResult.emit(self.InspectionResult_PitchResult)
   
                     if self.inspection_config.doInspection is True:
                         self.inspection_config.doInspection = False
@@ -528,12 +543,6 @@ class InspectionThread(QThread):
                         self.mergeframe3 = cv2.rotate(self.mergeframe3, cv2.ROTATE_180)
                         self.mergeframe4 = cv2.rotate(self.mergeframe4, cv2.ROTATE_180)
                         self.mergeframe5 = cv2.rotate(self.mergeframe5, cv2.ROTATE_180)
-
-                        # cv2.imwrite("./mergeframe1.png", self.mergeframe1)
-                        # cv2.imwrite("./mergeframe2.png", self.mergeframe2)
-                        # cv2.imwrite("./mergeframe3.png", self.mergeframe3)
-                        # cv2.imwrite("./mergeframe4.png", self.mergeframe4)
-                        # cv2.imwrite("./mergeframe5.png", self.mergeframe5)
 
                         self.mergeframe1 = cv2.remap(self.mergeframe1, self.inspection_config.map1[1], self.inspection_config.map2[1], interpolation=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT)
                         self.mergeframe2 = cv2.remap(self.mergeframe2, self.inspection_config.map1[2], self.inspection_config.map2[2], interpolation=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT)
@@ -562,6 +571,7 @@ class InspectionThread(QThread):
                         self.part2Crop = cv2.cvtColor(self.part2Crop, cv2.COLOR_RGB2BGR)
                         self.part3Crop = cv2.cvtColor(self.part3Crop, cv2.COLOR_RGB2BGR)
                         self.part4Crop = cv2.cvtColor(self.part4Crop, cv2.COLOR_RGB2BGR)
+                        self.part5Crop = cv2.cvtColor(self.part5Crop, cv2.COLOR_RGB2BGR)
 
                         #Put the All the image into a list
                         self.InspectionImages[0] = self.part1Crop
@@ -570,15 +580,9 @@ class InspectionThread(QThread):
                         self.InspectionImages[3] = self.part4Crop
                         self.InspectionImages[4] = self.part5Crop
 
-                        cv2.imwrite("./part1Crop.png", self.part1Crop)
-                        cv2.imwrite("./part2Crop.png", self.part2Crop)
-                        cv2.imwrite("./part3Crop.png", self.part3Crop)
-                        cv2.imwrite("./part4Crop.png", self.part4Crop)
-                        cv2.imwrite("./part5Crop.png", self.part5Crop)
-
                         print(f"Lengt of Inspection Images : {len(self.InspectionImages)}") 
 
-                        # Do the inspection
+                        # # Do the inspection
                         for i in range(len(self.InspectionImages)):
                             print(f"Inspection Image {i}")
                             self.InspectionResult_ClipDetection[i] = get_sliced_prediction(
@@ -593,9 +597,30 @@ class InspectionThread(QThread):
                                 verbose=0,
                                 perform_standard_pred=False
                             )
-                            print(f"Clip Detection Result : {self.InspectionResult_ClipDetection[i]}")
 
-                            self.InspectionImages[i], self.InspectionResult_PitchDetection[i], self.InspectionResult_DeltaDetection[i] = partcheck(self.InspectionImages[i], self.InspectionResult_ClipDetection[i].object_prediction_list)
+                            self.InspectionImages[i], self.InspectionResult_PitchMeasured[i], self.InspectionResult_PitchResult[i], self.InspectionResult_DetectionID[i], self.InspectionResult_Status[i] = partcheck(self.InspectionImages[i], self.InspectionResult_ClipDetection[i].object_prediction_list)
+
+
+
+                        self.InspectionImages[0] = self.downSampling(self.InspectionImages[0], width=1771, height=24)
+                        self.InspectionImages[1] = self.downSampling(self.InspectionImages[1], width=1771, height=24)
+                        self.InspectionImages[2] = self.downSampling(self.InspectionImages[2], width=1771, height=24)
+                        self.InspectionImages[3] = self.downSampling(self.InspectionImages[3], width=1771, height=24)
+                        self.InspectionImages[4] = self.downSampling(self.InspectionImages[4], width=1771, height=24)
+
+                        self.part1Cam.emit(self.converQImageRGB(self.InspectionImages[0]))
+                        self.part2Cam.emit(self.converQImageRGB(self.InspectionImages[1]))
+                        self.part3Cam.emit(self.converQImageRGB(self.InspectionImages[2]))
+                        self.part4Cam.emit(self.converQImageRGB(self.InspectionImages[3]))
+                        self.part5Cam.emit(self.converQImageRGB(self.InspectionImages[4]))
+
+                        #emit signal for the inspection result
+                        # print(f"Shape of Inspection Result : {len(self.InspectionResult_PitchMeasured)}")
+                        # print(f"Shape of PichResult: {len8self.InspectionResult_PitchResult)}")
+                        self.hoodFR_InspectionResult_PitchMeasured.emit(self.InspectionResult_PitchMeasured)
+                        self.hoodFR_InspectionResult_PitchResult.emit(self.InspectionResult_PitchResult)
+
+                        self.msleep(10000)
 
                         print("Inspection Finished")
 
@@ -611,10 +636,15 @@ class InspectionThread(QThread):
         # print(f"FPS of {message} : {self.fps_mini}")
 
     def convertQImage(self, image):
-        # Convert resized cv2 image to QImage
         h, w, ch = image.shape
         bytesPerLine = ch * w
         processed_image = QImage(image.data, w, h, bytesPerLine, QImage.Format_BGR888)
+        return processed_image
+    
+    def converQImageRGB(self, image):
+        h, w, ch = image.shape
+        bytesPerLine = ch * w
+        processed_image = QImage(image.data, w, h, bytesPerLine, QImage.Format_RGB888)
         return processed_image
     
     def downScaledImage(self, image, scaleFactor=1.0):

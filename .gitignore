@@ -186,5 +186,6 @@ aikensa/inspection_results/*
 aikensa/inspection_images/*
 aikensa/capturedimages/*
 aikensa/tiscamera/*
-aikensa/cameracalibration/*
+# aikensa/cameracalibration/*
+aikensa/training_image/*
 aikensa/param/*

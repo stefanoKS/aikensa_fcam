@@ -15,8 +15,11 @@ ng_sound = pygame.mixer.Sound("aikensa/sound/mixkit-classic-short-alarm-993.wav"
 ng_sound_v2 = pygame.mixer.Sound("aikensa/sound/mixkit-system-beep-buzzer-fail-2964.wav")
 kanjiFontPath = "aikensa/font/NotoSansJP-ExtraBold.ttf"
 
-pitchSpec = [26, 107, 75, 75, 75, 75, 75, 92, 75, 102, 100, 129, 103, 109, 103, 109, 103, 129, 100, 102, 75, 92, 75, 75, 75, 75, 75, 107, 26]
-pitchToleramce = [3.0]
+pitchSpec = [26, 107, 75, 75, 75, 75, 75, 92, 75, 102, 100, 129, 103, 109, 103, 129, 100, 102, 75, 92, 75, 75, 75, 75, 75, 107, 26]
+idSpec = [0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+tolerance_pitch = [2.0] * 27
+tolerance_pitch[0] = 3.0
+tolerance_pitch[-1] = 3.0
 
 color = (0, 255, 0)
 text_offset = 40
@@ -30,90 +33,100 @@ def partcheck(image, sahi_predictionList):
 
     sorted_detections = sorted(sahi_predictionList, key=lambda d: d.bbox.minx)
 
-    middle_lengths = []
 
     detectedid = []
-    customid = []
 
-    detectedPitch = []
+    measuredPitch = []
+    resultPitch = []
     deltaPitch = []
+
+    resultid = []
 
     detectedposX = []
     detectedposY = []
 
-    pitchresult = []
-    checkedPitchResult = []
+    detectedWidth = []
 
     prev_center = None
 
-    flag_pitchfuryou = 0
+    flag_pitch_furyou = 0
     flag_clip_furyou = 0
     flag_clip_hanire = 0
+    flag_hole_notfound = 0
+
+    leftmostPitch = 0
+    rightmostPitch = 0
+
+    status = "OK"
+
+    cannydetection_image = image.copy() #Make sure to copy the image to avoid modifying the original image
 
     for i, detection in enumerate(sorted_detections):
+        detectedid.append(detection.category.id)
         if detection.category.id == 0:
             bbox = detection.bbox
             x, y = get_center(bbox)
             w = bbox.maxx - bbox.minx
             h = bbox.maxy - bbox.miny
-            class_id = detection.category.id
-            class_name = detection.category.name
-            score = detection.score.value
+            # class_name = detection.category.name
 
-            detectedid.append(class_id)
             detectedposX.append(x)
             detectedposY.append(y)
+            detectedWidth.append(w)
 
             #id 0 object is white clip
             #id 1 object is holes (not implemented yet)
-
             center = draw_bounding_box(image, x, y, w, h, [image.shape[1], image.shape[0]], color=color)
 
             if prev_center is not None:
                 length = calclength(prev_center, center)*pixelMultiplier
-                middle_lengths.append(length)
-                line_center = ((prev_center[0] + center[0]) // 2, (prev_center[1] + center[1]) // 2)
-                if i != 1 and i != len(sorted_detections) - 1:
-                    image = drawbox(image, line_center, length)
-                    image = drawtext(image, line_center, length)
+                measuredPitch.append(length)
             prev_center = center
 
-    detectedPitch = middle_lengths
+    #Check if detectedposX is not empty
+    if len(detectedposX) > 0:
+        leftmostCenter = (detectedposX[0], detectedposY[0])
+        leftmostWidth = detectedWidth[0]
+        rightmostCenter = (detectedposX[-1], detectedposY[-1])
+        rightmostWidth = detectedWidth[-1]
+        adjustment_offset = 5 # to make sure it goes above the clip itself
+        left_edge = find_edge_point(cannydetection_image, leftmostCenter, direction="left", Yoffsetval = 0, Xoffsetval = leftmostWidth + adjustment_offset)
+        right_edge = find_edge_point(cannydetection_image, rightmostCenter, direction="right", Yoffsetval = 0, Xoffsetval = rightmostWidth + adjustment_offset)
+
+        leftmostPitch = calclength(leftmostCenter, left_edge)*pixelMultiplier
+        rightmostPitch = calclength(rightmostCenter, right_edge)*pixelMultiplier
+
+        #append the leftmost and rightmost pitch to the measuredPitch
+        measuredPitch.insert(0, leftmostPitch)
+        measuredPitch.append(rightmostPitch)
+        #Reappend the leftmostcetner and rightmostcenter to the detectedposX and detectedposY
+        detectedposX.insert(0, left_edge[0])
+        detectedposY.insert(0, left_edge[1])
+        detectedposX.append(right_edge[0])
+        detectedposY.append(right_edge[1])
+
     #round the value to 1 decimal
-    detectedPitch = [round(pitch, 1) for pitch in detectedPitch]
+    measuredPitch = [round(pitch, 1) for pitch in measuredPitch]
 
-    print(detectedPitch)
+    if len(measuredPitch) == 27:
+        resultPitch = check_tolerance(measuredPitch, pitchSpec, tolerance_pitch)
+        resultid = check_id(detectedid, idSpec)
 
-    pitchresult = check_tolerance(checkedPitchResult, pitchSpecLH, pitchToleranceLH)
+    if len(measuredPitch) != 27:
+        resultPitch = [0] * 27
 
-    if len(checkedPitchResult) == 7:
-        deltaPitch = [checkedPitchResult[i] - pitchSpecLH[i] for i in range(len(pitchSpecLH))]
-    else:
-        deltaPitch = [0, 0, 0, 0, 0, 0, 0]
-        checkedPitchResult = [0, 0, 0, 0, 0, 0, 0]
-
-    if any(result != 1 for result in pitchresult):
-        flag_pitchfuryou = 1
-    #check whether the detectedid matches with the clipSpecLH
-    if detectedid != clipSpecLH:
-        flag_clip_furyou = 1
-
-    if flag_clip_furyou or flag_clip_hanire or flag_pitchfuryou:
+    if any(result != 1 for result in resultPitch):
+        flag_pitch_furyou = 1
         status = "NG"
-    else:
-        status = "OK"
+
+    if any(result != 1 for result in resultid):
+        flag_clip_furyou = 1
+        status = "NG"
 
     xy_pairs = list(zip(detectedposX, detectedposY))
-    draw_pitch_line(img, xy_pairs, pitchresult, endoffset_y)
-
-    play_sound(status)
-    img = draw_status_text(img, status)
-
-    img = draw_flag_status(img, flag_pitchfuryou, flag_clip_furyou, flag_clip_hanire)
-
-
-    return img, img_katabumarking, allpitchresult, pitchresult, deltaPitch, flag_clip_hanire, status
-
+    draw_pitch_line(image, xy_pairs, resultPitch, thickness=8)
+    
+    return image, measuredPitch, resultPitch, resultid, status
 
 def play_sound(status):
     if status == "OK":
@@ -150,8 +163,14 @@ def draw_flag_status(image, flag_pitchfuryou, flag_clip_furyou, flag_clip_hanire
 
     return image
 
+def check_id(detectedid, idSpec):
+    result = [0] * len(idSpec)
+    for i, (spec, detected) in enumerate(zip(idSpec, detectedid)):
+        if spec == detected:
+            result[i] = 1
+    return result
 
-def draw_pitch_line(image, xy_pairs, pitchresult, endoffset_y=0, thickness=4):
+def draw_pitch_line(image, xy_pairs, pitchresult, thickness=2):
     xy_pairs = [(int(x), int(y)) for x, y in xy_pairs]
 
     if len(xy_pairs) != 0:
@@ -160,18 +179,10 @@ def draw_pitch_line(image, xy_pairs, pitchresult, endoffset_y=0, thickness=4):
                 if pitchresult[i] == 1:
                     lineColor = (0, 255, 0)
                 else:
-                    lineColor = (255, 0, 0)
+                    lineColor = (0, 0, 255)
 
-            # if i == 0:
-            #     offsetpos_ = (xy_pairs[i+1][0], xy_pairs[i+1][1] + endoffset_y)
-            #     cv2.line(image, xy_pairs[i], offsetpos_, lineColor, 5)
-            #     cv2.circle(image, xy_pairs[i], 4, (255, 0, 0), -1)
-            # elif i == len(xy_pairs) - 2:
-            #     offsetpos_ = (xy_pairs[i][0], xy_pairs[i][1] + endoffset_y)
-            #     cv2.line(image, offsetpos_, xy_pairs[i+1], lineColor, 5)
-            #     cv2.circle(image, xy_pairs[i+1], 4, (255, 0, 0), -1)
-            # else:
                 cv2.line(image, xy_pairs[i], xy_pairs[i+1], lineColor, thickness)
+                
 
     return None
 
@@ -211,13 +222,10 @@ def draw_status_text(image, status, size = "normal"):
 
 
 def check_tolerance(checkedPitchResult, pitchSpec, pitchTolerance):
-    
     result = [0] * len(pitchSpec)
-    
     for i, (spec, detected) in enumerate(zip(pitchSpec, checkedPitchResult)):
         if abs(spec - detected) <= pitchTolerance[i]:
             result[i] = 1
-    # print(checkedPitchResult, result)
     return result
 
 def yolo_to_pixel(yolo_coords, img_shape):
@@ -226,23 +234,13 @@ def yolo_to_pixel(yolo_coords, img_shape):
     y_pixel = int(y * img_shape[0])
     return x_pixel, y_pixel
 
-def find_edge_point(image, center, direction="None", offsetval = 0):
+def find_edge_point(image, center, direction="None", Xoffsetval = 0, Yoffsetval = 0):
     x, y = center[0], center[1]
-    blur = 0
+    blur = 13
     brightness = 0
-    contrast = 1
-    lower_canny = 100
-    upper_canny = 200
-
-    #read canny value from /aikensa/param/canyparams.yaml if exist
-    if os.path.exists("./aikensa/param/cannyparams.yaml"):
-        with open("./aikensa/param/cannyparams.yaml") as f:
-            cannyparams = yaml.load(f, Loader=yaml.FullLoader)
-            blur = cannyparams["blur"]
-            brightness = cannyparams["brightness"]
-            contrast = cannyparams["contrast"]
-            lower_canny = cannyparams["lower_canny"]
-            upper_canny = cannyparams["upper_canny"]
+    contrast = 2.0
+    lower_canny = 10
+    upper_canny = 150
 
     # Apply adjustments
     adjusted_image = cv2.convertScaleAbs(image, alpha=contrast, beta=brightness)
@@ -250,21 +248,24 @@ def find_edge_point(image, center, direction="None", offsetval = 0):
     blurred_image = cv2.GaussianBlur(gray_image, (blur | 1, blur | 1), 0)
     canny_img = cv2.Canny(blurred_image, lower_canny, upper_canny)
 
-    # cv2.imwrite(f"adjusted_image_{direction}.jpg", adjusted_image)
-    # cv2.imwrite(f"gray_image.jpg_{direction}", gray_image)
-    # cv2.imwrite(f"blurred_image.jpg_{direction}", blurred_image)
-    # cv2.imwrite(f"canny_debug.jpg_{direction}", canny_img)
+    # cv2.imwrite(f"1adjusted_image_{direction}.jpg", adjusted_image)
+    # cv2.imwrite(f"2gray_image_{direction}.jpg", gray_image)
+    # cv2.imwrite(f"3blurred_image_{direction}.jpg", blurred_image)
+    # cv2.imwrite(f"4canny_debug_{direction}.jpg", canny_img)
 
+    if direction == "left":
+        while 0 <= x < image.shape[1]:
+            if canny_img[int(y + Yoffsetval), int(x - Xoffsetval)] == 255:  # Found an edge
+                return x - Xoffsetval, y
+            x = x - 1
+        return None
 
-    while 0 <= x < image.shape[1]:
-        if canny_img[y + offsetval, x] == 255:  # Found an edge
-            # cv2.line(image, (center[0], center[1] + offsetval), (x, y + offsetval), (0, 255, 0), 1)
-            # color = (0, 0, 255) if direction == "left" else (255, 0, 0)
-            # cv2.circle(image, (x, y + offsetval), 5, color, -1)
-            return x, y + offsetval
-        
-        x = x - 1 if direction == "left" else x + 1
-    return None
+    if direction == "right":
+        while 0 <= x < image.shape[1]:
+            if canny_img[int(y + Yoffsetval), int(x + Xoffsetval)] == 255:
+                return x + Xoffsetval, y
+            x = x + 1
+        return None
 
 def drawcircle(image, pos, class_id): #for ire and hanire
     #draw either green or red circle depends on the detection
@@ -323,24 +324,24 @@ def draw_bounding_box(image, x, y, w, h, img_size, color=(0, 255, 0), thickness=
     center_x, center_y = x, y
     return (center_x, center_y)
 
-class BoundingBox:
-    def __init__(self, minx, miny, maxx, maxy):
-        self.minx = minx
-        self.miny = miny
-        self.maxx = maxx
-        self.maxy = maxy
+# class BoundingBox:
+#     def __init__(self, minx, miny, maxx, maxy):
+#         self.minx = minx
+#         self.miny = miny
+#         self.maxx = maxx
+#         self.maxy = maxy
 
-class PredictionScore:
-    def __init__(self, value):
-        self.value = value
+# class PredictionScore:
+#     def __init__(self, value):
+#         self.value = value
 
-class Category:
-    def __init__(self, id, name):
-        self.id = id
-        self.name = name
+# class Category:
+#     def __init__(self, id, name):
+#         self.id = id
+#         self.name = name
 
-class ObjectPrediction:
-    def __init__(self, bbox, score, category):
-        self.bbox = bbox
-        self.score = score
-        self.category = category
+# class ObjectPrediction:
+#     def __init__(self, bbox, score, category):
+#         self.bbox = bbox
+#         self.score = score
+#         self.category = category

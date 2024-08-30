@@ -63,12 +63,12 @@ class AIKensa(QMainWindow):
 
         # Thread for SiO
         HOST = '192.168.0.100'  # Use the IP address from SiO settings
-        PORT = 40001  # Use the port number from SiO settings
+        PORT = 30001  # Use the port number from SiO settings
 
         self.server_monitor_thread = ServerMonitorThread(
             HOST, PORT, check_interval=0.08)
         self.server_monitor_thread.server_status_signal.connect(self.handle_server_status)
-        self.server_monitor_thread.input_states_signal.connect(self.handle_input_states)
+        # self.server_monitor_thread.input_states_signal.connect(self.handle_input_states)
         self.server_monitor_thread.start()
 
         self.timeMonitorThread = TimeMonitorThread(check_interval=1)
@@ -131,6 +131,8 @@ class AIKensa(QMainWindow):
         self.inspection_thread.hole3Cam.connect(self._setHoleFrame3)
         self.inspection_thread.hole4Cam.connect(self._setHoleFrame4)
         self.inspection_thread.hole5Cam.connect(self._setHoleFrame5)
+
+        self.inspection_thread.hoodFR_InspectionResult_PitchMeasured.connect(self._outputMeasurementText)
 
 
         # self.cam_thread.camFrame1.connect(self._setFrameCam1)
@@ -372,7 +374,7 @@ class AIKensa(QMainWindow):
         # self.button_kensa3 = self.stackedWidget.widget(3).findChild(QPushButton, "kensaButton")
         # self.button_kensa4 = self.stackedWidget.widget(4).findChild(QPushButton, "kensaButton")
 
-        self.siostatus_server = [self.stackedWidget.widget(i).findChild(QLabel, "status_sio") for i in [0, 1, 2, 3, 4, 5, 6, 7, 21, 22, 23]]
+        self.siostatus_server = [self.stackedWidget.widget(i).findChild(QLabel, "status_sio") for i in [0, 1, 2, 3, 4, 5, 6, 7, 8, 21, 22, 23]]
 
 
         inspectionButton = self.stackedWidget.widget(8).findChild(QPushButton, "InspectButton")
@@ -652,53 +654,6 @@ class AIKensa(QMainWindow):
         label5 = widget.findChild(QLabel, "MizuAnaPart5")
         label5.setPixmap(QPixmap.fromImage(image))
 
-
-    # def _setFrameCam1(self, image):
-    #     widget = self.stackedWidget.widget(1)
-    #     label = widget.findChild(QLabel, "camFrame1")
-    #     label.setPixmap(QPixmap.fromImage(image))
-
-    # def _setFrameCam2(self, image):
-    #     widget = self.stackedWidget.widget(1)
-    #     label = widget.findChild(QLabel, "camFrame2") 
-    #     label.setPixmap(QPixmap.fromImage(image))
-
-    # def _setFrameMerge(self, image):
-    #     for i in [1, 3, 4, 21, 22, 23]:
-    #         widget = self.stackedWidget.widget(i)
-    #         label = widget.findChild(QLabel, "mergeFrame")
-    #         label.setPixmap(QPixmap.fromImage(image))
-
-    # def _setFrameKata1(self, image):
-    #     for i in [1, 3, 4]:
-    #         widget = self.stackedWidget.widget(i)
-    #         label = widget.findChild(QLabel, "kata1Frame") 
-    #         label.setPixmap(QPixmap.fromImage(image))
-
-    # def _setFrameKata2(self, image):
-    #     for i in [1, 3, 4]:
-    #         widget = self.stackedWidget.widget(i)
-    #         label = widget.findChild(QLabel, "kata2Frame") 
-    #         label.setPixmap(QPixmap.fromImage(image))
-
-    # def _setFrameClip1(self, image):
-    #     for i in [1, 3, 4]: #modify this later
-    #         widget = self.stackedWidget.widget(i)
-    #         label = widget.findChild(QLabel, "clip1Frame") 
-    #         label.setPixmap(QPixmap.fromImage(image))
-
-    # def _setFrameClip2(self, image):
-    #     for i in [1, 3, 4]: #modify this later
-    #         widget = self.stackedWidget.widget(i)
-    #         label = widget.findChild(QLabel, "clip2Frame") 
-    #         label.setPixmap(QPixmap.fromImage(image))
-
-    # def _setFrameClip3(self, image):
-    #     for i in [1, 3, 4]: #modify this later
-    #         widget = self.stackedWidget.widget(i)
-    #         label = widget.findChild(QLabel, "clip3Frame") 
-    #         label.setPixmap(QPixmap.fromImage(image))
-
     def _extract_color(self, stylesheet):
         # Extracts the color value from the stylesheet string
         start = stylesheet.find("background-color: ") + len("background-color: ")
@@ -752,7 +707,41 @@ class AIKensa(QMainWindow):
                 color = colorOK if pitch_value else colorNG
                 labels[i].setStyleSheet(f"QLabel {{ background-color: {color}; }}")
 
-            
+    def _outputMeasurementText(self, measurementValue):
+
+        # label_names_part_A = ["R_A_1", "R_A_2", "R_A_3", ......, "R_A_27"]
+        # label_names_part_B = ["R_B_1", "R_B_2", "R_B_3", ......, "R_B_27"]
+        # label_names_part_C = ["R_C_1", "R_C_2", "R_C_3", ......, "R_C_27"]
+        # label_names_part_D = ["R_D_1", "R_D_2", "R_D_3", ......, "R_D_27"]
+        # label_names_part_E = ["R_E_1", "R_E_2", "R_E_3", ......, "R_E_27"]
+
+        label_names_part_A = ["R_A_1", "R_A_2", "R_A_3", "R_A_4", "R_A_5", "R_A_6", "R_A_7", "R_A_8", "R_A_9", "R_A_10", "R_A_11", "R_A_12", "R_A_13", "R_A_14", "R_A_15", "R_A_16", "R_A_17", "R_A_18", "R_A_19", "R_A_20", "R_A_21", "R_A_22", "R_A_23", "R_A_24", "R_A_25", "R_A_26", "R_A_27"]
+        label_names_part_B = ["R_B_1", "R_B_2", "R_B_3", "R_B_4", "R_B_5", "R_B_6", "R_B_7", "R_B_8", "R_B_9", "R_B_10", "R_B_11", "R_B_12", "R_B_13", "R_B_14", "R_B_15", "R_B_16", "R_B_17", "R_B_18", "R_B_19", "R_B_20", "R_B_21", "R_B_22", "R_B_23", "R_B_24", "R_B_25", "R_B_26", "R_B_27"]
+        label_names_part_C = ["R_C_1", "R_C_2", "R_C_3", "R_C_4", "R_C_5", "R_C_6", "R_C_7", "R_C_8", "R_C_9", "R_C_10", "R_C_11", "R_C_12", "R_C_13", "R_C_14", "R_C_15", "R_C_16", "R_C_17", "R_C_18", "R_C_19", "R_C_20", "R_C_21", "R_C_22", "R_C_23", "R_C_24", "R_C_25", "R_C_26", "R_C_27"]
+        label_names_part_D = ["R_D_1", "R_D_2", "R_D_3", "R_D_4", "R_D_5", "R_D_6", "R_D_7", "R_D_8", "R_D_9", "R_D_10", "R_D_11", "R_D_12", "R_D_13", "R_D_14", "R_D_15", "R_D_16", "R_D_17", "R_D_18", "R_D_19", "R_D_20", "R_D_21", "R_D_22", "R_D_23", "R_D_24", "R_D_25", "R_D_26", "R_D_27"]
+        label_names_part_E = ["R_E_1", "R_E_2", "R_E_3", "R_E_4", "R_E_5", "R_E_6", "R_E_7", "R_E_8", "R_E_9", "R_E_10", "R_E_11", "R_E_12", "R_E_13", "R_E_14", "R_E_15", "R_E_16", "R_E_17", "R_E_18", "R_E_19", "R_E_20", "R_E_21", "R_E_22", "R_E_23", "R_E_24", "R_E_25", "R_E_26", "R_E_27"]
+
+        all_label_names = [label_names_part_A, label_names_part_B, label_names_part_C, label_names_part_D, label_names_part_E]
+
+        # Loop over each part (A, B, C, D, E)
+        for part_index, labels in enumerate(all_label_names):
+            if part_index >= len(measurementValue) or measurementValue[part_index] is None:
+                part_measurements = [0] * len(labels)  # If not enough parts or None, fill with zeros
+            else:
+                part_measurements = measurementValue[part_index]
+
+            # Ensure part_measurements is a list and extend with zeros if necessary
+            if part_measurements is None or len(part_measurements) < len(labels):
+                part_measurements = (part_measurements or []) + [0] * (len(labels) - len(part_measurements))
+
+            # Update each label with the corresponding measurement value
+            for i, label_name in enumerate(labels):
+                # Find the QLabel by name and set the text to the corresponding measurement value
+                label = self.stackedWidget.widget(8).findChild(QLabel, label_name)
+                if label:
+                    label.setText(str(part_measurements[i]))
+
+
     def _set_calib_params(self, thread, key, value):
         setattr(thread.calib_config, key, value)
 
