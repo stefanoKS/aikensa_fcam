@@ -17,7 +17,7 @@ from aikensa.cam_thread import CameraThread, CameraConfig
 from aikensa.calibration_thread import CalibrationThread, CalibrationConfig
 from aikensa.inspection_thread import InspectionThread, InspectionConfig
 
-from aikensa.sio_thread import ServerMonitorThread
+from aikensa.sio_thread import ServerMonitorThread, ServerConfig
 from aikensa.time_thread import TimeMonitorThread
 
 
@@ -68,7 +68,9 @@ class AIKensa(QMainWindow):
         self.server_monitor_thread = ServerMonitorThread(
             HOST, PORT, check_interval=0.08)
         self.server_monitor_thread.server_status_signal.connect(self.handle_server_status)
-        # self.server_monitor_thread.input_states_signal.connect(self.handle_input_states)
+        self.server_monitor_thread.input_states_signal.connect(self.handle_input_states)
+        self.server_monitor_thread.input_states_signal.connect(self._sentInputToInspectionThread)
+        
         self.server_monitor_thread.start()
 
         self.timeMonitorThread = TimeMonitorThread(check_interval=1)
@@ -96,16 +98,15 @@ class AIKensa(QMainWindow):
     def handle_input_states(self, input_states):
         # check if input_stats is not empty
         if input_states:
-            if input_states[0] == 1:
+            if input_states[5] == 1:
                 self.trigger_kensa()
-            if input_states[1] == 1:
-                self.trigger_rekensa()
+            # if input_states[1] == 1:
+            #     self.trigger_rekensa()
             else:
                 pass
 
     def trigger_kensa(self):
-        self.button_kensa3.click()
-        self.button_kensa4.click()
+        self.inspectionButton.click()
 
     def trigger_rekensa(self):
         self.button_rekensa.click()
@@ -133,6 +134,10 @@ class AIKensa(QMainWindow):
         self.inspection_thread.hole5Cam.connect(self._setHoleFrame5)
 
         self.inspection_thread.hoodFR_InspectionResult_PitchMeasured.connect(self._outputMeasurementText)
+
+        self.inspection_thread.ethernet_status_red_tenmetsu.connect(self._setEthernetStatusTenmetsuRed)
+        self.inspection_thread.ethernet_status_green_hold.connect(self._setEthernetStatusHoldGreen)
+        self.inspection_thread.ethernet_status_red_hold.connect(self._setEthernetStatusHoldRed)
 
 
         # self.cam_thread.camFrame1.connect(self._setFrameCam1)
@@ -377,8 +382,8 @@ class AIKensa(QMainWindow):
         self.siostatus_server = [self.stackedWidget.widget(i).findChild(QLabel, "status_sio") for i in [0, 1, 2, 3, 4, 5, 6, 7, 8, 21, 22, 23]]
 
 
-        inspectionButton = self.stackedWidget.widget(8).findChild(QPushButton, "InspectButton")
-        inspectionButton.clicked.connect(lambda: self._set_inspection_params(self.inspection_thread, "doInspection", True))
+        self.inspectionButton = self.stackedWidget.widget(8).findChild(QPushButton, "InspectButton")
+        self.inspectionButton.clicked.connect(lambda: self._set_inspection_params(self.inspection_thread, "doInspection", True))
 
         # self.kanseihin_number_ctrplr_lh = self.stackedWidget.widget(3).findChild(QLabel, "status_kansei")
         # self.furyouhin_number_ctrplr_lh = self.stackedWidget.widget(3).findChild(QLabel, "status_furyou")
@@ -741,6 +746,22 @@ class AIKensa(QMainWindow):
                 if label:
                     label.setText(str(part_measurements[i]))
 
+    def _sentInputToInspectionThread(self, input):
+        # set the input[0] till input [4] as inspection thread.inspection_config.kouden_sensor[] and input [5] as inspection thread.inspection_config.button_sensor
+        for i in range(5):
+            self.inspection_thread.inspection_config.kouden_sensor[i] = input[i]
+
+    def _setEthernetStatusTenmetsuRed(self, input):
+        self.server_monitor_thread.server_config.eth_flag_0_4 = input
+
+    def _setEthernetStatusHoldGreen(self, input):
+        self.server_monitor_thread.server_config.eth_flag_10_14 = input
+
+    def _setEthernetStatusHoldRed(self, input):
+        self.server_monitor_thread.server_config.eth_flag_5_9 = input
+
+
+    
 
     def _set_calib_params(self, thread, key, value):
         setattr(thread.calib_config, key, value)

@@ -189,10 +189,10 @@
     <widget class="QLabel" name="MizuAnaPart1">
      <property name="geometry">
       <rect>
-       <x>840</x>
+       <x>815</x>
        <y>80</y>
-       <width>93</width>
-       <height>30</height>
+       <width>140</width>
+       <height>45</height>
       </rect>
      </property>
      <property name="styleSheet">
@@ -208,7 +208,7 @@
     <widget class="QLabel" name="MizuLabel5">
      <property name="geometry">
       <rect>
-       <x>940</x>
+       <x>960</x>
        <y>670</y>
        <width>31</width>
        <height>20</height>
@@ -287,7 +287,7 @@
     <widget class="QLabel" name="MizuLabel4">
      <property name="geometry">
       <rect>
-       <x>940</x>
+       <x>960</x>
        <y>530</y>
        <width>31</width>
        <height>20</height>
@@ -314,7 +314,7 @@
     <widget class="QLabel" name="MizuLabel3">
      <property name="geometry">
       <rect>
-       <x>940</x>
+       <x>960</x>
        <y>390</y>
        <width>31</width>
        <height>20</height>
@@ -341,7 +341,7 @@
     <widget class="QLabel" name="MizuLabel2">
      <property name="geometry">
       <rect>
-       <x>940</x>
+       <x>960</x>
        <y>240</y>
        <width>31</width>
        <height>20</height>
@@ -368,7 +368,7 @@
     <widget class="QLabel" name="MizuLabel1">
      <property name="geometry">
       <rect>
-       <x>940</x>
+       <x>960</x>
        <y>90</y>
        <width>31</width>
        <height>20</height>
@@ -396,7 +396,7 @@
      <property name="geometry">
       <rect>
        <x>840</x>
-       <y>110</y>
+       <y>120</y>
        <width>93</width>
        <height>6</height>
       </rect>
@@ -4926,10 +4926,10 @@ border-color: rgb(36, 36, 36);</string>
     <widget class="QLabel" name="MizuAnaPart2">
      <property name="geometry">
       <rect>
-       <x>840</x>
+       <x>815</x>
        <y>230</y>
-       <width>93</width>
-       <height>30</height>
+       <width>140</width>
+       <height>45</height>
       </rect>
      </property>
      <property name="styleSheet">
@@ -4945,10 +4945,10 @@ border-color: rgb(36, 36, 36);</string>
     <widget class="QLabel" name="MizuAnaPart3">
      <property name="geometry">
       <rect>
-       <x>840</x>
+       <x>815</x>
        <y>380</y>
-       <width>93</width>
-       <height>30</height>
+       <width>140</width>
+       <height>45</height>
       </rect>
      </property>
      <property name="styleSheet">
@@ -4964,10 +4964,10 @@ border-color: rgb(36, 36, 36);</string>
     <widget class="QLabel" name="MizuAnaPart4">
      <property name="geometry">
       <rect>
-       <x>840</x>
+       <x>815</x>
        <y>520</y>
-       <width>93</width>
-       <height>30</height>
+       <width>140</width>
+       <height>45</height>
       </rect>
      </property>
      <property name="styleSheet">
@@ -4983,10 +4983,10 @@ border-color: rgb(36, 36, 36);</string>
     <widget class="QLabel" name="MizuAnaPart5">
      <property name="geometry">
       <rect>
-       <x>840</x>
+       <x>815</x>
        <y>660</y>
-       <width>93</width>
-       <height>30</height>
+       <width>140</width>
+       <height>45</height>
       </rect>
      </property>
      <property name="styleSheet">
@@ -5003,7 +5003,7 @@ border-color: rgb(36, 36, 36);</string>
      <property name="geometry">
       <rect>
        <x>840</x>
-       <y>260</y>
+       <y>270</y>
        <width>93</width>
        <height>6</height>
       </rect>
@@ -5022,7 +5022,7 @@ border-color: rgb(36, 36, 36);</string>
      <property name="geometry">
       <rect>
        <x>840</x>
-       <y>410</y>
+       <y>420</y>
        <width>93</width>
        <height>6</height>
       </rect>
@@ -5041,7 +5041,7 @@ border-color: rgb(36, 36, 36);</string>
      <property name="geometry">
       <rect>
        <x>840</x>
-       <y>550</y>
+       <y>560</y>
        <width>93</width>
        <height>6</height>
       </rect>
@@ -5060,7 +5060,7 @@ border-color: rgb(36, 36, 36);</string>
      <property name="geometry">
       <rect>
        <x>840</x>
-       <y>690</y>
+       <y>695</y>
        <width>93</width>
        <height>6</height>
       </rect>

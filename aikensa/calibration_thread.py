@@ -599,6 +599,10 @@ class CalibrationThread(QThread):
                 self.combinedImage_scaled = warpTwoImages_template(self.combinedImage_scaled, self.mergeframe5_scaled, self.H5_scaled)
 
                 # cv2.imwrite("combinedImage_scaled.png", self.combinedImage_scaled)
+                combined_image_copy = self.combinedImage.copy()
+                #bgr to rgb
+                combined_image_copy = cv2.cvtColor(combined_image_copy, cv2.COLOR_BGR2RGB)
+                cv2.imwrite("combinedImage.png", combined_image_copy)
 
                 if self.calib_config.savePlanarize is True:
                     self.calib_config.savePlanarize = False
@@ -624,6 +628,7 @@ class CalibrationThread(QThread):
 
                 if self.planarizeTransform_scaled is not None:
                     self.combinedImage_scaled = cv2.warpPerspective(self.combinedImage_scaled, self.planarizeTransform_scaled, (int(self.homography_size[1]/self.scale_factor), int(self.homography_size[0]/self.scale_factor)))
+
 
                 # self.combinedImage = cv2.resize(self.combinedImage, (self.homography_size[1], int(self.homography_size[0]/1.26)))
                 self.combinedImage_scaled = cv2.resize(self.combinedImage_scaled, (int(self.homography_size[1]/(self.scale_factor*1.48)), int(self.homography_size[0]/(self.scale_factor*1.26*1.48))))#1.48 for the qt, 1.26 for the aspect ratio

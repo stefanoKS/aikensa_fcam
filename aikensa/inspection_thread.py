@@ -45,6 +45,9 @@ class InspectionConfig:
 
     doInspection: bool = False
 
+    kouden_sensor: list =  field(default_factory=lambda: [0]*5)
+    button_sensor: int = 0
+
 
 class InspectionThread(QThread):
 
@@ -62,6 +65,10 @@ class InspectionThread(QThread):
     
     hoodFR_InspectionResult_PitchMeasured = pyqtSignal(list)
     hoodFR_InspectionResult_PitchResult = pyqtSignal(list)
+
+    ethernet_status_red_tenmetsu = pyqtSignal(list)
+    ethernet_status_green_hold = pyqtSignal(list)
+    ethernet_status_red_hold = pyqtSignal(list)
 
     def __init__(self, inspection_config: InspectionConfig = None):
         super(InspectionThread, self).__init__()
@@ -109,6 +116,8 @@ class InspectionThread(QThread):
         self.holeFrame3 = None
         self.holeFrame4 = None
         self.holeFrame5 = None
+
+        self.holeImageMerge = [None]*5
 
         self.homography_template = None
         self.homography_matrix1 = None
@@ -208,6 +217,25 @@ class InspectionThread(QThread):
         self.InspectionResult_Status = [None]*5
 
         self.DetectionResult_HoleDetection = [None]*5
+
+        self.ethernet_status_red_tenmetsu_status = [0]*5
+        self.ethernet_status_green_hold_status = [0]*5
+        self.ethernet_status_red_hold_status = [0]*5
+
+        self.ethernet_status_red_tenmetsu_status_prev = [0]*5
+        self.ethernet_status_green_hold_status_prev = [0]*5
+        self.ethernet_status_red_hold_status_prev = [0]*5
+
+        self.InspectionImages_prev = [None]*5
+        self.hoodFR_InspectionResult_PitchMeasured_prev = None
+        self.hoodFR_InspectionResult_PitchResult_prev =None
+
+        self._test = [0]*5
+
+        self.hole_detection = [None] * 5
+        self.hole_detection_result = [None] * 5
+
+
 
 
     def release_all_camera(self):
@@ -404,13 +432,21 @@ class InspectionThread(QThread):
 
         while self.running:
 
-                
             if self.inspection_config.widget == 0:
                 self.inspection_config.cameraID = -1
 
             if self.inspection_config.widget == 8:
                 self.timerStart = time.time()
 
+                #check kouden sensor and tenmetsu status
+                
+
+                for i in range (len(self.inspection_config.kouden_sensor)):
+                    self.ethernet_status_red_tenmetsu_status[i] = self.inspection_config.kouden_sensor[i]
+                    self.ethernet_status_green_hold_status[i] = 0 #Reset at every loop
+                    self.ethernet_status_red_hold_status[i] = 0 #Reset at every loop
+
+                    
 
                 if self.multiCam_stream is False:
                     self.multiCam_stream = True
@@ -498,12 +534,47 @@ class InspectionThread(QThread):
                         self.part4Crop_scaled = self.downSampling(self.part4Crop_scaled, width=1771, height=24)
                         self.part5Crop_scaled = self.downSampling(self.part5Crop_scaled, width=1771, height=24)
 
-                        self.holeFrame1 = self.downScaledImage(self.holeFrame1, 2.0)
-                        self.holeFrame2 = self.downScaledImage(self.holeFrame2, 2.0)
-                        self.holeFrame3 = self.downScaledImage(self.holeFrame3, 2.0)
-                        self.holeFrame4 = self.downScaledImage(self.holeFrame4, 2.0)
-                        self.holeFrame5 = self.downScaledImage(self.holeFrame5, 2.0)
-                        
+                        self.holeFrame1 = self.downScaledImage(self.holeFrame1, 1.5)
+                        self.holeFrame2 = self.downScaledImage(self.holeFrame2, 1.5)
+                        self.holeFrame3 = self.downScaledImage(self.holeFrame3, 1.5)
+                        self.holeFrame4 = self.downScaledImage(self.holeFrame4, 1.5)
+                        self.holeFrame5 = self.downScaledImage(self.holeFrame5, 1.5)
+
+                        self.holeImageMerge[0] = self.holeFrame1
+                        self.holeImageMerge[1] = self.holeFrame2
+                        self.holeImageMerge[2] = self.holeFrame3
+                        self.holeImageMerge[3] = self.holeFrame4
+                        self.holeImageMerge[4] = self.holeFrame5
+
+
+                        self.InspectionResult_PitchMeasured = [None]*5
+                        self.InspectionResult_PitchResult = [None]*5
+
+                        if self.InspectionImages_prev[0] is not None and any(sensor != 0 for sensor in self.inspection_config.kouden_sensor):
+                            #convert to bgr
+                            self.part1Crop_scaled = cv2.cvtColor(self.InspectionImages_prev[0], cv2.COLOR_RGB2BGR)
+                            self.part2Crop_scaled = cv2.cvtColor(self.InspectionImages_prev[1], cv2.COLOR_RGB2BGR)
+                            self.part3Crop_scaled = cv2.cvtColor(self.InspectionImages_prev[2], cv2.COLOR_RGB2BGR)
+                            self.part4Crop_scaled = cv2.cvtColor(self.InspectionImages_prev[3], cv2.COLOR_RGB2BGR)
+                            self.part5Crop_scaled = cv2.cvtColor(self.InspectionImages_prev[4], cv2.COLOR_RGB2BGR)
+
+                            self.ethernet_status_red_tenmetsu_status = self.ethernet_status_red_tenmetsu_status_prev.copy()
+                            self.ethernet_status_green_hold_status = self.ethernet_status_green_hold_status_prev.copy()
+                            self.ethernet_status_red_hold_status = self.ethernet_status_red_hold_status_prev.copy()
+
+                            self.InspectionResult_PitchMeasured = self.InspectionResult_PitchMeasured_prev.copy()
+                            self.InspectionResult_PitchResult = self.InspectionResult_PitchResult_prev.copy()
+
+                        if all(sensor == 0 for sensor in self.inspection_config.kouden_sensor):
+                            self.InspectionImages_prev[0] = None
+
+                        for i in range(len(self.inspection_config.kouden_sensor)):
+                            if self.inspection_config.kouden_sensor[i] == 1:
+                                self.hole_detection[i] = self.hoodFR_holeIdentification(cv2.cvtColor(self.holeImageMerge[i], cv2.COLOR_BGR2RGB), stream=True, verbose=False, conf=0.5, imgsz = 160)
+                                self.hole_detection_result[i] = list(self.hole_detection[i])[0].probs.data.argmax().item()
+                            else:
+                                self.hole_detection_result[i] = 1
+                            #0 for hole detected, 1 for no hole detected
                         if self.part1Crop_scaled is not None:
                             self.part1Cam.emit(self.convertQImage(self.part1Crop_scaled))
                         if self.part2Crop_scaled is not None:
@@ -526,10 +597,7 @@ class InspectionThread(QThread):
                         if self.holeFrame5 is not None:
                             self.hole5Cam.emit(self.convertQImage(self.holeFrame5))
 
-
                         #Empty the Inspection Result
-                        self.InspectionResult_PitchMeasured = [None]*5
-                        self.InspectionResult_PitchResult = [None]*5
                         
                         self.hoodFR_InspectionResult_PitchMeasured.emit(self.InspectionResult_PitchMeasured)
                         self.hoodFR_InspectionResult_PitchResult.emit(self.InspectionResult_PitchResult)
@@ -580,27 +648,52 @@ class InspectionThread(QThread):
                         self.InspectionImages[3] = self.part4Crop
                         self.InspectionImages[4] = self.part5Crop
 
-                        print(f"Lengt of Inspection Images : {len(self.InspectionImages)}") 
+                        # cv2.imwrite("part1Crop.jpg", self.part1Crop)
+                        # cv2.imwrite("part2Crop.jpg", self.part2Crop)
+                        # cv2.imwrite("part3Crop.jpg", self.part3Crop)
+                        # cv2.imwrite("part4Crop.jpg", self.part4Crop)
+                        # cv2.imwrite("part5Crop.jpg", self.part5Crop)
+
+                        print(f"Length of Inspection Images : {len(self.InspectionImages)}") 
 
                         # # Do the inspection
                         for i in range(len(self.InspectionImages)):
-                            print(f"Inspection Image {i}")
-                            self.InspectionResult_ClipDetection[i] = get_sliced_prediction(
-                                self.InspectionImages[i], 
-                                self.hoodFR_clipDetectionModel, 
-                                slice_height=200, slice_width=968, 
-                                overlap_height_ratio=0.3, overlap_width_ratio=0.2,
-                                postprocess_match_metric="IOS",
-                                postprocess_match_threshold=0.2,
-                                postprocess_class_agnostic=True,
-                                postprocess_type="GREEDYNMM",
-                                verbose=0,
-                                perform_standard_pred=False
-                            )
+                            #Only do inspectino on the one with kouden sensor on
+                            if self.inspection_config.kouden_sensor[i] == 1:
+                                self.InspectionResult_ClipDetection[i] = get_sliced_prediction(
+                                    self.InspectionImages[i], 
+                                    self.hoodFR_clipDetectionModel, 
+                                    slice_height=200, slice_width=968, 
+                                    overlap_height_ratio=0.3, overlap_width_ratio=0.2,
+                                    postprocess_match_metric="IOS",
+                                    postprocess_match_threshold=0.2,
+                                    postprocess_class_agnostic=True,
+                                    postprocess_type="GREEDYNMM",
+                                    verbose=0,
+                                    perform_standard_pred=False
+                                )
 
-                            self.InspectionImages[i], self.InspectionResult_PitchMeasured[i], self.InspectionResult_PitchResult[i], self.InspectionResult_DetectionID[i], self.InspectionResult_Status[i] = partcheck(self.InspectionImages[i], self.InspectionResult_ClipDetection[i].object_prediction_list)
+                                self.InspectionImages[i], self.InspectionResult_PitchMeasured[i], self.InspectionResult_PitchResult[i], self.InspectionResult_DetectionID[i], self.InspectionResult_Status[i] = partcheck(self.InspectionImages[i], self.InspectionResult_ClipDetection[i].object_prediction_list)
+                            else:
+                                #Make pure black image
+                                self.InspectionImages[i] = np.full((24, 1771, 3), (10, 10, 20), dtype=np.uint8)
+                                self.InspectionResult_PitchMeasured[i] = None
+                                self.InspectionResult_PitchResult[i] = None
+                                self.InspectionResult_DetectionID[i] = None
+                                self.InspectionResult_Status[i] = None
 
-
+                            if self.InspectionResult_Status[i] == "OK":
+                                self.ethernet_status_green_hold_status[i] = 1
+                                self.ethernet_status_red_tenmetsu_status[i] = 0
+                                self.ethernet_status_red_hold_status[i] = 0
+                            elif self.InspectionResult_Status[i] == "NG":
+                                self.ethernet_status_green_hold_status[i] = 0
+                                self.ethernet_status_red_tenmetsu_status[i] = 0
+                                self.ethernet_status_red_hold_status[i] = 1
+                            else:
+                                self.ethernet_status_green_hold_status[i] = 0
+                                self.ethernet_status_red_tenmetsu_status[i] = 0
+                                self.ethernet_status_red_hold_status[i] = 0
 
                         self.InspectionImages[0] = self.downSampling(self.InspectionImages[0], width=1771, height=24)
                         self.InspectionImages[1] = self.downSampling(self.InspectionImages[1], width=1771, height=24)
@@ -608,21 +701,43 @@ class InspectionThread(QThread):
                         self.InspectionImages[3] = self.downSampling(self.InspectionImages[3], width=1771, height=24)
                         self.InspectionImages[4] = self.downSampling(self.InspectionImages[4], width=1771, height=24)
 
+
+
+                        self.hoodFR_InspectionResult_PitchMeasured.emit(self.InspectionResult_PitchMeasured)
+                        self.hoodFR_InspectionResult_PitchResult.emit(self.InspectionResult_PitchResult)
+                        print("Inspection Finished")
+
+                        #Remember that list is mutable
+                        self.ethernet_status_red_tenmetsu_status_prev = self.ethernet_status_red_tenmetsu_status_prev.copy()
+                        self.ethernet_status_green_hold_status_prev = self.ethernet_status_green_hold_status.copy()
+                        self.ethernet_status_red_hold_status_prev = self.ethernet_status_red_hold_status.copy()
+
+                        self.InspectionImages_prev[0] = self.InspectionImages[0]
+                        self.InspectionImages_prev[1] = self.InspectionImages[1]
+                        self.InspectionImages_prev[2] = self.InspectionImages[2]
+                        self.InspectionImages_prev[3] = self.InspectionImages[3]
+                        self.InspectionImages_prev[4] = self.InspectionImages[4]
+
+                        self.InspectionResult_PitchMeasured_prev = self.InspectionResult_PitchMeasured.copy()
+                        self.InspectionResult_PitchResult_prev = self.InspectionResult_PitchResult.copy()
+
+
+                        self.ethernet_status_red_tenmetsu.emit(self.ethernet_status_red_tenmetsu_status)
+                        self.ethernet_status_green_hold.emit(self.ethernet_status_green_hold_status)
+                        self.ethernet_status_red_hold.emit(self.ethernet_status_red_hold_status)
+
                         self.part1Cam.emit(self.converQImageRGB(self.InspectionImages[0]))
                         self.part2Cam.emit(self.converQImageRGB(self.InspectionImages[1]))
                         self.part3Cam.emit(self.converQImageRGB(self.InspectionImages[2]))
                         self.part4Cam.emit(self.converQImageRGB(self.InspectionImages[3]))
                         self.part5Cam.emit(self.converQImageRGB(self.InspectionImages[4]))
 
-                        #emit signal for the inspection result
-                        # print(f"Shape of Inspection Result : {len(self.InspectionResult_PitchMeasured)}")
-                        # print(f"Shape of PichResult: {len8self.InspectionResult_PitchResult)}")
-                        self.hoodFR_InspectionResult_PitchMeasured.emit(self.InspectionResult_PitchMeasured)
-                        self.hoodFR_InspectionResult_PitchResult.emit(self.InspectionResult_PitchResult)
 
-                        self.msleep(10000)
+                #emit the ethernet 
+                self.ethernet_status_red_tenmetsu.emit(self.ethernet_status_red_tenmetsu_status)
+                self.ethernet_status_green_hold.emit(self.ethernet_status_green_hold_status)
+                self.ethernet_status_red_hold.emit(self.ethernet_status_red_hold_status)
 
-                        print("Inspection Finished")
 
         self.msleep(1)
 

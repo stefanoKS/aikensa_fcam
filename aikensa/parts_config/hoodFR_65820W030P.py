@@ -17,7 +17,7 @@ kanjiFontPath = "aikensa/font/NotoSansJP-ExtraBold.ttf"
 
 pitchSpec = [26, 107, 75, 75, 75, 75, 75, 92, 75, 102, 100, 129, 103, 109, 103, 129, 100, 102, 75, 92, 75, 75, 75, 75, 75, 107, 26]
 idSpec = [0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-tolerance_pitch = [2.0] * 27
+tolerance_pitch = [3.0] * 27
 tolerance_pitch[0] = 3.0
 tolerance_pitch[-1] = 3.0
 
@@ -26,7 +26,7 @@ text_offset = 40
 endoffset_y = 0
 bbox_offset = 10
 
-pixelMultiplier = 0.206
+pixelMultiplier = 0.208
 
 
 def partcheck(image, sahi_predictionList):
@@ -179,7 +179,7 @@ def draw_pitch_line(image, xy_pairs, pitchresult, thickness=2):
                 if pitchresult[i] == 1:
                     lineColor = (0, 255, 0)
                 else:
-                    lineColor = (0, 0, 255)
+                    lineColor = (255, 0, 0)
 
                 cv2.line(image, xy_pairs[i], xy_pairs[i+1], lineColor, thickness)
                 
@@ -236,11 +236,11 @@ def yolo_to_pixel(yolo_coords, img_shape):
 
 def find_edge_point(image, center, direction="None", Xoffsetval = 0, Yoffsetval = 0):
     x, y = center[0], center[1]
-    blur = 13
+    blur = 9
     brightness = 0
     contrast = 2.0
     lower_canny = 10
-    upper_canny = 150
+    upper_canny = 110
 
     # Apply adjustments
     adjusted_image = cv2.convertScaleAbs(image, alpha=contrast, beta=brightness)
@@ -252,20 +252,24 @@ def find_edge_point(image, center, direction="None", Xoffsetval = 0, Yoffsetval 
     # cv2.imwrite(f"2gray_image_{direction}.jpg", gray_image)
     # cv2.imwrite(f"3blurred_image_{direction}.jpg", blurred_image)
     # cv2.imwrite(f"4canny_debug_{direction}.jpg", canny_img)
+    min_x = 0
+    max_x = image.shape[1] - 1
 
     if direction == "left":
-        while 0 <= x < image.shape[1]:
+        while x - Xoffsetval >= 0:
             if canny_img[int(y + Yoffsetval), int(x - Xoffsetval)] == 255:  # Found an edge
                 return x - Xoffsetval, y
-            x = x - 1
-        return None
+            x -= 1
+        return min_x, y
 
     if direction == "right":
-        while 0 <= x < image.shape[1]:
-            if canny_img[int(y + Yoffsetval), int(x + Xoffsetval)] == 255:
+        while x + Xoffsetval < image.shape[1]:
+            if canny_img[int(y + Yoffsetval), int(x + Xoffsetval)] == 255:  # Found an edge
                 return x + Xoffsetval, y
-            x = x + 1
-        return None
+            x += 1
+        return max_x, y
+
+    return None  # If an invalid direction is provided
 
 def drawcircle(image, pos, class_id): #for ire and hanire
     #draw either green or red circle depends on the detection
