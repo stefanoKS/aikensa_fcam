@@ -7,6 +7,7 @@ from sympy import fu
 import yaml
 import time
 import logging
+import sqlite3
 
 from sahi import AutoDetectionModel
 from sahi.predict import get_prediction, get_sliced_prediction, predict
@@ -29,7 +30,6 @@ from ultralytics import YOLO
 from aikensa.parts_config.hoodFR_65820W030P import partcheck
 
 from PIL import ImageFont, ImageDraw, Image
-import datetime
 
 @dataclass
 class InspectionConfig:
@@ -48,6 +48,22 @@ class InspectionConfig:
     kouden_sensor: list =  field(default_factory=lambda: [0]*5)
     button_sensor: int = 0
 
+    kensainNumber: str = None
+    furyou_plus: bool = False
+    furyou_minus: bool = False
+    kansei_plus: bool = False
+    kansei_minus: bool = False
+    furyou_plus_10: bool = False #to add 10
+    furyou_minus_10: bool = False
+    kansei_plus_10: bool = False
+    kansei_minus_10: bool = False
+
+    counterReset: bool = False
+
+    today_numofPart: list = field(default_factory=lambda: [[0, 0] for _ in range(30)])
+    current_numofPart: list = field(default_factory=lambda: [[0, 0] for _ in range(30)])
+
+
 
 class InspectionThread(QThread):
 
@@ -62,6 +78,9 @@ class InspectionThread(QThread):
     hole3Cam = pyqtSignal(QImage)
     hole4Cam = pyqtSignal(QImage)
     hole5Cam = pyqtSignal(QImage)
+
+    today_numofPart_signal = pyqtSignal(list)
+    current_numofPart_signal = pyqtSignal(list)
     
     hoodFR_InspectionResult_PitchMeasured = pyqtSignal(list)
     hoodFR_InspectionResult_PitchResult = pyqtSignal(list)
@@ -179,10 +198,10 @@ class InspectionThread(QThread):
         self.part_height_offset_scaled = int(self.part_height_offset//self.scale_factor)
 
         self.part1Crop_YPos = 15
-        self.part2Crop_YPos = 240
-        self.part3Crop_YPos = 480
-        self.part4Crop_YPos = 720
-        self.part5Crop_YPos = 955
+        self.part2Crop_YPos = 290
+        self.part3Crop_YPos = 580
+        self.part4Crop_YPos = 870
+        self.part5Crop_YPos = 1150
 
         self.part1Crop_YPos_scaled = int(self.part1Crop_YPos//self.scale_factor)
         self.part2Crop_YPos_scaled = int(self.part2Crop_YPos//self.scale_factor)
@@ -215,6 +234,7 @@ class InspectionThread(QThread):
         self.InspectionResult_PitchResult = [None]*5
         self.InspectionResult_DetectionID = [None]*5
         self.InspectionResult_Status = [None]*5
+        self.InspectionResult_DeltaPitch = [None]*30
 
         self.DetectionResult_HoleDetection = [None]*5
 
@@ -235,8 +255,12 @@ class InspectionThread(QThread):
         self.hole_detection = [None] * 5
         self.hole_detection_result = [None] * 5
 
+        self.widget_dir_map = {
+            8: "65820W030P",
+        }
 
-
+        self.InspectionWaitTime = 3.0
+        self.InspectionTimeStart = None
 
     def release_all_camera(self):
         if self.cap_cam0 is not None:
@@ -334,6 +358,30 @@ class InspectionThread(QThread):
             print(f"Initialized Camera on ID 5")
 
     def run(self):
+        #initialize the database
+        if not os.path.exists("./aikensa/inspection_results"):
+            os.makedirs("./aikensa/inspection_results")
+
+        self.conn = sqlite3.connect('./aikensa/inspection_results/database_results.db')
+        self.cursor = self.conn.cursor()
+        # Create the table if it doesn't exist
+        self.cursor.execute('''
+        CREATE TABLE IF NOT EXISTS inspection_results (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            partName TEXT,
+            numofPart TEXT,
+            currentnumofPart TEXT,
+            timestampHour TEXT,
+            timestampDate TEXT,
+            deltaTime REAL,
+            kensainName TEXT,
+            detected_pitch TEXT,
+            delta_pitch TEXT,
+            total_length REAL
+        )
+        ''')
+
+        self.conn.commit()
 
         #print thread started
         print("Inspection Thread Started")
@@ -439,15 +487,12 @@ class InspectionThread(QThread):
                 self.timerStart = time.time()
 
                 #check kouden sensor and tenmetsu status
-                
 
                 for i in range (len(self.inspection_config.kouden_sensor)):
                     self.ethernet_status_red_tenmetsu_status[i] = self.inspection_config.kouden_sensor[i]
                     self.ethernet_status_green_hold_status[i] = 0 #Reset at every loop
                     self.ethernet_status_red_hold_status[i] = 0 #Reset at every loop
-
                     
-
                 if self.multiCam_stream is False:
                     self.multiCam_stream = True
                     self.initialize_all_camera()
@@ -458,6 +503,12 @@ class InspectionThread(QThread):
                 _, self.mergeframe3 = self.cap_cam3.read()
                 _, self.mergeframe4 = self.cap_cam4.read()
                 _, self.mergeframe5 = self.cap_cam5.read()
+
+                self.mergeframe1 = cv2.rotate(self.mergeframe1, cv2.ROTATE_180)
+                self.mergeframe2 = cv2.rotate(self.mergeframe2, cv2.ROTATE_180)
+                self.mergeframe3 = cv2.rotate(self.mergeframe3, cv2.ROTATE_180)
+                self.mergeframe4 = cv2.rotate(self.mergeframe4, cv2.ROTATE_180)
+                self.mergeframe5 = cv2.rotate(self.mergeframe5, cv2.ROTATE_180)
 
                 #Downsampled the image
                 self.mergeframe1_scaled = self.downSampling(self.mergeframe1, self.scaled_width, self.scaled_height)
@@ -500,11 +551,6 @@ class InspectionThread(QThread):
                     self.holeFrame5 = self.bottomframe[self.hole5Crop_XYpos_scaled[0]:self.hole5Crop_XYpos_scaled[0] + self.height_hole_offset, self.hole5Crop_XYpos_scaled[1]:self.hole5Crop_XYpos_scaled[1] + self.width_hole_offset]
                 
                     if self.inspection_config.doInspection is False:
-                        self.mergeframe1_scaled = cv2.rotate(self.mergeframe1_scaled, cv2.ROTATE_180)
-                        self.mergeframe2_scaled = cv2.rotate(self.mergeframe2_scaled, cv2.ROTATE_180)
-                        self.mergeframe3_scaled = cv2.rotate(self.mergeframe3_scaled, cv2.ROTATE_180)
-                        self.mergeframe4_scaled = cv2.rotate(self.mergeframe4_scaled, cv2.ROTATE_180)
-                        self.mergeframe5_scaled = cv2.rotate(self.mergeframe5_scaled, cv2.ROTATE_180)
 
                         self.mergeframe1_scaled = cv2.remap(self.mergeframe1_scaled, self.inspection_config.map1_downscaled[1], self.inspection_config.map2_downscaled[1], interpolation=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT)
                         self.mergeframe2_scaled = cv2.remap(self.mergeframe2_scaled, self.inspection_config.map1_downscaled[2], self.inspection_config.map2_downscaled[2], interpolation=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT)
@@ -520,6 +566,8 @@ class InspectionThread(QThread):
 
                         self.combinedImage_scaled = cv2.warpPerspective(self.combinedImage_scaled, self.planarizeTransform_scaled, (int(self.homography_size[1]/self.scale_factor), int(self.homography_size[0]/self.scale_factor)))
                         self.combinedImage_scaled = cv2.resize(self.combinedImage_scaled, (int(self.homography_size[1]/(self.scale_factor*1.48)), int(self.homography_size[0]/(self.scale_factor*1.26*1.48))))#1.48 for the qt, 1.26 for the aspect ratio
+
+                        # cv2.imwrite("combinedImage_scaled_inference.png", self.combinedImage_scaled)
 
                         #Crop the image scaled for each part
                         self.part1Crop_scaled = self.combinedImage_scaled[self.part1Crop_YPos_scaled : self.part1Crop_YPos_scaled + self.part_height_offset_scaled, 0 : self.homography_size_scaled[1]]
@@ -569,12 +617,15 @@ class InspectionThread(QThread):
                             self.InspectionImages_prev[0] = None
 
                         for i in range(len(self.inspection_config.kouden_sensor)):
-                            if self.inspection_config.kouden_sensor[i] == 1:
-                                self.hole_detection[i] = self.hoodFR_holeIdentification(cv2.cvtColor(self.holeImageMerge[i], cv2.COLOR_BGR2RGB), stream=True, verbose=False, conf=0.5, imgsz = 160)
-                                self.hole_detection_result[i] = list(self.hole_detection[i])[0].probs.data.argmax().item()
-                            else:
-                                self.hole_detection_result[i] = 1
+                            # if self.inspection_config.kouden_sensor[i] == 1:
+                            #     self.hole_detection[i] = self.hoodFR_holeIdentification(cv2.cvtColor(self.holeImageMerge[i], cv2.COLOR_BGR2RGB), stream=True, verbose=False, conf=0.5, imgsz = 160)
+                            #     self.hole_detection_result[i] = list(self.hole_detection[i])[0].probs.data.argmax().item()
+                            # else:
+                            #     self.hole_detection_result[i] = 1
                             #0 for hole detected, 1 for no hole detected
+
+                            self.hole_detection_result[i] = 0
+
                         if self.part1Crop_scaled is not None:
                             self.part1Cam.emit(self.convertQImage(self.part1Crop_scaled))
                         if self.part2Crop_scaled is not None:
@@ -606,12 +657,6 @@ class InspectionThread(QThread):
                         self.inspection_config.doInspection = False
                         print("Inspection Started") 
 
-                        self.mergeframe1 = cv2.rotate(self.mergeframe1, cv2.ROTATE_180)
-                        self.mergeframe2 = cv2.rotate(self.mergeframe2, cv2.ROTATE_180)
-                        self.mergeframe3 = cv2.rotate(self.mergeframe3, cv2.ROTATE_180)
-                        self.mergeframe4 = cv2.rotate(self.mergeframe4, cv2.ROTATE_180)
-                        self.mergeframe5 = cv2.rotate(self.mergeframe5, cv2.ROTATE_180)
-
                         self.mergeframe1 = cv2.remap(self.mergeframe1, self.inspection_config.map1[1], self.inspection_config.map2[1], interpolation=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT)
                         self.mergeframe2 = cv2.remap(self.mergeframe2, self.inspection_config.map1[2], self.inspection_config.map2[2], interpolation=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT)
                         self.mergeframe3 = cv2.remap(self.mergeframe3, self.inspection_config.map1[3], self.inspection_config.map2[3], interpolation=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT)
@@ -642,11 +687,11 @@ class InspectionThread(QThread):
                         self.part5Crop = cv2.cvtColor(self.part5Crop, cv2.COLOR_RGB2BGR)
 
                         #Put the All the image into a list
-                        self.InspectionImages[0] = self.part1Crop
-                        self.InspectionImages[1] = self.part2Crop
-                        self.InspectionImages[2] = self.part3Crop
-                        self.InspectionImages[3] = self.part4Crop
-                        self.InspectionImages[4] = self.part5Crop
+                        self.InspectionImages[0] = self.part1Crop.copy()
+                        self.InspectionImages[1] = self.part2Crop.copy()
+                        self.InspectionImages[2] = self.part3Crop.copy()
+                        self.InspectionImages[3] = self.part4Crop.copy()
+                        self.InspectionImages[4] = self.part5Crop.copy()
 
                         # cv2.imwrite("part1Crop.jpg", self.part1Crop)
                         # cv2.imwrite("part2Crop.jpg", self.part2Crop)
@@ -664,13 +709,13 @@ class InspectionThread(QThread):
                                     self.InspectionImages[i], 
                                     self.hoodFR_clipDetectionModel, 
                                     slice_height=200, slice_width=968, 
-                                    overlap_height_ratio=0.3, overlap_width_ratio=0.2,
+                                    overlap_height_ratio=0.1, overlap_width_ratio=0.1,
                                     postprocess_match_metric="IOS",
-                                    postprocess_match_threshold=0.2,
+                                    postprocess_match_threshold=0.01,
                                     postprocess_class_agnostic=True,
-                                    postprocess_type="GREEDYNMM",
+                                    postprocess_type="NMM",
                                     verbose=0,
-                                    perform_standard_pred=False
+                                    perform_standard_pred=True
                                 )
 
                                 self.InspectionImages[i], self.InspectionResult_PitchMeasured[i], self.InspectionResult_PitchResult[i], self.InspectionResult_DetectionID[i], self.InspectionResult_Status[i] = partcheck(self.InspectionImages[i], self.InspectionResult_ClipDetection[i].object_prediction_list)
@@ -681,6 +726,9 @@ class InspectionThread(QThread):
                                 self.InspectionResult_PitchResult[i] = None
                                 self.InspectionResult_DetectionID[i] = None
                                 self.InspectionResult_Status[i] = None
+                            
+                            # print(self.InspectionResult_Status[i])
+                            # print(self.InspectionResult_DetectionID[i])
 
                             if self.InspectionResult_Status[i] == "OK":
                                 self.ethernet_status_green_hold_status[i] = 1
@@ -695,13 +743,34 @@ class InspectionThread(QThread):
                                 self.ethernet_status_red_tenmetsu_status[i] = 0
                                 self.ethernet_status_red_hold_status[i] = 0
 
+                            if self.InspectionResult_Status[i] == "OK": 
+                                self.inspection_config.current_numofPart[self.inspection_config.widget][0] += 1
+                                self.inspection_config.today_numofPart[self.inspection_config.widget][0] += 1
+
+                            if self.InspectionResult_Status[i] == "NG": 
+                                self.inspection_config.current_numofPart[self.inspection_config.widget][1] += 1
+                                self.inspection_config.today_numofPart[self.inspection_config.widget][1] += 1
+
+                            self.save_result_database(partname = self.widget_dir_map[self.inspection_config.widget],
+                                numofPart = self.inspection_config.today_numofPart[self.inspection_config.widget], 
+                                currentnumofPart = self.inspection_config.current_numofPart[self.inspection_config.widget],
+                                deltaTime = 0.0,
+                                kensainName = self.inspection_config.kensainNumber, 
+                                detected_pitch_str = self.InspectionResult_PitchMeasured[i], 
+                                delta_pitch_str = self.InspectionResult_DeltaPitch[i], 
+                                total_length=0)
+
+                        self.save_image_result(self.part1Crop, self.InspectionImages[0], self.InspectionResult_Status[0], True, "P1")
+                        self.save_image_result(self.part2Crop, self.InspectionImages[1], self.InspectionResult_Status[1], True, "P2")
+                        self.save_image_result(self.part3Crop, self.InspectionImages[2], self.InspectionResult_Status[2], True, "P3")
+                        self.save_image_result(self.part4Crop, self.InspectionImages[3], self.InspectionResult_Status[3], True, "P4")
+                        self.save_image_result(self.part5Crop, self.InspectionImages[4], self.InspectionResult_Status[4], True, "P5")
+
                         self.InspectionImages[0] = self.downSampling(self.InspectionImages[0], width=1771, height=24)
                         self.InspectionImages[1] = self.downSampling(self.InspectionImages[1], width=1771, height=24)
                         self.InspectionImages[2] = self.downSampling(self.InspectionImages[2], width=1771, height=24)
                         self.InspectionImages[3] = self.downSampling(self.InspectionImages[3], width=1771, height=24)
                         self.InspectionImages[4] = self.downSampling(self.InspectionImages[4], width=1771, height=24)
-
-
 
                         self.hoodFR_InspectionResult_PitchMeasured.emit(self.InspectionResult_PitchMeasured)
                         self.hoodFR_InspectionResult_PitchResult.emit(self.InspectionResult_PitchResult)
@@ -721,7 +790,6 @@ class InspectionThread(QThread):
                         self.InspectionResult_PitchMeasured_prev = self.InspectionResult_PitchMeasured.copy()
                         self.InspectionResult_PitchResult_prev = self.InspectionResult_PitchResult.copy()
 
-
                         self.ethernet_status_red_tenmetsu.emit(self.ethernet_status_red_tenmetsu_status)
                         self.ethernet_status_green_hold.emit(self.ethernet_status_green_hold_status)
                         self.ethernet_status_red_hold.emit(self.ethernet_status_red_hold_status)
@@ -732,14 +800,189 @@ class InspectionThread(QThread):
                         self.part4Cam.emit(self.converQImageRGB(self.InspectionImages[3]))
                         self.part5Cam.emit(self.converQImageRGB(self.InspectionImages[4]))
 
-
                 #emit the ethernet 
+                self.today_numofPart_signal.emit(self.inspection_config.today_numofPart)
+                self.current_numofPart_signal.emit(self.inspection_config.current_numofPart)
+            
                 self.ethernet_status_red_tenmetsu.emit(self.ethernet_status_red_tenmetsu_status)
                 self.ethernet_status_green_hold.emit(self.ethernet_status_green_hold_status)
                 self.ethernet_status_red_hold.emit(self.ethernet_status_red_hold_status)
 
 
         self.msleep(1)
+
+
+    def setCounterFalse(self):
+        self.inspection_config.furyou_plus = False
+        self.inspection_config.furyou_minus = False
+        self.inspection_config.kansei_plus = False
+        self.inspection_config.kansei_minus = False
+        self.inspection_config.furyou_plus_10 = False
+        self.inspection_config.furyou_minus_10 = False
+        self.inspection_config.kansei_plus_10 = False
+        self.inspection_config.kansei_minus_10 = False
+
+    def manual_adjustment(self, currentPart, Totalpart,
+                          furyou_plus, furyou_minus, 
+                          furyou_plus_10, furyou_minus_10,
+                          kansei_plus, kansei_minus,
+                          kansei_plus_10, kansei_minus_10):
+        
+        ok_count_current = currentPart[0]
+        ng_count_current = currentPart[1]
+        ok_count_total = Totalpart[0]
+        ng_count_total = Totalpart[1]
+        
+        if furyou_plus:
+            ng_count_current += 1
+            ng_count_total += 1
+
+        if furyou_plus_10:
+            ng_count_current += 10
+            ng_count_total += 10
+
+        if furyou_minus and ng_count_current > 0 and ng_count_total > 0:
+            ng_count_current -= 1
+            ng_count_total -= 1
+        
+        if furyou_minus_10 and ng_count_current > 9 and ng_count_total > 9:
+            ng_count_current -= 10
+            ng_count_total -= 10
+
+        if kansei_plus:
+            ok_count_current += 1
+            ok_count_total += 1
+
+        if kansei_plus_10:
+            ok_count_current += 10
+            ok_count_total += 10
+
+        if kansei_minus and ok_count_current > 0 and ok_count_total > 0:
+            ok_count_current -= 1
+            ok_count_total -= 1
+
+        if kansei_minus_10 and ok_count_current > 9 and ok_count_total > 9:
+            ok_count_current -= 10
+            ok_count_total -= 10
+
+        self.setCounterFalse()
+
+        self.save_result_database(partname = self.widget_dir_map[self.inspection_config.widget],
+                numofPart = [ok_count_total, ng_count_total], 
+                currentnumofPart = [ok_count_current, ng_count_current],
+                deltaTime = 0.0,
+                kensainName = self.inspection_config.kensainNumber, 
+                detected_pitch_str = "MANUAL", 
+                delta_pitch_str = "MANUAL", 
+                total_length=0)
+
+        return [ok_count_current, ng_count_current], [ok_count_total, ng_count_total]
+    
+    def save_result_database(self, partname, numofPart, 
+                             currentnumofPart, deltaTime, 
+                             kensainName, detected_pitch_str, 
+                             delta_pitch_str, total_length):
+        # Ensure all inputs are strings or compatible types
+
+        timestamp = datetime.now()
+        timestamp_date = timestamp.strftime("%Y%m%d")
+        timestamp_hour = timestamp.strftime("%H:%M:%S")
+
+        partname = str(partname)
+        numofPart = str(numofPart)
+        currentnumofPart = str(currentnumofPart)
+        timestamp_hour = str(timestamp_hour)
+        timestamp_date = str(timestamp_date)
+        deltaTime = float(deltaTime)  # Ensure this is a float
+        kensainName = str(kensainName)
+        detected_pitch_str = str(detected_pitch_str)
+        delta_pitch_str = str(delta_pitch_str)
+        total_length = float(total_length)  # Ensure this is a float
+
+        self.cursor.execute('''
+        INSERT INTO inspection_results (partname, numofPart, currentnumofPart, timestampHour, timestampDate, deltaTime, kensainName, detected_pitch, delta_pitch, total_length)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (partname, numofPart, currentnumofPart, timestamp_hour, timestamp_date, deltaTime, kensainName, detected_pitch_str, delta_pitch_str, total_length))
+        self.conn.commit()
+
+    def get_last_entry_currentnumofPart(self, part_name):
+        self.cursor.execute('''
+        SELECT currentnumofPart 
+        FROM inspection_results 
+        WHERE partName = ? 
+        ORDER BY id DESC 
+        LIMIT 1
+        ''', (part_name,))
+        
+        row = self.cursor.fetchone()
+        if row:
+            currentnumofPart = eval(row[0])
+            return currentnumofPart
+        else:
+            return [0, 0]
+            
+    def get_last_entry_total_numofPart(self, part_name):
+        # Get today's date in yyyymmdd format
+        today_date = datetime.now().strftime("%Y%m%d")
+
+        print (today_date)
+
+        self.cursor.execute('''
+        SELECT numofPart 
+        FROM inspection_results 
+        WHERE partName = ? AND timestampDate = ? 
+        ORDER BY id DESC 
+        LIMIT 1
+        ''', (part_name, today_date))
+        
+        row = self.cursor.fetchone()
+        if row:
+            numofPart = eval(row[0])  # Convert the string tuple to an actual tuple
+            return numofPart
+        else:
+            return [0, 0]  # Default values if no entry is found
+
+    def draw_status_text_PIL(self, image, text, color, size = "normal", x_offset = 0, y_offset = 0):
+
+        center_x = image.shape[1] // 2
+        center_y = image.shape[0] // 2
+
+        if size == "large":
+            font_scale = 130.0
+
+        if size == "normal":
+            font_scale = 100.0
+
+        elif size == "small":
+            font_scale = 50.0
+        
+        image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        img_pil = Image.fromarray(image_rgb)
+        draw = ImageDraw.Draw(img_pil)
+        font = ImageFont.truetype(self.kanjiFontPath, font_scale)
+
+        draw.text((center_x + x_offset, center_y + y_offset), text, font=font, fill=color)  
+        # Convert back to BGR for OpenCV compatibility
+        image = cv2.cvtColor(np.array(img_pil), cv2.COLOR_RGB2BGR)
+
+        return image
+
+    def save_image(self, image):
+        dir = "aikensa/inspection/" + self.widget_dir_map[self.inspection_config.widget]
+        os.makedirs(dir, exist_ok=True)
+        cv2.imwrite(dir + "/" + datetime.now().strftime("%Y%m%d_%H%M%S") + ".png", image)
+
+    def save_image_result(self, image_initial, image_result, result, BGR = True, id = None):
+        if BGR:
+            image_initial = cv2.cvtColor(image_initial, cv2.COLOR_RGB2BGR)
+            image_result = cv2.cvtColor(image_result, cv2.COLOR_RGB2BGR)
+
+        raw_dir = "aikensa/inspection_results/" + self.widget_dir_map[self.inspection_config.widget] + "/" + datetime.now().strftime("%Y%m%d") +  "/" +  str(result) + "/nama/"
+        result_dir = "aikensa/inspection_results/" + self.widget_dir_map[self.inspection_config.widget] + "/" + datetime.now().strftime("%Y%m%d") +  "/" + str(result) + "/kekka/"
+        os.makedirs(raw_dir, exist_ok=True)
+        os.makedirs(result_dir, exist_ok=True)
+        cv2.imwrite(raw_dir + "/" + datetime.now().strftime("%Y%m%d_%H%M%S") + "_" + id + ".png", image_initial)
+        cv2.imwrite(result_dir + "/" + datetime.now().strftime("%Y%m%d_%H%M%S") + "_" + id + ".png", image_result)
 
     def minitimerStart(self):
         self.timerStart_mini = time.time()
@@ -797,7 +1040,7 @@ class InspectionThread(QThread):
         if os.path.exists(path_hoodFR_clipDetectionModel):
             hoodFR_clipDetectionModel = AutoDetectionModel.from_pretrained(model_type="yolov8",
                                                                             model_path=path_hoodFR_clipDetectionModel,
-                                                                            confidence_threshold=0.5,
+                                                                            confidence_threshold=0.7,
                                                                             device="cuda:0")
         if os.path.exists(path_hoodFR_hanireDetectionModel):
             hoodFR_hanireDetectionModel = AutoDetectionModel.from_pretrained(model_type="yolov8",

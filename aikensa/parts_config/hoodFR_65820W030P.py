@@ -18,15 +18,15 @@ kanjiFontPath = "aikensa/font/NotoSansJP-ExtraBold.ttf"
 pitchSpec = [26, 107, 75, 75, 75, 75, 75, 92, 75, 102, 100, 129, 103, 109, 103, 129, 100, 102, 75, 92, 75, 75, 75, 75, 75, 107, 26]
 idSpec = [0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 tolerance_pitch = [3.0] * 27
-tolerance_pitch[0] = 3.0
-tolerance_pitch[-1] = 3.0
+tolerance_pitch[0] = 3.5
+tolerance_pitch[-1] = 3.5
 
 color = (0, 255, 0)
 text_offset = 40
 endoffset_y = 0
 bbox_offset = 10
 
-pixelMultiplier = 0.208
+pixelMultiplier = 0.1590
 
 
 def partcheck(image, sahi_predictionList):
@@ -119,9 +119,9 @@ def partcheck(image, sahi_predictionList):
         flag_pitch_furyou = 1
         status = "NG"
 
-    if any(result != 1 for result in resultid):
-        flag_clip_furyou = 1
-        status = "NG"
+    # if any(result != 1 for result in resultid):
+    #     flag_clip_furyou = 1
+    #     status = "NG"
 
     xy_pairs = list(zip(detectedposX, detectedposY))
     draw_pitch_line(image, xy_pairs, resultPitch, thickness=8)

@@ -129,6 +129,23 @@ def detectCharucoBoardLarge(image):
 
     return image, charucoCorners, charucoIds
     
+def detectCharucoBoard_aprilTag(image):
+    dict_type = cv2.aruco.DICT_APRILTAG_36H10
+    squares = (83, 16)
+    square_length = 0.030
+    marker_length = 0.025
+    aruco_dict = cv2.aruco.getPredefinedDictionary(dict_type)
+    charboard = cv2.aruco.CharucoBoard(squares, square_length, marker_length, aruco_dict)
+    detector = cv2.aruco.CharucoDetector(charboard)
+
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    
+    charucoCorners, charucoIds, markerCorners, markersIds = detector.detectBoard(gray)   
+    # image = cv2.aruco.drawDetectedMarkers(image, markerCorners, markersIds)
+
+    return image, charucoCorners, charucoIds
+    
+
 def detectCharucoBoard_6_6(image):
     dict_type = cv2.aruco.DICT_6X6_1000
     squares = (67, 13)
@@ -267,8 +284,8 @@ def calculateHomography_template(img1, img2):
     charucoIds1 = None
     charucoIds2 = None
 
-    _, charucoCorners1, charucoIds1 = detectCharucoBoard_6_6(img1)
-    _, charucoCorners2, charucoIds2 = detectCharucoBoard_6_6(img2)
+    _, charucoCorners1, charucoIds1 = detectCharucoBoard_aprilTag(img1)
+    _, charucoCorners2, charucoIds2 = detectCharucoBoard_aprilTag(img2)
     print("Calculating homography...\n")
     # #print image size
     # print(f"Image 1 size: {img1.shape}")

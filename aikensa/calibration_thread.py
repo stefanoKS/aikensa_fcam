@@ -1,5 +1,6 @@
 import cv2
 import os
+os.environ["OPENCV_IO_MAX_IMAGE_PIXELS"] = pow(2,40).__str__()
 from datetime import datetime
 from networkx import jaccard_coefficient
 import numpy as np
@@ -407,6 +408,23 @@ class CalibrationThread(QThread):
                 _, self.mergeframe4 = self.cap_cam4.read()
                 _, self.mergeframe5 = self.cap_cam5.read()
 
+                self.mergeframe1 = cv2.cvtColor(self.mergeframe1, cv2.COLOR_BGR2RGB)
+                self.mergeframe2 = cv2.cvtColor(self.mergeframe2, cv2.COLOR_BGR2RGB)
+                self.mergeframe3 = cv2.cvtColor(self.mergeframe3, cv2.COLOR_BGR2RGB)
+                self.mergeframe4 = cv2.cvtColor(self.mergeframe4, cv2.COLOR_BGR2RGB)
+                self.mergeframe5 = cv2.cvtColor(self.mergeframe5, cv2.COLOR_BGR2RGB)
+                self.mergeframe1 = cv2.rotate(self.mergeframe1, cv2.ROTATE_180)
+                self.mergeframe2 = cv2.rotate(self.mergeframe2, cv2.ROTATE_180)
+                self.mergeframe3 = cv2.rotate(self.mergeframe3, cv2.ROTATE_180)
+                self.mergeframe4 = cv2.rotate(self.mergeframe4, cv2.ROTATE_180)
+                self.mergeframe5 = cv2.rotate(self.mergeframe5, cv2.ROTATE_180)
+                #original res
+                self.mergeframe1_scaled = self.downSampling(self.mergeframe1, self.scaled_width, self.scaled_height)
+                self.mergeframe2_scaled = self.downSampling(self.mergeframe2, self.scaled_width, self.scaled_height)
+                self.mergeframe3_scaled = self.downSampling(self.mergeframe3, self.scaled_width, self.scaled_height)
+                self.mergeframe4_scaled = self.downSampling(self.mergeframe4, self.scaled_width, self.scaled_height)
+                self.mergeframe5_scaled = self.downSampling(self.mergeframe5, self.scaled_width, self.scaled_height)
+
                 #Calculate all map from calibration matrix for 5 cameras, thus i in range(1, 6)
                 for i in range(1, 6):
                     if self.calib_config.mapCalculated[i] is False:
@@ -418,6 +436,14 @@ class CalibrationThread(QThread):
                             print(f"map1 and map2 value is calculated")
                             self.calib_config.mapCalculated[i] = True
                             print(f"Calibration map is calculated for Camera {i}")
+                        #do the same for map1_downscaled and map2_downscaled
+                        if os.path.exists(self._save_dir + f"Calibration_camera_scaled_{i}.yaml"):
+                            camera_matrix, dist_coeffs = self.load_matrix_from_yaml(self._save_dir + f"Calibration_camera_scaled_{i}.yaml")
+                            # Precompute the undistort and rectify map for faster processing
+                            h, w = self.mergeframe1_scaled.shape[:2] #use mergeframe1scaled as reference
+                            self.calib_config.map1_downscaled[i], self.calib_config.map2_downscaled[i] = cv2.initUndistortRectifyMap(camera_matrix, dist_coeffs, None, camera_matrix, (w, h), cv2.CV_16SC2)
+                            print(f"map1_downscaled and map2_downscaled value is calculated")
+               
 
                 if all(self.calib_config.mapCalculated[i] for i in range(1, 6)):
                     # print("All calibration maps are calculated.")
@@ -427,40 +453,33 @@ class CalibrationThread(QThread):
                     self.mergeframe4 = cv2.remap(self.mergeframe4, self.calib_config.map1[4], self.calib_config.map2[4], interpolation=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT)
                     self.mergeframe5 = cv2.remap(self.mergeframe5, self.calib_config.map1[5], self.calib_config.map2[5], interpolation=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT)
 
-                self.mergeframe1 = cv2.cvtColor(self.mergeframe1, cv2.COLOR_BGR2RGB)
-                self.mergeframe2 = cv2.cvtColor(self.mergeframe2, cv2.COLOR_BGR2RGB)
-                self.mergeframe3 = cv2.cvtColor(self.mergeframe3, cv2.COLOR_BGR2RGB)
-                self.mergeframe4 = cv2.cvtColor(self.mergeframe4, cv2.COLOR_BGR2RGB)
-                self.mergeframe5 = cv2.cvtColor(self.mergeframe5, cv2.COLOR_BGR2RGB)
-
-                self.mergeframe1 = cv2.rotate(self.mergeframe1, cv2.ROTATE_180)
-                self.mergeframe2 = cv2.rotate(self.mergeframe2, cv2.ROTATE_180)
-                self.mergeframe3 = cv2.rotate(self.mergeframe3, cv2.ROTATE_180)
-                self.mergeframe4 = cv2.rotate(self.mergeframe4, cv2.ROTATE_180)
-                self.mergeframe5 = cv2.rotate(self.mergeframe5, cv2.ROTATE_180)
-
-                #original res
-                self.mergeframe1_scaled = self.downSampling(self.mergeframe1, self.scaled_width, self.scaled_height)
-                self.mergeframe2_scaled = self.downSampling(self.mergeframe2, self.scaled_width, self.scaled_height)
-                self.mergeframe3_scaled = self.downSampling(self.mergeframe3, self.scaled_width, self.scaled_height)
-                self.mergeframe4_scaled = self.downSampling(self.mergeframe4, self.scaled_width, self.scaled_height)
-                self.mergeframe5_scaled = self.downSampling(self.mergeframe5, self.scaled_width, self.scaled_height)
+                    self.mergeframe1_scaled = cv2.remap(self.mergeframe1_scaled, self.calib_config.map1_downscaled[1], self.calib_config.map2_downscaled[1], interpolation=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT)
+                    self.mergeframe2_scaled = cv2.remap(self.mergeframe2_scaled, self.calib_config.map1_downscaled[2], self.calib_config.map2_downscaled[2], interpolation=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT)
+                    self.mergeframe3_scaled = cv2.remap(self.mergeframe3_scaled, self.calib_config.map1_downscaled[3], self.calib_config.map2_downscaled[3], interpolation=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT)
+                    self.mergeframe4_scaled = cv2.remap(self.mergeframe4_scaled, self.calib_config.map1_downscaled[4], self.calib_config.map2_downscaled[4], interpolation=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT)
+                    self.mergeframe5_scaled = cv2.remap(self.mergeframe5_scaled, self.calib_config.map1_downscaled[5], self.calib_config.map2_downscaled[5], interpolation=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT)
 
                 #Calculate Homography matrix
                 if self.calib_config.calculateHomo_cam1 is True:
                     self.calib_config.calculateHomo_cam1 = False
-                    _, self.homography_matrix1 = calculateHomography_template(self.homography_template, self.mergeframe1)
-                    self.H1 = np.array(self.homography_matrix1)
-                    print(f"Homography matrix is calculated for Camera 1 with value {self.homography_matrix1}")
-                    os.makedirs(self._save_dir, exist_ok=True)
-                    with open("./aikensa/cameracalibration/homography_param_cam1.yaml", "w") as file:
-                        yaml.dump(self.homography_matrix1.tolist(), file)
+                    if self.mergeframe1 is not None:
+                        _, self.homography_matrix1 = calculateHomography_template(self.homography_template, self.mergeframe1)
+                        self.H1 = np.array(self.homography_matrix1)
+                        print(f"Homography matrix is calculated for Camera 1 with value {self.homography_matrix1}")
+                        os.makedirs(self._save_dir, exist_ok=True)
+                        with open("./aikensa/cameracalibration/homography_param_cam1.yaml", "w") as file:
+                            yaml.dump(self.homography_matrix1.tolist(), file)
+                    else:
+                        ("mergeframe1 is empty")
 
-                    _, self.homography_matrix1_scaled = calculateHomography_template(self.homography_template_scaled, self.mergeframe1_scaled)
-                    self.H1_scaled = np.array(self.homography_matrix1_scaled)
-                    print(f"Homography scaled matrix is calculated for Camera 1 with value {self.homography_matrix1_scaled}")
-                    with open("./aikensa/cameracalibration/homography_param_cam1_scaled.yaml", "w") as file:
-                        yaml.dump(self.homography_matrix1_scaled.tolist(), file) 
+                    if self.mergeframe1_scaled is not None:
+                        _, self.homography_matrix1_scaled = calculateHomography_template(self.homography_template_scaled, self.mergeframe1_scaled)
+                        self.H1_scaled = np.array(self.homography_matrix1_scaled)
+                        print(f"Homography scaled matrix is calculated for Camera 1 with value {self.homography_matrix1_scaled}")
+                        with open("./aikensa/cameracalibration/homography_param_cam1_scaled.yaml", "w") as file:
+                            yaml.dump(self.homography_matrix1_scaled.tolist(), file)
+                    else:
+                        ("mergeframe1 scaled is empty")
 
                 if self.calib_config.calculateHomo_cam2 is True:
                     self.calib_config.calculateHomo_cam2 = False
