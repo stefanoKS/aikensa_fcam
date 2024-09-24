@@ -100,17 +100,15 @@ class AIKensa(QMainWindow):
 
 
     def handle_input_states(self, input_states):
-        # check if input_stats is not empty
+        # print(f"Input states: {input_states}")
         if input_states:
             if input_states[5] == 1:
                 self.trigger_kensa()
-            # if input_states[1] == 1:
-            #     self.trigger_rekensa()
             else:
                 pass
 
     def trigger_kensa(self):
-        self.inspectionButton.click()
+        self.Inspect_button.click()
 
     def trigger_rekensa(self):
         self.button_rekensa.click()
@@ -138,6 +136,8 @@ class AIKensa(QMainWindow):
         self.inspection_thread.hole5Cam.connect(self._setHoleFrame5)
 
         self.inspection_thread.hoodFR_InspectionResult_PitchMeasured.connect(self._outputMeasurementText)
+        self.inspection_thread.hoodFR_InspectionStatus.connect(self._inspectionStatusText)
+
 
         self.inspection_thread.ethernet_status_red_tenmetsu.connect(self._setEthernetStatusTenmetsuRed)
         self.inspection_thread.ethernet_status_green_hold.connect(self._setEthernetStatusHoldGreen)
@@ -145,6 +145,7 @@ class AIKensa(QMainWindow):
 
         self.inspection_thread.current_numofPart_signal.connect(self._update_OKNG_label)
         self.inspection_thread.today_numofPart_signal.connect(self._update_todayOKNG_label)
+
 
         self.stackedWidget = QStackedWidget()
 
@@ -217,15 +218,12 @@ class AIKensa(QMainWindow):
             #Closing the calibration thread once the inspection thread is started
             partInspection_P65820W030P_button.clicked.connect(self.calibration_thread.stop)
 
-
         for i in range(1, 6):
             CalibrateSingleFrame = self.stackedWidget.widget(i).findChild(QPushButton, "calibSingleFrame")
             CalibrateSingleFrame.clicked.connect(lambda i=i: self._set_calib_params(self.calibration_thread, "calculateSingeFrameMatrix", True))
 
             CalibrateFinalCameraMatrix = self.stackedWidget.widget(i).findChild(QPushButton, "calibCam")
             CalibrateFinalCameraMatrix.clicked.connect(lambda i=i: self._set_calib_params(self.calibration_thread, "calculateCamMatrix", True))
-
-
 
         calcHomoCam1 = mergeCamera_widget.findChild(QPushButton, "calcH_cam1")
         calcHomoCam2 = mergeCamera_widget.findChild(QPushButton, "calcH_cam2")
@@ -244,8 +242,26 @@ class AIKensa(QMainWindow):
 
         self.siostatus_server = [self.stackedWidget.widget(i).findChild(QLabel, "status_sio") for i in [0, 1, 2, 3, 4, 5, 6, 7, 8, 21, 22, 23]]
 
-        self.inspectionButton = self.stackedWidget.widget(8).findChild(QPushButton, "InspectButton")
-        self.inspectionButton.clicked.connect(lambda: self._set_inspection_params(self.inspection_thread, "doInspection", True))
+        self.inspection_widget_indices = [8]
+
+        for i in self.inspection_widget_indices:
+            self.Inspect_button = self.stackedWidget.widget(i).findChild(QPushButton, "InspectButton")
+            if self.Inspect_button:
+                self.Inspect_button.clicked.connect(lambda: self._set_inspection_params(self.inspection_thread, "doInspection", True))
+
+
+        for i in [8]:
+            self.connect_inspectionConfig_button(i, "kansei_plus", "kansei_plus", True)
+            self.connect_inspectionConfig_button(i, "kansei_minus", "kansei_minus", True)
+            self.connect_inspectionConfig_button(i, "furyou_plus", "furyou_plus", True)
+            self.connect_inspectionConfig_button(i, "furyou_minus", "furyou_minus", True)
+            self.connect_inspectionConfig_button(i, "kansei_plus_10", "kansei_plus_10", True)
+            self.connect_inspectionConfig_button(i, "kansei_minus_10", "kansei_minus_10", True)
+            self.connect_inspectionConfig_button(i, "furyou_plus_10", "furyou_plus_10", True)
+            self.connect_inspectionConfig_button(i, "furyou_minus_10", "furyou_minus_10", True)
+            #connect reset button
+            self.connect_inspectionConfig_button(i, "counterReset", "counterReset", True)
+
 
        # Find and connect quit buttons and main menu buttons in all widgets
         for i in range(self.stackedWidget.count()):
@@ -290,6 +306,14 @@ class AIKensa(QMainWindow):
     def simulateButtonKensaClicks(self):
         self.button_kensa3.click()
         self.button_kensa4.click()
+
+    def connect_inspectionConfig_button(self, widget_index, button_name, cam_param, value):
+        widget = self.stackedWidget.widget(widget_index)
+        button = widget.findChild(QPushButton, button_name)
+        if button:
+            button.pressed.connect(lambda: self._set_inspection_params(self.inspection_thread, cam_param, value))
+            # print(f"Button '{button_name}' connected to cam_param '{cam_param}' with value '{value}' in widget {widget_index}")
+
 
     def _close_app(self):
         # self.cam_thread.stop()
@@ -496,6 +520,23 @@ class AIKensa(QMainWindow):
                     break #in case the number of pitches is more than the number of labels
                 color = colorOK if pitch_value else colorNG
                 labels[i].setStyleSheet(f"QLabel {{ background-color: {color}; }}")
+
+    def _inspectionStatusText(self, inspectionStatus):
+        label_names = ["StatusP1", "StatusP2", "StatusP3", "StatusP4", "StatusP5"]
+
+        for i, status in enumerate(inspectionStatus):
+            widget = self.stackedWidget.widget(8)
+            label = widget.findChild(QLabel, label_names[i])
+            if label:
+                label.setText(status)
+                if status == "製品検出済み":
+                    label.setStyleSheet("QLabel { background-color: lightblue; }")
+                elif status == "製品未検出":
+                    label.setStyleSheet("QLabel { background-color: orange; }")
+                elif status == "OK":
+                    label.setStyleSheet("QLabel { background-color: green; }")
+                elif status == "NG":
+                    label.setStyleSheet("QLabel { background-color: red; }")
 
     def _outputMeasurementText(self, measurementValue):
 

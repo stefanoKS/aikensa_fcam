@@ -230,7 +230,7 @@
      <string notr="true">background-color: rgb(211, 215, 207);</string>
     </property>
     <property name="text">
-     <string>Calibrate Cam 1</string>
+     <string>Calibrate Cam 5</string>
     </property>
    </widget>
    <widget class="QPushButton" name="calibSingleFrame">

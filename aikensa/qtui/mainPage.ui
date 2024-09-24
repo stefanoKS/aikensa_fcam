@@ -39,7 +39,7 @@
      </font>
     </property>
     <property name="styleSheet">
-     <string notr="true">background-color: rgb(238, 238, 236);</string>
+     <string notr="true">background-color: rgb(255, 150, 75);</string>
     </property>
     <property name="text">
      <string extracomment="Generate intrinsic camera parameter">カメラ①校正 
@@ -79,8 +79,7 @@ Camera①Calib.</string>
 background-color: rgb(114, 159, 207);</string>
     </property>
     <property name="text">
-     <string>65820W030P
-藤川の5A45DG
+     <string>5A45
 SEAL, ASSY-HOOD, FR</string>
     </property>
    </widget>
@@ -426,7 +425,7 @@ Daily Check</string>
      </font>
     </property>
     <property name="styleSheet">
-     <string notr="true">background-color: rgb(238, 238, 236);</string>
+     <string notr="true">background-color: rgb(255, 150, 75);</string>
     </property>
     <property name="text">
      <string extracomment="Generate intrinsic camera parameter">カメラ②校正 
@@ -449,7 +448,7 @@ Camera②Calib.</string>
      </font>
     </property>
     <property name="styleSheet">
-     <string notr="true">background-color: rgb(238, 238, 236);</string>
+     <string notr="true">background-color: rgb(255, 150, 75);</string>
     </property>
     <property name="text">
      <string extracomment="Generate intrinsic camera parameter">カメラ③校正 
@@ -472,7 +471,7 @@ Camera③Calib.</string>
      </font>
     </property>
     <property name="styleSheet">
-     <string notr="true">background-color: rgb(238, 238, 236);</string>
+     <string notr="true">background-color: rgb(255, 150, 75);</string>
     </property>
     <property name="text">
      <string extracomment="Generate intrinsic camera parameter">カメラ④校正 
@@ -495,7 +494,7 @@ Camera④Calib.</string>
      </font>
     </property>
     <property name="styleSheet">
-     <string notr="true">background-color: rgb(238, 238, 236);</string>
+     <string notr="true">background-color: rgb(255, 150, 75);</string>
     </property>
     <property name="text">
      <string extracomment="Generate intrinsic camera parameter">カメラ⑤校正 
@@ -518,11 +517,89 @@ Camera⑤Calib.</string>
      </font>
     </property>
     <property name="styleSheet">
-     <string notr="true">background-color: rgb(238, 238, 236);</string>
+     <string notr="true">background-color: rgb(161, 255, 111);</string>
     </property>
     <property name="text">
      <string extracomment="Generate intrinsic camera parameter">カメラマージ 
 Camera Merge</string>
+    </property>
+   </widget>
+   <widget class="QLabel" name="label_6">
+    <property name="geometry">
+     <rect>
+      <x>65</x>
+      <y>650</y>
+      <width>211</width>
+      <height>31</height>
+     </rect>
+    </property>
+    <property name="font">
+     <font>
+      <family>Ubuntu Mono</family>
+      <pointsize>22</pointsize>
+      <weight>75</weight>
+      <bold>true</bold>
+     </font>
+    </property>
+    <property name="styleSheet">
+     <string notr="true">color: rgb(238, 238, 236);</string>
+    </property>
+    <property name="text">
+     <string>三菱自動車</string>
+    </property>
+    <property name="alignment">
+     <set>Qt::AlignCenter</set>
+    </property>
+   </widget>
+   <widget class="QLabel" name="label_7">
+    <property name="geometry">
+     <rect>
+      <x>570</x>
+      <y>650</y>
+      <width>211</width>
+      <height>31</height>
+     </rect>
+    </property>
+    <property name="font">
+     <font>
+      <family>Ubuntu Mono</family>
+      <pointsize>22</pointsize>
+      <weight>75</weight>
+      <bold>true</bold>
+     </font>
+    </property>
+    <property name="styleSheet">
+     <string notr="true">color: rgb(238, 238, 236);</string>
+    </property>
+    <property name="text">
+     <string>日産自動車</string>
+    </property>
+    <property name="alignment">
+     <set>Qt::AlignCenter</set>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="P658207LE0Abutton">
+    <property name="geometry">
+     <rect>
+      <x>565</x>
+      <y>540</y>
+      <width>231</width>
+      <height>101</height>
+     </rect>
+    </property>
+    <property name="font">
+     <font>
+      <family>Ubuntu Mono</family>
+      <pointsize>15</pointsize>
+     </font>
+    </property>
+    <property name="styleSheet">
+     <string notr="true">background-color: rgb(0, 255, 255);</string>
+    </property>
+    <property name="text">
+     <string>J42U
+65820 7YA0A
+ SEAL-ASSY HOOD FR</string>
     </property>
    </widget>
   </widget>
