@@ -29,7 +29,7 @@ bbox_offset = 10
 pixelMultiplier = 0.1590
 
 
-def partcheck(image, sahi_predictionList):
+def partcheck(image, sahi_predictionList, leftSegmentation, rightSegmentation):
 
     sorted_detections = sorted(sahi_predictionList, key=lambda d: d.bbox.minx)
 
@@ -59,7 +59,36 @@ def partcheck(image, sahi_predictionList):
 
     status = "OK"
 
-    cannydetection_image = image.copy() #Make sure to copy the image to avoid modifying the original image
+    # cannydetection_image = image.copy() #Make sure to copy the image to avoid modifying the original image
+
+    combined_lmask = None
+    for lm in leftSegmentation:
+        if lm is not None:
+            orig_shape = (image.shape[0], 1024)
+            segmentation_xyn = lm.masks.xyn
+            lmask = create_masks(segmentation_xyn, orig_shape)
+            if combined_lmask is None:
+                combined_lmask = np.zeros_like(lmask)
+            combined_lmask = cv2.bitwise_or(combined_lmask, lmask)
+            # cv2.imwrite("leftmask.jpg", combined_lmask)
+            
+    combined_rmask = None
+    for rm in rightSegmentation:
+        if rm is not None:
+            orig_shape = (image.shape[0], 1024)
+            segmentation_xyn = rm.masks.xyn
+            rmask = create_masks(segmentation_xyn, orig_shape)
+            if combined_rmask is None:
+                combined_rmask = np.zeros_like(rmask)
+            combined_rmask = cv2.bitwise_or(combined_rmask, rmask)
+            # cv2.imwrite("rightmask.jpg", combined_rmask)
+
+    combined_mask = np.zeros_like(image[:, :, 0])  # Single-channel black mask
+
+    if combined_lmask is not None and combined_rmask is not None:
+        combined_mask[:, :1024] = combined_lmask 
+        combined_mask[:, -1024:] = combined_rmask 
+        # cv2.imwrite("combined_mask.jpg", combined_mask)
 
     for i, detection in enumerate(sorted_detections):
         detectedid.append(detection.category.id)
@@ -90,8 +119,11 @@ def partcheck(image, sahi_predictionList):
         rightmostCenter = (detectedposX[-1], detectedposY[-1])
         rightmostWidth = detectedWidth[-1]
         adjustment_offset = 5 # to make sure it goes above the clip itself
-        left_edge = find_edge_point(cannydetection_image, leftmostCenter, direction="left", Yoffsetval = 0, Xoffsetval = leftmostWidth + adjustment_offset)
-        right_edge = find_edge_point(cannydetection_image, rightmostCenter, direction="right", Yoffsetval = 0, Xoffsetval = rightmostWidth + adjustment_offset)
+        # left_edge = find_edge_point(cannydetection_image, leftmostCenter, direction="left", Yoffsetval = 0, Xoffsetval = leftmostWidth + adjustment_offset)
+        # right_edge = find_edge_point(cannydetection_image, rightmostCenter, direction="right", Yoffsetval = 0, Xoffsetval = rightmostWidth + adjustment_offset)
+
+        left_edge = find_edge_point_mask(image, combined_mask, leftmostCenter, direction="left", Yoffsetval = 0, Xoffsetval = 0)
+        right_edge = find_edge_point_mask(image, combined_mask, rightmostCenter, direction="right", Yoffsetval = 0, Xoffsetval = 0)
 
         leftmostPitch = calclength(leftmostCenter, left_edge)*pixelMultiplier
         rightmostPitch = calclength(rightmostCenter, right_edge)*pixelMultiplier
@@ -127,6 +159,13 @@ def partcheck(image, sahi_predictionList):
     draw_pitch_line(image, xy_pairs, resultPitch, thickness=8)
     
     return image, measuredPitch, resultPitch, resultid, status
+
+def create_masks(segmentation_result, orig_shape):
+    mask = np.zeros((orig_shape[0], orig_shape[1]), dtype=np.uint8)
+    for polygon in segmentation_result:
+        polygon = np.array([[int(x * orig_shape[1]), int(y * orig_shape[0])] for x, y in polygon], dtype=np.int32)
+        cv2.fillPoly(mask, [polygon], 255)
+    return mask
 
 def play_sound(status):
     if status == "OK":
@@ -234,12 +273,34 @@ def yolo_to_pixel(yolo_coords, img_shape):
     y_pixel = int(y * img_shape[0])
     return x_pixel, y_pixel
 
+def find_edge_point_mask(image, mask, center, direction="None", Xoffsetval = 0, Yoffsetval = 0):
+    x, y = center[0], center[1]
+
+    min_x = 0
+    max_x = image.shape[1] - 1
+
+    if direction == "left":
+        while x - Xoffsetval >= 0:
+            if mask[int(y + Yoffsetval), int(x - Xoffsetval)] == 0:  # Found an edge
+                return x - Xoffsetval, y
+            x -= 1
+        return min_x, y
+
+    if direction == "right":
+        while x + Xoffsetval < image.shape[1]:
+            if mask[int(y + Yoffsetval), int(x + Xoffsetval)] == 0:  # Found an edge
+                return x + Xoffsetval, y
+            x += 1
+        return max_x, y
+
+    return None  # If an invalid direction is provided
+
 def find_edge_point(image, center, direction="None", Xoffsetval = 0, Yoffsetval = 0):
     x, y = center[0], center[1]
-    blur = 9
+    blur = 11
     brightness = 0
-    contrast = 2.0
-    lower_canny = 10
+    contrast = 3.0
+    lower_canny = 15
     upper_canny = 110
 
     # Apply adjustments

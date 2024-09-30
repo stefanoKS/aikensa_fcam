@@ -86,6 +86,7 @@ class InspectionThread(QThread):
     hoodFR_InspectionResult_PitchResult = pyqtSignal(list)
     
     hoodFR_InspectionStatus = pyqtSignal(list)
+    hoodFR_HoleStatus = pyqtSignal(list)
 
     ethernet_status_red_tenmetsu = pyqtSignal(list)
     ethernet_status_green_hold = pyqtSignal(list)
@@ -232,7 +233,15 @@ class InspectionThread(QThread):
 
         self.InspectionImages = [None]*5
 
+        self.InspectionImages_endSegmentation_Left = [None]*5
+        self.InspectionImages_endSegmentation_Right = [None]*5
+        
         self.InspectionResult_ClipDetection = [None]*5
+
+        self.InspectionResult_EndSegmentation_Left = [None]*5
+        self.InspectionResult_EndSegmentation_Right = [None]*5
+
+        self.InspectionResult_HoleDetection = [None]*5
 
         self.InspectionResult_PitchMeasured = [None]*5
         self.InspectionResult_PitchResult = [None]*5
@@ -629,17 +638,41 @@ class InspectionThread(QThread):
                         self.part4Crop_scaled = self.downSampling(self.part4Crop_scaled, width=1771, height=24)
                         self.part5Crop_scaled = self.downSampling(self.part5Crop_scaled, width=1771, height=24)
 
+                        # self.save_image_hole(self.holeFrame1, False, "P1")
+                        # self.save_image_hole(self.holeFrame2, False, "P2")
+                        # self.save_image_hole(self.holeFrame3, False, "P3")
+                        # self.save_image_hole(self.holeFrame4, False, "P4")
+                        # self.save_image_hole(self.holeFrame5, False, "P5")
+
+                        self.holeImageMerge[0] = self.holeFrame1.copy()
+                        self.holeImageMerge[1] = self.holeFrame2.copy()
+                        self.holeImageMerge[2] = self.holeFrame3.copy()
+                        self.holeImageMerge[3] = self.holeFrame4.copy()
+                        self.holeImageMerge[4] = self.holeFrame5.copy()
+
                         self.holeFrame1 = self.downScaledImage(self.holeFrame1, 1.5)
                         self.holeFrame2 = self.downScaledImage(self.holeFrame2, 1.5)
                         self.holeFrame3 = self.downScaledImage(self.holeFrame3, 1.5)
                         self.holeFrame4 = self.downScaledImage(self.holeFrame4, 1.5)
                         self.holeFrame5 = self.downScaledImage(self.holeFrame5, 1.5)
 
-                        self.holeImageMerge[0] = self.holeFrame1
-                        self.holeImageMerge[1] = self.holeFrame2
-                        self.holeImageMerge[2] = self.holeFrame3
-                        self.holeImageMerge[3] = self.holeFrame4
-                        self.holeImageMerge[4] = self.holeFrame5
+                        for i in range(len(self.holeImageMerge)):
+                            self.InspectionResult_HoleDetection[i] = self.hoodFR_holeDetectionModel(
+                                cv2.cvtColor(self.holeImageMerge[i], cv2.COLOR_BGR2RGB),
+                                stream=True, verbose=False, conf=0.3, imgsz=256
+                            )
+                            detectedid = []
+                            
+                            for j, r in enumerate(self.InspectionResult_HoleDetection[i]):
+                                for k, box in enumerate(r.boxes):
+                                    detectedid.append(box.cls.item())
+                            # print(f"Detected ID[i]: {detectedid}")
+                            if 0.0 in detectedid:
+                                self.DetectionResult_HoleDetection[i] = 1
+                            else:
+                                self.DetectionResult_HoleDetection[i] = 0
+
+                        # print(self.DetectionResult_HoleDetection)
 
                         self.InspectionResult_PitchMeasured = [None]*5
                         self.InspectionResult_PitchResult = [None]*5
@@ -662,16 +695,6 @@ class InspectionThread(QThread):
 
                         if all(sensor == 0 for sensor in self.inspection_config.kouden_sensor):
                             self.InspectionImages_prev[0] = None
-
-                        for i in range(len(self.inspection_config.kouden_sensor)):
-                            # if self.inspection_config.kouden_sensor[i] == 1:
-                            #     self.hole_detection[i] = self.hoodFR_holeIdentification(cv2.cvtColor(self.holeImageMerge[i], cv2.COLOR_BGR2RGB), stream=True, verbose=False, conf=0.5, imgsz = 160)
-                            #     self.hole_detection_result[i] = list(self.hole_detection[i])[0].probs.data.argmax().item()
-                            # else:
-                            #     self.hole_detection_result[i] = 1
-                            #0 for hole detected, 1 for no hole detected
-
-                            self.hole_detection_result[i] = 0
 
                         if self.part1Crop_scaled is not None:
                             self.part1Cam.emit(self.convertQImage(self.part1Crop_scaled))
@@ -703,7 +726,7 @@ class InspectionThread(QThread):
                     if self.InspectionTimeStart is None:
                         self.InspectionTimeStart = time.time()
 
-                    print(time.time() - self.InspectionTimeStart)
+                    # print(time.time() - self.InspectionTimeStart)
 
                     if time.time() - self.InspectionTimeStart < self.InspectionWaitTime:
                         self.inspection_config.doInspection = False
@@ -768,17 +791,27 @@ class InspectionThread(QThread):
                                         self.InspectionResult_ClipDetection[i] = get_sliced_prediction(
                                             self.InspectionImages[i], 
                                             self.hoodFR_clipDetectionModel, 
-                                            slice_height=200, slice_width=968, 
-                                            overlap_height_ratio=0.1, overlap_width_ratio=0.1,
+                                            slice_height=180, slice_width=1280, 
+                                            overlap_height_ratio=0.0, overlap_width_ratio=0.3,
                                             postprocess_match_metric="IOS",
-                                            postprocess_match_threshold=0.01,
+                                            postprocess_match_threshold=0.1,
                                             postprocess_class_agnostic=True,
-                                            postprocess_type="NMM",
+                                            postprocess_type="NMS",
                                             verbose=0,
                                             perform_standard_pred=True
                                         )
 
-                                        self.InspectionImages[i], self.InspectionResult_PitchMeasured[i], self.InspectionResult_PitchResult[i], self.InspectionResult_DetectionID[i], self.InspectionResult_Status[i] = partcheck(self.InspectionImages[i], self.InspectionResult_ClipDetection[i].object_prediction_list)
+                                        #Crop image from 0 to 1024 width for the left and width-1024 to 1024 for the right
+                                        self.InspectionImages_endSegmentation_Left[i] = self.InspectionImages[i][:, :1024, :]
+                                        self.InspectionImages_endSegmentation_Right[i] = self.InspectionImages[i][:, -1024:, :]
+
+                                        self.InspectionResult_EndSegmentation_Left[i] = self.hoodFR_endSegmentationModel(source=self.InspectionImages_endSegmentation_Left[i], conf=0.5, imgsz=960, verbose=False)
+                                        self.InspectionResult_EndSegmentation_Right[i] = self.hoodFR_endSegmentationModel(source=self.InspectionImages_endSegmentation_Right[i], conf=0.5, imgsz=960, verbose=False)
+
+                                        self.InspectionImages[i], self.InspectionResult_PitchMeasured[i], self.InspectionResult_PitchResult[i], self.InspectionResult_DetectionID[i], self.InspectionResult_Status[i] = partcheck(self.InspectionImages[i], 
+                                                                                                                                                                                                                                  self.InspectionResult_ClipDetection[i].object_prediction_list,
+                                                                                                                                                                                                                                  self.InspectionResult_EndSegmentation_Left[i],
+                                                                                                                                                                                                                                  self.InspectionResult_EndSegmentation_Right[i])
                                     else:
                                         #Make pure black image
                                         self.InspectionImages[i] = np.full((24, 1771, 3), (10, 10, 20), dtype=np.uint8)
@@ -877,6 +910,9 @@ class InspectionThread(QThread):
 
                 
                 self.hoodFR_InspectionStatus.emit(self.InspectionStatus)
+
+                # Emit the hole detection
+                self.hoodFR_HoleStatus.emit(self.DetectionResult_HoleDetection)
 
         self.msleep(1)
 
@@ -1041,6 +1077,14 @@ class InspectionThread(QThread):
         os.makedirs(dir, exist_ok=True)
         cv2.imwrite(dir + "/" + datetime.now().strftime("%Y%m%d_%H%M%S") + ".png", image)
 
+    def save_image_hole(self, image, BGR = True, id=None):
+        if BGR:
+            image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
+        dir = "aikensa/inspection_results/" + self.widget_dir_map[self.inspection_config.widget] + "/" + datetime.now().strftime("%Y%m%d") +  "/hole/"
+        os.makedirs(dir, exist_ok=True)
+        cv2.imwrite(dir + "/" + datetime.now().strftime("%Y%m%d_%H%M%S") + "_" + id + ".png", image)
+
+
     def save_image_result(self, image_initial, image_result, result, BGR = True, id = None):
         if BGR:
             image_initial = cv2.cvtColor(image_initial, cv2.COLOR_RGB2BGR)
@@ -1093,40 +1137,41 @@ class InspectionThread(QThread):
 
     def initialize_model(self):
         #Change based on the widget
-        hoodFR_holeIdentification = None
+        hoodFR_holeDetectionModel = None
         hoodFR_clipDetectionModel = None
         hoodFR_hanireDetectionModel = None
+        hoodFR_endSegmentationModel = None
 
-        #Detection Model
-        path_hoodFR_holeIdentification = "./aikensa/models/classify_holes_or_not.pt"
         #Classification Model
-        path_hoodFR_clipDetectionModel = "./aikensa/models/detect_clip_and_holes.pt"
-        path_hoodFR_hanireDetectionModel = "./aikensa/models/classify_hanire.pt"
+        path_hoodFR_clipDetectionModel = "./aikensa/models/65820W030P_CLIP.pt"
+        path_hoodFR_holeDetectionModel = "./aikensa/models/65820W030P_MIZUANA.pt"
+        #Segmentation Model
+        path_hoodFR_endSegmentationModel = "./aikensa/models/65820W030P_END_SEGMENTATION.pt"
 
-        if os.path.exists(path_hoodFR_holeIdentification):
-            hoodFR_holeIdentification = YOLO(path_hoodFR_holeIdentification)
+
+        if os.path.exists(path_hoodFR_holeDetectionModel):
+            hoodFR_holeDetectionModel = YOLO(path_hoodFR_holeDetectionModel)
         
         if os.path.exists(path_hoodFR_clipDetectionModel):
             hoodFR_clipDetectionModel = AutoDetectionModel.from_pretrained(model_type="yolov8",
                                                                             model_path=path_hoodFR_clipDetectionModel,
-                                                                            confidence_threshold=0.7,
+                                                                            confidence_threshold=0.5,
                                                                             device="cuda:0")
-        if os.path.exists(path_hoodFR_hanireDetectionModel):
-            hoodFR_hanireDetectionModel = AutoDetectionModel.from_pretrained(model_type="yolov8",
-                                                                            model_path=path_hoodFR_hanireDetectionModel,
-                                                                            confidence_threshold=0.6,
-                                                                            device="cuda:0")
+        if os.path.exists(path_hoodFR_endSegmentationModel):
+            hoodFR_endSegmentationModel = YOLO(path_hoodFR_endSegmentationModel)
 
-        self.hoodFR_holeIdentification = hoodFR_holeIdentification
+        self.hoodFR_holeDetectionModel = hoodFR_holeDetectionModel
         self.hoodFR_clipDetectionModel = hoodFR_clipDetectionModel
         self.hoodFR_hanireDetectionModel = hoodFR_hanireDetectionModel
+        self.hoodFR_endSegmentationModel = hoodFR_endSegmentationModel
 
-        if self.hoodFR_holeIdentification is not None:
-            print("HoodFR Hole Identification Model Initialized")
+        if self.hoodFR_holeDetectionModel is not None:
+            print("HoodFR Hole Detection Model Initialized")
         if self.hoodFR_clipDetectionModel is not None:
             print("HoodFR Clip Detection Model Initialized")
-        if self.hoodFR_hanireDetectionModel is not None:
-            print("HoodFR Hanire Detection Model Initialized")
+        if self.hoodFR_endSegmentationModel is not None:
+            print("HoodFR End Segmentation Model Initialized")
+
 
 
 

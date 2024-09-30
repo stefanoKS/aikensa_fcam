@@ -138,6 +138,8 @@ class AIKensa(QMainWindow):
         self.inspection_thread.hoodFR_InspectionResult_PitchMeasured.connect(self._outputMeasurementText)
         self.inspection_thread.hoodFR_InspectionStatus.connect(self._inspectionStatusText)
 
+        self.inspection_thread.hoodFR_HoleStatus.connect(self._inspectionStatusHole)
+
 
         self.inspection_thread.ethernet_status_red_tenmetsu.connect(self._setEthernetStatusTenmetsuRed)
         self.inspection_thread.ethernet_status_green_hold.connect(self._setEthernetStatusHoldGreen)
@@ -276,6 +278,7 @@ class AIKensa(QMainWindow):
                 button_main_menu.clicked.connect(lambda: self.stackedWidget.setCurrentIndex(0))
                 # button_main_menu.clicked.connect(lambda: self._set_cam_params(self.cam_thread, 'widget', 0))
                 button_main_menu.clicked.connect(lambda: self._set_calib_params(self.calibration_thread, 'widget', 0))
+                button_main_menu.clicked.connect(lambda: self._set_inspection_params(self.inspection_thread, 'widget', 0))
                 button_dailytenken_kanryou.clicked.connect(lambda: self.stackedWidget.setCurrentIndex(0))
                 # button_dailytenken_kanryou.clicked.connect(lambda: self._set_cam_params(self.cam_thread, 'widget', 0))
 
@@ -537,6 +540,20 @@ class AIKensa(QMainWindow):
                     label.setStyleSheet("QLabel { background-color: green; }")
                 elif status == "NG":
                     label.setStyleSheet("QLabel { background-color: red; }")
+
+    def _inspectionStatusHole(self, holeStatus):
+        label_names = ["MizuAnaStatus1", "MizuAnaStatus2", "MizuAnaStatus3", "MizuAnaStatus4", "MizuAnaStatus5"]
+        # print(holeStatus)
+        for i, status in enumerate(holeStatus):
+            widget = self.stackedWidget.widget(8)
+            label = widget.findChild(QLabel, label_names[i])
+            if label:
+                if status == 1:
+                    label.setStyleSheet("QLabel { background-color: green; }")
+                elif status == 0:
+                    label.setStyleSheet("QLabel { background-color: red; }")
+                else:
+                    label.setStyleSheet("QLabel { background-color: yellow; }")
 
     def _outputMeasurementText(self, measurementValue):
 
