@@ -279,6 +279,7 @@ class InspectionThread(QThread):
         self.InspectionTimeStart = None
 
         self.test = 0
+        self.firstTimeInspection = True
 
     def release_all_camera(self):
         if self.cap_cam0 is not None:
@@ -695,6 +696,22 @@ class InspectionThread(QThread):
                             self.InspectionResult_PitchResult = self.InspectionResult_PitchResult_prev.copy()
                             self.InspectionStatus = self.InspectionStatus_prev.copy()
 
+                            ng_exists = False
+                            for status in self.InspectionResult_Status:
+                                if status == "NG":
+                                    ng_exists = True
+                                    break
+
+                            if ng_exists:
+                                for i, sensor_value in enumerate(self.inspection_config.kouden_sensor):
+                                    if sensor_value == 0:  # 0 indicates the part has been removed
+                                        if self.InspectionResult_Status[i] == "OK":
+                                            play_alarm_sound()  # Alarm if a good part is being removed
+                                        elif self.InspectionResult_Status[i] == "NG":
+                                            self.InspectionResult_Status[i] = "None"
+                                            play_picking_sound()  # Confirm removal of the NG part
+            
+
                         if all(sensor == 0 for sensor in self.inspection_config.kouden_sensor):
                             self.InspectionImages_prev[0] = None
 
@@ -738,7 +755,8 @@ class InspectionThread(QThread):
                         
                         if self.InspectionTimeStart is not None:
 
-                            if time.time() - self.InspectionTimeStart > self.InspectionWaitTime:
+                            if time.time() - self.InspectionTimeStart > self.InspectionWaitTime or self.firstTimeInspection is True:
+                                self.firstTimeInspection is False
                                 print("Inspection Started") 
                                 self.InspectionTimeStart = time.time()
                                 
@@ -861,6 +879,13 @@ class InspectionThread(QThread):
                                         detected_pitch_str = self.InspectionResult_PitchMeasured[i], 
                                         delta_pitch_str = self.InspectionResult_DeltaPitch[i], 
                                         total_length=0)
+                                    
+                                    #save hole image
+                                    self.save_image_hole(self.holeFrame1, False, "P1")
+                                    self.save_image_hole(self.holeFrame2, False, "P2")
+                                    self.save_image_hole(self.holeFrame3, False, "P3")
+                                    self.save_image_hole(self.holeFrame4, False, "P4")
+                                    self.save_image_hole(self.holeFrame5, False, "P5")
                                     
                                     self.hoodFR_InspectionStatus.emit(self.InspectionStatus)
 
