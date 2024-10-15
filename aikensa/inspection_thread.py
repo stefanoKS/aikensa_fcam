@@ -275,7 +275,7 @@ class InspectionThread(QThread):
             8: "65820W030P",
         }
 
-        self.InspectionWaitTime = 4.0
+        self.InspectionWaitTime = 8.0
         self.InspectionTimeStart = None
 
     def release_all_camera(self):
@@ -794,9 +794,9 @@ class InspectionThread(QThread):
                                             slice_height=180, slice_width=1280, 
                                             overlap_height_ratio=0.0, overlap_width_ratio=0.3,
                                             postprocess_match_metric="IOS",
-                                            postprocess_match_threshold=0.1,
+                                            postprocess_match_threshold=0.005,
                                             postprocess_class_agnostic=True,
-                                            postprocess_type="NMS",
+                                            postprocess_type="GREEDYNMM",
                                             verbose=0,
                                             perform_standard_pred=True
                                         )

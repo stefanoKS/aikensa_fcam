@@ -535,7 +535,7 @@ class AIKensa(QMainWindow):
                 if status == "製品検出済み":
                     label.setStyleSheet("QLabel { background-color: lightblue; }")
                 elif status == "製品未検出":
-                    label.setStyleSheet("QLabel { background-color: orange; }")
+                    label.setStyleSheet("QLabel { background-color: pink; }")
                 elif status == "OK":
                     label.setStyleSheet("QLabel { background-color: green; }")
                 elif status == "NG":
