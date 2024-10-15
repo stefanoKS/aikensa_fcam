@@ -747,8 +747,8 @@ class InspectionThread(QThread):
 
                     # print(time.time() - self.InspectionTimeStart)
 
-                    if time.time() - self.InspectionTimeStart < self.InspectionWaitTime:
-                        self.inspection_config.doInspection = False
+                    # if time.time() - self.InspectionTimeStart < self.InspectionWaitTime:
+                    #     self.inspection_config.doInspection = False
 
                     if self.inspection_config.doInspection is True:
                         self.inspection_config.doInspection = False
