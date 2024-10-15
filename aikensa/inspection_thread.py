@@ -275,8 +275,10 @@ class InspectionThread(QThread):
             8: "65820W030P",
         }
 
-        self.InspectionWaitTime = 8.0
+        self.InspectionWaitTime = 12.0
         self.InspectionTimeStart = None
+
+        self.test = 0
 
     def release_all_camera(self):
         if self.cap_cam0 is not None:
@@ -833,7 +835,7 @@ class InspectionThread(QThread):
 
                                         #Play konpou sound if the current_numofPart is dividable by 25
                                         if self.inspection_config.current_numofPart[self.inspection_config.widget][0] % 25 == 0 and self.inspection_config.current_numofPart[self.inspection_config.widget][0] != 0:
-                                            self.play_konpou_sound()
+                                            play_konpou_sound()
 
                                         self.InspectionStatus[i] = "OK"
 
@@ -859,6 +861,8 @@ class InspectionThread(QThread):
                                         detected_pitch_str = self.InspectionResult_PitchMeasured[i], 
                                         delta_pitch_str = self.InspectionResult_DeltaPitch[i], 
                                         total_length=0)
+                                    
+                                    self.hoodFR_InspectionStatus.emit(self.InspectionStatus)
 
                                 self.save_image_result(self.part1Crop, self.InspectionImages[0], self.InspectionResult_Status[0], True, "P1")
                                 self.save_image_result(self.part2Crop, self.InspectionImages[1], self.InspectionResult_Status[1], True, "P2")
@@ -900,7 +904,7 @@ class InspectionThread(QThread):
                                 self.part4Cam.emit(self.converQImageRGB(self.InspectionImages[3]))
                                 self.part5Cam.emit(self.converQImageRGB(self.InspectionImages[4]))
 
-                                self.hoodFR_InspectionStatus.emit(self.InspectionStatus)
+                                # self.hoodFR_InspectionStatus.emit(self.InspectionStatus)
 
                 #emit the ethernet 
                 self.today_numofPart_signal.emit(self.inspection_config.today_numofPart)
