@@ -66,7 +66,7 @@ class AIKensa(QMainWindow):
         PORT = 30001  # Use the port number from SiO settings
 
         self.server_monitor_thread = ServerMonitorThread(
-            HOST, PORT, check_interval=0.08)
+            HOST, PORT, check_interval=0.1)
         self.server_monitor_thread.server_status_signal.connect(self.handle_server_status)
         self.server_monitor_thread.input_states_signal.connect(self.handle_input_states)
         self.server_monitor_thread.input_states_signal.connect(self._sentInputToInspectionThread)
@@ -82,6 +82,10 @@ class AIKensa(QMainWindow):
         self.widget_dir_map = {
             8: "65820W030P",
         }
+
+        self.prevTriggerStates = 0
+        self.TriggerWaitTime = 2.0
+        self.currentTime = time.time()
 
     def timeUpdate(self, time):
         for label in self.timeLabel:
@@ -102,8 +106,14 @@ class AIKensa(QMainWindow):
     def handle_input_states(self, input_states):
         # print(f"Input states: {input_states}")
         if input_states:
-            if input_states[5] == 1:
+            if input_states[5] == 1 and self.prevTriggerStates == 0:
                 self.trigger_kensa()
+                self.prevTriggerStates = input_states[5]
+                # print("Triggered Kensa")
+            if time.time() - self.currentTime > self.TriggerWaitTime:
+                # print("timePassed")
+                self.prevTriggerStates = 0
+                self.currentTime = time.time()
             else:
                 pass
 
@@ -244,12 +254,12 @@ class AIKensa(QMainWindow):
 
         self.siostatus_server = [self.stackedWidget.widget(i).findChild(QLabel, "status_sio") for i in [0, 1, 2, 3, 4, 5, 6, 7, 8, 21, 22, 23]]
 
-        self.inspection_widget_indices = [8]
+        # self.inspection_widget_indices = [8]
 
-        for i in self.inspection_widget_indices:
-            self.Inspect_button = self.stackedWidget.widget(i).findChild(QPushButton, "InspectButton")
-            if self.Inspect_button:
-                self.Inspect_button.clicked.connect(lambda: self._set_inspection_params(self.inspection_thread, "doInspection", True))
+        # for i in self.inspection_widget_indices:
+        self.Inspect_button = self.stackedWidget.widget(8).findChild(QPushButton, "InspectButton")
+        if self.Inspect_button:
+            self.Inspect_button.clicked.connect(lambda: self._set_inspection_params(self.inspection_thread, "doInspection", True))
 
 
         for i in [8]:

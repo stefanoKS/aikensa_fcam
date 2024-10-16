@@ -275,7 +275,7 @@ class InspectionThread(QThread):
             8: "65820W030P",
         }
 
-        self.InspectionWaitTime = 12.0
+        self.InspectionWaitTime = 15.0
         self.InspectionTimeStart = None
 
         self.test = 0
@@ -747,11 +747,22 @@ class InspectionThread(QThread):
 
                     # print(time.time() - self.InspectionTimeStart)
 
-                    # if time.time() - self.InspectionTimeStart < self.InspectionWaitTime:
-                    #     self.inspection_config.doInspection = False
+                    if self.firstTimeInspection is False:
+                        if time.time() - self.InspectionTimeStart < self.InspectionWaitTime:
+                            self.inspection_config.doInspection = False
+
+                    print(f"InspectionConfig: {self.inspection_config.doInspection}")
 
                     if self.inspection_config.doInspection is True:
                         self.inspection_config.doInspection = False
+
+                        # if self.inspection_config.kensainNumber is None or self.inspection_config.kensainNumber == "":
+                        #     #Break the bottom if 
+                        #     print("No Kensain Number Input")
+                        #     for i in range (len(self.InspectionStatus)):
+                        #         self.InspectionStatus[i] = "社員番号未入力"
+                        #     self.hoodFR_InspectionStatus.emit(self.InspectionStatus)
+                        #     continue
                         
                         if self.InspectionTimeStart is not None:
 
