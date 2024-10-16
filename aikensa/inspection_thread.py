@@ -756,13 +756,13 @@ class InspectionThread(QThread):
                     if self.inspection_config.doInspection is True:
                         self.inspection_config.doInspection = False
 
-                        # if self.inspection_config.kensainNumber is None or self.inspection_config.kensainNumber == "":
-                        #     #Break the bottom if 
-                        #     print("No Kensain Number Input")
-                        #     for i in range (len(self.InspectionStatus)):
-                        #         self.InspectionStatus[i] = "社員番号未入力"
-                        #     self.hoodFR_InspectionStatus.emit(self.InspectionStatus)
-                        #     continue
+                        if self.inspection_config.kensainNumber is None or self.inspection_config.kensainNumber == "":
+                            #Break the bottom if 
+                            print("No Kensain Number Input")
+                            for i in range (len(self.InspectionStatus)):
+                                self.InspectionStatus[i] = "社員番号未入力"
+                            self.hoodFR_InspectionStatus.emit(self.InspectionStatus)
+                            continue
                         
                         if self.InspectionTimeStart is not None:
 

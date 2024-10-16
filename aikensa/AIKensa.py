@@ -274,6 +274,8 @@ class AIKensa(QMainWindow):
             #connect reset button
             self.connect_inspectionConfig_button(i, "counterReset", "counterReset", True)
 
+        self.connect_line_edit_text_changed(widget_index=8, line_edit_name="kensain_name", inspection_param="kensainNumber")
+
 
        # Find and connect quit buttons and main menu buttons in all widgets
         for i in range(self.stackedWidget.count()):
@@ -618,6 +620,12 @@ class AIKensa(QMainWindow):
 
     def _set_inspection_params(self, thread, key, value):
         setattr(thread.inspection_config, key, value)
+
+    def connect_line_edit_text_changed(self, widget_index, line_edit_name, inspection_param):
+        widget = self.stackedWidget.widget(widget_index)
+        line_edit = widget.findChild(QLineEdit, line_edit_name)
+        if line_edit:
+            line_edit.textChanged.connect(lambda text: self._set_inspection_params(self.inspection_thread, inspection_param, text))
 
 
 def main():
