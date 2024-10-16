@@ -187,13 +187,9 @@ class AIKensa(QMainWindow):
         partInspection_P65820W030P_button = main_widget.findChild(QPushButton, "P65820W030Pbutton")
 
 
-        dailytenken01_widget = self.stackedWidget.widget(21)
-        dailytenken02_widget = self.stackedWidget.widget(22)
-        dailytenken03_widget = self.stackedWidget.widget(23)
-        button_dailytenken01 = main_widget.findChild(QPushButton, "dailytenkenbutton")
-        button_dailytenken02 = dailytenken01_widget.findChild(QPushButton, "nextButton")
-        button_dailytenken03 = dailytenken02_widget.findChild(QPushButton, "nextButton")
-        button_dailytenken_kanryou = dailytenken03_widget.findChild(QPushButton, "finishButton")
+        dailytenken01_P65820W030P_widget = self.stackedWidget.widget(21)
+        dailytenken01_P65820W030P_button = main_widget.findChild(QPushButton, "dailytenkenbutton")
+        dailytenken01_P65820W030P_kanryou_button = dailytenken01_P65820W030P_widget.findChild(QPushButton, "finishButton")
 
         self.siostatus = main_widget.findChild(QLabel, "status_sio")
         self.timeLabel = [self.stackedWidget.widget(i).findChild(QLabel, "timeLabel") for i in [0, 1, 2, 3, 4, 5, 6, 7, 8]]
@@ -225,10 +221,13 @@ class AIKensa(QMainWindow):
         if partInspection_P65820W030P_button:
             partInspection_P65820W030P_button.clicked.connect(lambda: self.stackedWidget.setCurrentIndex(8))
             partInspection_P65820W030P_button.clicked.connect(lambda: self._set_inspection_params(self.inspection_thread, 'widget', 8))
-            #Starting the inspection thread
-            partInspection_P65820W030P_button.clicked.connect(self.inspection_thread.start)
-            #Closing the calibration thread once the inspection thread is started
+            partInspection_P65820W030P_button.clicked.connect(lambda: self.inspection_thread.start() if not self.inspection_thread.isRunning() else None)
             partInspection_P65820W030P_button.clicked.connect(self.calibration_thread.stop)
+        if dailytenken01_P65820W030P_button:
+            dailytenken01_P65820W030P_button.clicked.connect(lambda: self.stackedWidget.setCurrentIndex(21))
+            dailytenken01_P65820W030P_button.clicked.connect(lambda: self._set_inspection_params(self.inspection_thread, 'widget', 21))
+            dailytenken01_P65820W030P_button.clicked.connect(lambda: self.inspection_thread.start() if not self.inspection_thread.isRunning() else None)
+            dailytenken01_P65820W030P_button.clicked.connect(self.calibration_thread.stop)        
 
         for i in range(1, 6):
             CalibrateSingleFrame = self.stackedWidget.widget(i).findChild(QPushButton, "calibSingleFrame")
@@ -257,9 +256,16 @@ class AIKensa(QMainWindow):
         # self.inspection_widget_indices = [8]
 
         # for i in self.inspection_widget_indices:
-        self.Inspect_button = self.stackedWidget.widget(8).findChild(QPushButton, "InspectButton")
-        if self.Inspect_button:
-            self.Inspect_button.clicked.connect(lambda: self._set_inspection_params(self.inspection_thread, "doInspection", True))
+        # self.Inspect_button = self.stackedWidget.widget(8).findChild(QPushButton, "InspectButton")
+        # if self.Inspect_button:
+        #     self.Inspect_button.clicked.connect(lambda: self._set_inspection_params(self.inspection_thread, "doInspection", True))
+
+        self.inspection_widget_indices = [8, 21]
+
+        for i in self.inspection_widget_indices:
+            self.Inspect_button = self.stackedWidget.widget(i).findChild(QPushButton, "InspectButton")
+            if self.Inspect_button:
+                self.Inspect_button.clicked.connect(lambda: self._set_inspection_params(self.inspection_thread, "doInspection", True))
 
 
         for i in [8]:
