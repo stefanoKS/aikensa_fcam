@@ -204,7 +204,8 @@ class InspectionThread(QThread):
         self.part_height_offset = 110
         self.part_height_offset_scaled = int(self.part_height_offset//self.scale_factor)
 
-        self.dailyTenken_cropWidth = 350
+        self.dailyTenken_cropWidth = 950
+        self.dailyTenken_cropWidth_scaled = int(self.dailyTenken_cropWidth//self.scale_factor)
 
         self.part1Crop_YPos = 15
         self.part2Crop_YPos = 290
@@ -1012,18 +1013,9 @@ class InspectionThread(QThread):
                 
                     if self.inspection_config.doInspection is False:
 
-                        # self.mergeframe1_scaled = cv2.remap(self.mergeframe1_scaled, self.inspection_config.map1_downscaled[1], self.inspection_config.map2_downscaled[1], interpolation=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT)
-                        # self.mergeframe2_scaled = cv2.remap(self.mergeframe2_scaled, self.inspection_config.map1_downscaled[2], self.inspection_config.map2_downscaled[2], interpolation=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT)
                         self.mergeframe3_scaled = cv2.remap(self.mergeframe3_scaled, self.inspection_config.map1_downscaled[3], self.inspection_config.map2_downscaled[3], interpolation=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT)
-                        # self.mergeframe4_scaled = cv2.remap(self.mergeframe4_scaled, self.inspection_config.map1_downscaled[4], self.inspection_config.map2_downscaled[4], interpolation=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT)
-                        # self.mergeframe5_scaled = cv2.remap(self.mergeframe5_scaled, self.inspection_config.map1_downscaled[5], self.inspection_config.map2_downscaled[5], interpolation=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT)
 
-                        # self.combinedImage_scaled = warpTwoImages_template(self.homography_blank_canvas_scaled, self.mergeframe1_scaled, self.H1_scaled)
-                        # self.combinedImage_scaled = warpTwoImages_template(self.combinedImage_scaled, self.mergeframe2_scaled, self.H2_scaled)
-                        # self.combinedImage_scaled = warpTwoImages_template(self.combinedImage_scaled, self.mergeframe3_scaled, self.H3_scaled)
                         self.combinedImage_scaled = warpTwoImages_template(self.homography_blank_canvas_scaled, self.mergeframe3_scaled, self.H3_scaled)
-                        # self.combinedImage_scaled = warpTwoImages_template(self.combinedImage_scaled, self.mergeframe4_scaled, self.H4_scaled)
-                        # self.combinedImage_scaled = warpTwoImages_template(self.combinedImage_scaled, self.mergeframe5_scaled, self.H5_scaled)
 
                         self.combinedImage_scaled = cv2.warpPerspective(self.combinedImage_scaled, self.planarizeTransform_scaled, (int(self.homography_size[1]/self.scale_factor), int(self.homography_size[0]/self.scale_factor)))
                         self.combinedImage_scaled = cv2.resize(self.combinedImage_scaled, (int(self.homography_size[1]/(self.scale_factor*1.48)), int(self.homography_size[0]/(self.scale_factor*1.26*1.48))))#1.48 for the qt, 1.26 for the aspect ratio
@@ -1032,11 +1024,12 @@ class InspectionThread(QThread):
                         self.part3Crop_scaled = self.combinedImage_scaled[self.part3Crop_YPos_scaled : self.part3Crop_YPos_scaled + self.part_height_offset_scaled, 0 : self.homography_size_scaled[1]]
                         #crop the image again, taking the center area with the width of self.dailyTenken_cropWidth only
                         cv2.imwrite("part3Crop_scaled.png", self.part3Crop_scaled)
-                        self.part3Crop_scaled = self.part3Crop_scaled[:, int((self.homography_size_scaled[1] - self.dailyTenken_cropWidth_scaled)/2) : int((self.homography_size_scaled[1] + self.dailyTenken_cropWidth_scaled)/2)]
+
+                        self.part3Crop_scaled = self.part3Crop_scaled[:, int((self.part3Crop_scaled.shape[1] - self.dailyTenken_cropWidth_scaled)/2) : int((self.part3Crop_scaled.shape[1] + self.dailyTenken_cropWidth_scaled)/2)]
+                        cv2.imwrite("part3Crop2_scaled.png", self.part3Crop_scaled)
 
 
-
-                        self.part3Crop_scaled = self.downSampling(self.part3Crop_scaled, width=1771, height=24)
+                        self.part3Crop_scaled = self.downSampling(self.part3Crop_scaled, width=1710, height=198)
 
                         self.InspectionResult_PitchMeasured = [None]*5
                         self.InspectionResult_PitchResult = [None]*5
@@ -1058,13 +1051,13 @@ class InspectionThread(QThread):
                     if self.inspection_config.doInspection is True:
                         self.inspection_config.doInspection = False
 
-                        if self.inspection_config.kensainNumber is None or self.inspection_config.kensainNumber == "":
-                            #Break the bottom if 
-                            print("No Kensain Number Input")
-                            for i in range (len(self.InspectionStatus)):
-                                self.InspectionStatus[i] = "社員番号未入力"
-                            self.hoodFR_InspectionStatus.emit(self.InspectionStatus)
-                            continue
+                        # if self.inspection_config.kensainNumber is None or self.inspection_config.kensainNumber == "":
+                        #     #Break the bottom if 
+                        #     print("No Kensain Number Input")
+                        #     for i in range (len(self.InspectionStatus)):
+                        #         self.InspectionStatus[i] = "社員番号未入力"
+                        #     self.hoodFR_InspectionStatus.emit(self.InspectionStatus)
+                        #     continue
                         
                         if self.InspectionTimeStart is not None:
 
@@ -1072,32 +1065,18 @@ class InspectionThread(QThread):
                                 self.firstTimeInspection is False
                                 print("Inspection Started") 
                                 self.InspectionTimeStart = time.time()
-                                
-                                for i in range (len(self.InspectionStatus)):
-                                    self.InspectionStatus[i] = "検査中"
-                                self.hoodFR_InspectionStatus.emit(self.InspectionStatus)
 
-                                self.mergeframe1 = cv2.remap(self.mergeframe1, self.inspection_config.map1[1], self.inspection_config.map2[1], interpolation=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT)
-                                self.mergeframe2 = cv2.remap(self.mergeframe2, self.inspection_config.map1[2], self.inspection_config.map2[2], interpolation=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT)
                                 self.mergeframe3 = cv2.remap(self.mergeframe3, self.inspection_config.map1[3], self.inspection_config.map2[3], interpolation=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT)
-                                self.mergeframe4 = cv2.remap(self.mergeframe4, self.inspection_config.map1[4], self.inspection_config.map2[4], interpolation=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT)
-                                self.mergeframe5 = cv2.remap(self.mergeframe5, self.inspection_config.map1[5], self.inspection_config.map2[5], interpolation=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT)
 
-                                self.combinedImage = warpTwoImages_template(self.homography_blank_canvas, self.mergeframe1, self.H1)
-                                self.combinedImage = warpTwoImages_template(self.combinedImage, self.mergeframe2, self.H2)
-                                self.combinedImage = warpTwoImages_template(self.combinedImage, self.mergeframe3, self.H3)
-                                self.combinedImage = warpTwoImages_template(self.combinedImage, self.mergeframe4, self.H4)
-                                self.combinedImage = warpTwoImages_template(self.combinedImage, self.mergeframe5, self.H5)
+                                self.combinedImage = warpTwoImages_template(self.homography_blank_canvas, self.mergeframe3, self.H3)
                                                                             
                                 self.combinedImage = cv2.warpPerspective(self.combinedImage, self.planarizeTransform, (int(self.homography_size[1]), int(self.homography_size[0])))
                                 self.combinedImage = cv2.resize(self.combinedImage, (self.homography_size[1], int(self.homography_size[0]/(1.26))))#1.48 for the qt, 1.26 for the aspect ratio
 
                                 # Crop the image scaled for each part
-                                self.part1Crop = self.combinedImage[int(self.part1Crop_YPos*1.48) : int((self.part1Crop_YPos + self.part_height_offset)*1.48), 0 : int(self.homography_size[1]*1.48)]
-                                self.part2Crop = self.combinedImage[int(self.part2Crop_YPos*1.48) : int((self.part2Crop_YPos + self.part_height_offset)*1.48), 0 : int(self.homography_size[1]*1.48)]
-                                self.part3Crop = self.combinedImage[int(self.part3Crop_YPos*1.48) : int((self.part3Crop_YPos + self.part_height_offset)*1.48), 0 : int(self.homography_size[1]*1.48)]
-                                self.part4Crop = self.combinedImage[int(self.part4Crop_YPos*1.48) : int((self.part4Crop_YPos + self.part_height_offset)*1.48), 0 : int(self.homography_size[1]*1.48)]
-                                self.part5Crop = self.combinedImage[int(self.part5Crop_YPos*1.48) : int((self.part5Crop_YPos + self.part_height_offset)*1.48), 0 : int(self.homography_size[1]*1.48)]
+                                
+                                self.part3Crop = self.combinedImage_scaled[self.part3Crop_YPos : self.part3Crop_YPos + self.part_height_offset, 0 : self.homography_size[1]]
+                                
 
                                 #Need to convert to BGR for SAHI Inspection
                                 self.part1Crop = cv2.cvtColor(self.part1Crop, cv2.COLOR_RGB2BGR)

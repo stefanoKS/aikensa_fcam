@@ -145,6 +145,8 @@ class AIKensa(QMainWindow):
         self.inspection_thread.hole4Cam.connect(self._setHoleFrame4)
         self.inspection_thread.hole5Cam.connect(self._setHoleFrame5)
 
+        self.inspection_thread.dailytenkenCam.connect(self._dailyTenkenFrame)
+
         self.inspection_thread.hoodFR_InspectionResult_PitchMeasured.connect(self._outputMeasurementText)
         self.inspection_thread.hoodFR_InspectionStatus.connect(self._inspectionStatusText)
 
@@ -297,7 +299,7 @@ class AIKensa(QMainWindow):
                 # button_main_menu.clicked.connect(lambda: self._set_cam_params(self.cam_thread, 'widget', 0))
                 button_main_menu.clicked.connect(lambda: self._set_calib_params(self.calibration_thread, 'widget', 0))
                 button_main_menu.clicked.connect(lambda: self._set_inspection_params(self.inspection_thread, 'widget', 0))
-                button_dailytenken_kanryou.clicked.connect(lambda: self.stackedWidget.setCurrentIndex(0))
+                dailytenken01_P65820W030P_kanryou_button.clicked.connect(lambda: self.stackedWidget.setCurrentIndex(0))
                 # button_dailytenken_kanryou.clicked.connect(lambda: self._set_cam_params(self.cam_thread, 'widget', 0))
 
         # self.stackedWidget.currentChanged.connect(self._on_widget_changed)
@@ -430,6 +432,11 @@ class AIKensa(QMainWindow):
     def _setPartFrame1(self, image):
         widget = self.stackedWidget.widget(8)
         label1 = widget.findChild(QLabel, "FramePart1")
+        label1.setPixmap(QPixmap.fromImage(image))
+
+    def _dailyTenkenFrame(self, image):
+        widget = self.stackedWidget.widget(21)
+        label1 = widget.findChild(QLabel, "dailytenkenFrame")
         label1.setPixmap(QPixmap.fromImage(image))
 
     def _setPartFrame2(self, image):
