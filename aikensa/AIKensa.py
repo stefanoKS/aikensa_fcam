@@ -262,7 +262,7 @@ class AIKensa(QMainWindow):
         # if self.Inspect_button:
         #     self.Inspect_button.clicked.connect(lambda: self._set_inspection_params(self.inspection_thread, "doInspection", True))
 
-        self.inspection_widget_indices = [8, 21]
+        self.inspection_widget_indices = [8]
 
         for i in self.inspection_widget_indices:
             self.Inspect_button = self.stackedWidget.widget(i).findChild(QPushButton, "InspectButton")
