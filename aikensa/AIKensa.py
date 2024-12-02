@@ -31,8 +31,8 @@ UI_FILES = [
     'aikensa/qtui/calibration_cam5.ui', # index 5
     'aikensa/qtui/camera_merge.ui',                # index 6
     'aikensa/qtui/edgedetection.ui',        # index 7
-    "aikensa/qtui/P65820W030P.ui",           # index 8
-    "aikensa/qtui/empty.ui", #empty 9
+    "aikensa/qtui/P65820W030P.ui",           # Mitsubishi 5A45 Hood FR index 8
+    "aikensa/qtui/P658207YA0A.ui" ,          # Nissan Hood FR index 9
     "aikensa/qtui/empty.ui", #empty 10
     "aikensa/qtui/empty.ui", #empty 11
     "aikensa/qtui/empty.ui", #empty 12
@@ -81,6 +81,7 @@ class AIKensa(QMainWindow):
 
         self.widget_dir_map = {
             8: "65820W030P",
+            9: "658207YA0A",
         }
 
         self.prevTriggerStates = 0
@@ -152,6 +153,9 @@ class AIKensa(QMainWindow):
 
         self.inspection_thread.hoodFR_HoleStatus.connect(self._inspectionStatusHole)
 
+        self.inspection_thread.P8462284S00_InspectionResult_PitchMeasured.connect(self._P8462284S00_outputMeasurementText)
+        self.inspection_thread.P8462284S00_InspectionStatus.connect(self._P8462284S00_inspectionStatusText)
+
 
         self.inspection_thread.ethernet_status_red_tenmetsu.connect(self._setEthernetStatusTenmetsuRed)
         self.inspection_thread.ethernet_status_green_hold.connect(self._setEthernetStatusHoldGreen)
@@ -186,7 +190,22 @@ class AIKensa(QMainWindow):
         cameraCalibration4_button = main_widget.findChild(QPushButton, "camcalibrationbutton4")
         cameraCalibration5_button = main_widget.findChild(QPushButton, "camcalibrationbutton5")
         mergeCamera_button = main_widget.findChild(QPushButton, "cameraMerge")
-        partInspection_P65820W030P_button = main_widget.findChild(QPushButton, "P65820W030Pbutton")
+        # partInspection_P65820W030P_button = main_widget.findChild(QPushButton, "P65820W030Pbutton")
+
+        button_config = {
+            "P65820W030Pbutton": {"widget_index": 8, "inspection_param": 8},
+            "P658207LE0Abutton": {"widget_index": 9, "inspection_param": 9},
+        }
+
+        for button_name, config in button_config.items():
+            button = main_widget.findChild(QPushButton, button_name)
+            
+            if button:
+                # Connect each signal with the necessary parameters
+                button.clicked.connect(lambda _, idx=config["widget_index"]: self.stackedWidget.setCurrentIndex(idx))
+                button.clicked.connect(lambda _, param=config["inspection_param"]: self._set_inspection_params(self.inspection_thread, 'widget', param))
+                button.clicked.connect(lambda: self.inspection_thread.start() if not self.inspection_thread.isRunning() else None)
+                button.clicked.connect(self.calibration_thread.stop)
 
 
         dailytenken01_P65820W030P_widget = self.stackedWidget.widget(21)
@@ -194,7 +213,7 @@ class AIKensa(QMainWindow):
         dailytenken01_P65820W030P_kanryou_button = dailytenken01_P65820W030P_widget.findChild(QPushButton, "finishButton")
 
         self.siostatus = main_widget.findChild(QLabel, "status_sio")
-        self.timeLabel = [self.stackedWidget.widget(i).findChild(QLabel, "timeLabel") for i in [0, 1, 2, 3, 4, 5, 6, 7, 8]]
+        self.timeLabel = [self.stackedWidget.widget(i).findChild(QLabel, "timeLabel") for i in [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]]
 
         if cameraCalibration1_button:
             cameraCalibration1_button.clicked.connect(lambda: self.stackedWidget.setCurrentIndex(1))
@@ -220,11 +239,11 @@ class AIKensa(QMainWindow):
             mergeCamera_button.clicked.connect(lambda: self.stackedWidget.setCurrentIndex(6))
             mergeCamera_button.clicked.connect(lambda: self._set_calib_params(self.calibration_thread, 'widget', 6))
             mergeCamera_button.clicked.connect(self.calibration_thread.start)
-        if partInspection_P65820W030P_button:
-            partInspection_P65820W030P_button.clicked.connect(lambda: self.stackedWidget.setCurrentIndex(8))
-            partInspection_P65820W030P_button.clicked.connect(lambda: self._set_inspection_params(self.inspection_thread, 'widget', 8))
-            partInspection_P65820W030P_button.clicked.connect(lambda: self.inspection_thread.start() if not self.inspection_thread.isRunning() else None)
-            partInspection_P65820W030P_button.clicked.connect(self.calibration_thread.stop)
+        # if partInspection_P65820W030P_button:
+        #     partInspection_P65820W030P_button.clicked.connect(lambda: self.stackedWidget.setCurrentIndex(8))
+        #     partInspection_P65820W030P_button.clicked.connect(lambda: self._set_inspection_params(self.inspection_thread, 'widget', 8))
+        #     partInspection_P65820W030P_button.clicked.connect(lambda: self.inspection_thread.start() if not self.inspection_thread.isRunning() else None)
+        #     partInspection_P65820W030P_button.clicked.connect(self.calibration_thread.stop)
         if dailytenken01_P65820W030P_button:
             dailytenken01_P65820W030P_button.clicked.connect(lambda: self.stackedWidget.setCurrentIndex(21))
             dailytenken01_P65820W030P_button.clicked.connect(lambda: self._set_inspection_params(self.inspection_thread, 'widget', 21))
@@ -253,7 +272,7 @@ class AIKensa(QMainWindow):
         planarize_combined = mergeCamera_widget.findChild(QPushButton, "planarize")
         planarize_combined.clicked.connect(lambda: self._set_calib_params(self.calibration_thread, "savePlanarize", True))
 
-        self.siostatus_server = [self.stackedWidget.widget(i).findChild(QLabel, "status_sio") for i in [0, 1, 2, 3, 4, 5, 6, 7, 8, 21, 22, 23]]
+        self.siostatus_server = [self.stackedWidget.widget(i).findChild(QLabel, "status_sio") for i in [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 21, 22, 23]]
 
         # self.inspection_widget_indices = [8]
 
@@ -262,7 +281,7 @@ class AIKensa(QMainWindow):
         # if self.Inspect_button:
         #     self.Inspect_button.clicked.connect(lambda: self._set_inspection_params(self.inspection_thread, "doInspection", True))
 
-        self.inspection_widget_indices = [8]
+        self.inspection_widget_indices = [8, 9]
 
         for i in self.inspection_widget_indices:
             self.Inspect_button = self.stackedWidget.widget(i).findChild(QPushButton, "InspectButton")
@@ -270,7 +289,7 @@ class AIKensa(QMainWindow):
                 self.Inspect_button.clicked.connect(lambda: self._set_inspection_params(self.inspection_thread, "doInspection", True))
 
 
-        for i in [8]:
+        for i in [8, 9]:
             self.connect_inspectionConfig_button(i, "kansei_plus", "kansei_plus", True)
             self.connect_inspectionConfig_button(i, "kansei_minus", "kansei_minus", True)
             self.connect_inspectionConfig_button(i, "furyou_plus", "furyou_plus", True)
@@ -429,35 +448,40 @@ class AIKensa(QMainWindow):
         label = widget.findChild(QLabel, "camMergeAll")
         label.setPixmap(QPixmap.fromImage(image))
 
-    def _setPartFrame1(self, image):
-        widget = self.stackedWidget.widget(8)
-        label1 = widget.findChild(QLabel, "FramePart1")
-        label1.setPixmap(QPixmap.fromImage(image))
-
     def _dailyTenkenFrame(self, image):
         widget = self.stackedWidget.widget(21)
         label1 = widget.findChild(QLabel, "dailytenkenFrame")
         label1.setPixmap(QPixmap.fromImage(image))
+        
+    def _setPartFrame1(self, image):
+        for i in [8, 9]:
+            widget = self.stackedWidget.widget(i)
+            label1 = widget.findChild(QLabel, "FramePart1")
+            label1.setPixmap(QPixmap.fromImage(image))
 
     def _setPartFrame2(self, image):
-        widget = self.stackedWidget.widget(8)
-        label2 = widget.findChild(QLabel, "FramePart2")
-        label2.setPixmap(QPixmap.fromImage(image))
+        for i in [8, 9]:
+            widget = self.stackedWidget.widget(i)
+            label2 = widget.findChild(QLabel, "FramePart2")
+            label2.setPixmap(QPixmap.fromImage(image))
 
     def _setPartFrame3(self, image):
-        widget = self.stackedWidget.widget(8)
-        label3 = widget.findChild(QLabel, "FramePart3")
-        label3.setPixmap(QPixmap.fromImage(image))
+        for i in [8, 9]:
+            widget = self.stackedWidget.widget(i)
+            label3 = widget.findChild(QLabel, "FramePart3")
+            label3.setPixmap(QPixmap.fromImage(image))
 
     def _setPartFrame4(self, image):
-        widget = self.stackedWidget.widget(8)
-        label4 = widget.findChild(QLabel, "FramePart4")
-        label4.setPixmap(QPixmap.fromImage(image))
+        for i in [8, 9]:
+            widget = self.stackedWidget.widget(i)
+            label4 = widget.findChild(QLabel, "FramePart4")
+            label4.setPixmap(QPixmap.fromImage(image))
 
     def _setPartFrame5(self, image):
-        widget = self.stackedWidget.widget(8)
-        label5 = widget.findChild(QLabel, "FramePart5")
-        label5.setPixmap(QPixmap.fromImage(image))
+        for i in [8, 9]:
+            widget = self.stackedWidget.widget(i)
+            label5 = widget.findChild(QLabel, "FramePart5")
+            label5.setPixmap(QPixmap.fromImage(image))
 
     def _setHoleFrame1(self, image):
         widget = self.stackedWidget.widget(8)
@@ -566,6 +590,23 @@ class AIKensa(QMainWindow):
                 elif status == "NG":
                     label.setStyleSheet("QLabel { background-color: red; }")
 
+    def _P8462284S00_inspectionStatusText(self, inspectionStatus):
+        label_names = ["StatusP1", "StatusP2", "StatusP3", "StatusP4", "StatusP5"]
+
+        for i, status in enumerate(inspectionStatus):
+            widget = self.stackedWidget.widget(9)
+            label = widget.findChild(QLabel, label_names[i])
+            if label:
+                label.setText(status)
+                if status == "検査準備完了":
+                    label.setStyleSheet("QLabel { background-color: lightblue; }")
+                elif status == "検査中":
+                    label.setStyleSheet("QLabel { background-color: pink; }")
+                elif status == "OK":
+                    label.setStyleSheet("QLabel { background-color: green; }")
+                elif status == "NG":
+                    label.setStyleSheet("QLabel { background-color: red; }")
+
     def _inspectionStatusHole(self, holeStatus):
         label_names = ["MizuAnaStatus1", "MizuAnaStatus2", "MizuAnaStatus3", "MizuAnaStatus4", "MizuAnaStatus5"]
         # print(holeStatus)
@@ -613,6 +654,42 @@ class AIKensa(QMainWindow):
                 label = self.stackedWidget.widget(8).findChild(QLabel, label_name)
                 if label:
                     label.setText(str(part_measurements[i]))
+
+
+    def _P8462284S00_outputMeasurementText(self, measurementValue):
+
+        # label_names_part_A = ["R_A_1", "R_A_2", "R_A_3", ......, "R_A_29"]
+        # label_names_part_B = ["R_B_1", "R_B_2", "R_B_3", ......, "R_B_29"]
+        # label_names_part_C = ["R_C_1", "R_C_2", "R_C_3", ......, "R_C_29"]
+        # label_names_part_D = ["R_D_1", "R_D_2", "R_D_3", ......, "R_D_29"]
+        # label_names_part_E = ["R_E_1", "R_E_2", "R_E_3", ......, "R_E_29"]
+
+        label_names_part_A = ["R_A_1", "R_A_2", "R_A_3", "R_A_4", "R_A_5", "R_A_6", "R_A_7", "R_A_8", "R_A_9", "R_A_10", "R_A_11", "R_A_12", "R_A_13", "R_A_14", "R_A_15", "R_A_16", "R_A_17", "R_A_18", "R_A_19", "R_A_20", "R_A_21", "R_A_22", "R_A_23", "R_A_24", "R_A_25", "R_A_26", "R_A_27", "R_A_28", "R_A_29"]
+        label_names_part_B = ["R_B_1", "R_B_2", "R_B_3", "R_B_4", "R_B_5", "R_B_6", "R_B_7", "R_B_8", "R_B_9", "R_B_10", "R_B_11", "R_B_12", "R_B_13", "R_B_14", "R_B_15", "R_B_16", "R_B_17", "R_B_18", "R_B_19", "R_B_20", "R_B_21", "R_B_22", "R_B_23", "R_B_24", "R_B_25", "R_B_26", "R_B_27", "R_B_28", "R_B_29"]
+        label_names_part_C = ["R_C_1", "R_C_2", "R_C_3", "R_C_4", "R_C_5", "R_C_6", "R_C_7", "R_C_8", "R_C_9", "R_C_10", "R_C_11", "R_C_12", "R_C_13", "R_C_14", "R_C_15", "R_C_16", "R_C_17", "R_C_18", "R_C_19", "R_C_20", "R_C_21", "R_C_22", "R_C_23", "R_C_24", "R_C_25", "R_C_26", "R_C_27", "R_C_28", "R_C_29"]
+        label_names_part_D = ["R_D_1", "R_D_2", "R_D_3", "R_D_4", "R_D_5", "R_D_6", "R_D_7", "R_D_8", "R_D_9", "R_D_10", "R_D_11", "R_D_12", "R_D_13", "R_D_14", "R_D_15", "R_D_16", "R_D_17", "R_D_18", "R_D_19", "R_D_20", "R_D_21", "R_D_22", "R_D_23", "R_D_24", "R_D_25", "R_D_26", "R_D_27", "R_D_28", "R_D_29"]
+        label_names_part_E = ["R_E_1", "R_E_2", "R_E_3", "R_E_4", "R_E_5", "R_E_6", "R_E_7", "R_E_8", "R_E_9", "R_E_10", "R_E_11", "R_E_12", "R_E_13", "R_E_14", "R_E_15", "R_E_16", "R_E_17", "R_E_18", "R_E_19", "R_E_20", "R_E_21", "R_E_22", "R_E_23", "R_E_24", "R_E_25", "R_E_26", "R_E_27", "R_E_28", "R_E_29"]
+
+        all_label_names = [label_names_part_A, label_names_part_B, label_names_part_C, label_names_part_D, label_names_part_E]
+
+        # Loop over each part (A, B, C, D, E)
+        for part_index, labels in enumerate(all_label_names):
+            if part_index >= len(measurementValue) or measurementValue[part_index] is None:
+                part_measurements = [0] * len(labels)  # If not enough parts or None, fill with zeros
+            else:
+                part_measurements = measurementValue[part_index]
+
+            # Ensure part_measurements is a list and extend with zeros if necessary
+            if part_measurements is None or len(part_measurements) < len(labels):
+                part_measurements = (part_measurements or []) + [0] * (len(labels) - len(part_measurements))
+
+            # Update each label with the corresponding measurement value
+            for i, label_name in enumerate(labels):
+                # Find the QLabel by name and set the text to the corresponding measurement value
+                label = self.stackedWidget.widget(9).findChild(QLabel, label_name)
+                if label:
+                    label.setText(str(part_measurements[i]))
+
 
     def _sentInputToInspectionThread(self, input):
         # set the input[0] till input [4] as inspection thread.inspection_config.kouden_sensor[] and input [5] as inspection thread.inspection_config.button_sensor

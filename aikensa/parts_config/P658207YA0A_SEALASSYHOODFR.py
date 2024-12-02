@@ -15,13 +15,13 @@ ng_sound = pygame.mixer.Sound("aikensa/sound/mixkit-classic-short-alarm-993.wav"
 ng_sound_v2 = pygame.mixer.Sound("aikensa/sound/mixkit-system-beep-buzzer-fail-2964.wav")
 kanjiFontPath = "aikensa/font/NotoSansJP-ExtraBold.ttf"
 
-pitchSpec = [26, 107, 75, 75, 75, 75, 75, 92, 75, 102, 100, 129, 103, 109, 103, 129, 100, 102, 75, 92, 75, 75, 75, 75, 75, 107, 26]
-idSpec = [0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-tolerance_pitch = [3.0] * 27
-tolerance_pitch[0] = 3.5
-tolerance_pitch[-1] = 3.5
+pitchSpec = [77, 109, 123, 116, 114, 122, 120, 119, 158.5, 158.5, 158.5, 119, 120, 122, 114, 116, 123, 79, 107, 45, 38, 88, 66, 61, 61, 66, 88, 38, 15]
+idSpec = [1, 1, 0, 1, 0, 0, 1, 0, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 0, 1, 0, 0, 1, 0, 1, 1]
+tolerance_pitch = [2.0] * 29
+tolerance_pitch[-11:-1] = [5.0] * 10
 
 color = (0, 255, 0)
+color2 = (255, 200, 10)
 text_offset = 40
 endoffset_y = 0
 bbox_offset = 10
@@ -29,7 +29,7 @@ bbox_offset = 10
 pixelMultiplier = 0.1590
 
 
-def partcheck(image, sahi_predictionList, leftSegmentation, rightSegmentation):
+def partcheck(image, sahi_predictionList):
 
     sorted_detections = sorted(sahi_predictionList, key=lambda d: d.bbox.minx)
 
@@ -45,6 +45,9 @@ def partcheck(image, sahi_predictionList, leftSegmentation, rightSegmentation):
     detectedposX = []
     detectedposY = []
 
+    detectedposX_cut = []
+    detectedposY_cut = []
+
     detectedWidth = []
 
     prev_center = None
@@ -57,65 +60,23 @@ def partcheck(image, sahi_predictionList, leftSegmentation, rightSegmentation):
     leftmostPitch = 0
     rightmostPitch = 0
 
+    cutdim1 = 0
+    cutdim2 = 0
+    cutdim3 = 0
+    cutdim4 = 0
+    cutdim5 = 0
+
+    cutdim6 = 0
+    cutdim7 = 0
+    cutdim8 = 0
+    cutdim9 = 0
+    cutdim10 = 0
+
     status = "OK"
-    print_status = ""
-
-    # cannydetection_image = image.copy() #Make sure to copy the image to avoid modifying the original image
-
-    combined_lmask = None
-    for lm in leftSegmentation:
-        if lm.masks is not None:
-            orig_shape = (image.shape[0], 1024)
-            segmentation_xyn = lm.masks.xyn
-            lmask = create_masks(segmentation_xyn, orig_shape)
-            if combined_lmask is None:
-                combined_lmask = np.zeros_like(lmask)
-            combined_lmask = cv2.bitwise_or(combined_lmask, lmask)
-            # cv2.imwrite("leftmask.jpg", combined_lmask)
-
-        if lm.masks is None:
-            print_status = print_status + " 製品は見つかりません"
-            status = "NG"
-            resultPitch = [0] * (len(pitchSpec))
-            measuredPitch = [0] * (len(pitchSpec))
-            resultid = [0] * (len(idSpec))
-
-            image = draw_status_text_PIL(image, status, print_status, size="normal")
-
-            return image, measuredPitch, resultPitch, resultid, status
-
-    combined_rmask = None
-    for rm in rightSegmentation:
-        if rm.masks is not None:
-            orig_shape = (image.shape[0], 1024)
-            segmentation_xyn = rm.masks.xyn
-            rmask = create_masks(segmentation_xyn, orig_shape)
-            if combined_rmask is None:
-                combined_rmask = np.zeros_like(rmask)
-            combined_rmask = cv2.bitwise_or(combined_rmask, rmask)
-            # cv2.imwrite("rightmask.jpg", combined_rmask)
-
-        if lm.masks is None:
-            print_status = print_status + " 製品は見つかりません"
-            status = "NG"
-            resultPitch = [0] * (len(pitchSpec))
-            measuredPitch = [0] * (len(pitchSpec))
-            resultid = [0] * (len(idSpec))
-
-            image = draw_status_text_PIL(image, status, print_status, size="normal")
-
-            return image, measuredPitch, resultPitch, resultid, status
-
-    combined_mask = np.zeros_like(image[:, :, 0])  # Single-channel black mask
-
-    if combined_lmask is not None and combined_rmask is not None:
-        combined_mask[:, :1024] = combined_lmask 
-        combined_mask[:, -1024:] = combined_rmask 
-        # cv2.imwrite("combined_mask.jpg", combined_mask)
 
     for i, detection in enumerate(sorted_detections):
         detectedid.append(detection.category.id)
-        if detection.category.id == 0:
+        if detection.category.id == 1:
             bbox = detection.bbox
             x, y = get_center(bbox)
             w = bbox.maxx - bbox.minx
@@ -126,8 +87,9 @@ def partcheck(image, sahi_predictionList, leftSegmentation, rightSegmentation):
             detectedposY.append(y)
             detectedWidth.append(w)
 
-            #id 0 object is white clip
-            #id 1 object is holes (not implemented yet)
+            #id 0 object is V cut
+            #id 1 object is black clip
+
             center = draw_bounding_box(image, x, y, w, h, [image.shape[1], image.shape[0]], color=color)
 
             if prev_center is not None:
@@ -135,40 +97,82 @@ def partcheck(image, sahi_predictionList, leftSegmentation, rightSegmentation):
                 measuredPitch.append(length)
             prev_center = center
 
-    #Check if detectedposX is not empty
-    if len(detectedposX) > 0:
-        leftmostCenter = (detectedposX[0], detectedposY[0])
-        leftmostWidth = detectedWidth[0]
-        rightmostCenter = (detectedposX[-1], detectedposY[-1])
-        rightmostWidth = detectedWidth[-1]
-        adjustment_offset = 5 # to make sure it goes above the clip itself
-        # left_edge = find_edge_point(cannydetection_image, leftmostCenter, direction="left", Yoffsetval = 0, Xoffsetval = leftmostWidth + adjustment_offset)
-        # right_edge = find_edge_point(cannydetection_image, rightmostCenter, direction="right", Yoffsetval = 0, Xoffsetval = rightmostWidth + adjustment_offset)
+        if detection.category.id == 0:
+            bbox = detection.bbox
+            x, y = get_center(bbox)
+            w = bbox.maxx - bbox.minx
+            h = bbox.maxy - bbox.miny
+            # class_name = detection.category.name
 
-        left_edge = find_edge_point_mask(image, combined_mask, leftmostCenter, direction="left", Yoffsetval = 0, Xoffsetval = 0)
-        right_edge = find_edge_point_mask(image, combined_mask, rightmostCenter, direction="right", Yoffsetval = 0, Xoffsetval = 0)
+            detectedposX_cut.append(x)
+            detectedposY_cut.append(y)
+            detectedWidth.append(w)
 
-        leftmostPitch = calclength(leftmostCenter, left_edge)*pixelMultiplier
-        rightmostPitch = calclength(rightmostCenter, right_edge)*pixelMultiplier
+            #id 0 object is V cut
+            #id 1 object is black clip
 
-        #append the leftmost and rightmost pitch to the measuredPitch
-        measuredPitch.insert(0, leftmostPitch)
-        measuredPitch.append(rightmostPitch)
-        #Reappend the leftmostcetner and rightmostcenter to the detectedposX and detectedposY
-        detectedposX.insert(0, left_edge[0])
-        detectedposY.insert(0, left_edge[1])
-        detectedposX.append(right_edge[0])
-        detectedposY.append(right_edge[1])
+            center = draw_bounding_box(image, x, y, w, h, [image.shape[1], image.shape[0]], color=color2)
+
+    #Calculate the extra necessary dimension (the V cut dimension). If the order of the ID is correct
+
+    if detectedid == idSpec:
+        resultid = [1] * len(idSpec)
+        print("Correct ID order is Detected")
+
+        #Calculated cutdim1
+        cutdim1 = calclength((detectedposX[1], detectedposY[1]), (detectedposX_cut[0], detectedposY_cut[0]))*pixelMultiplier
+        cutdim2 = calclength((detectedposX[2], detectedposY[2]), (detectedposX_cut[1], detectedposY_cut[1]))*pixelMultiplier
+        cutdim3 = calclength((detectedposX[2], detectedposY[2]), (detectedposX_cut[2], detectedposY_cut[2]))*pixelMultiplier
+        cutdim4 = calclength((detectedposX[3], detectedposY[3]), (detectedposX_cut[3], detectedposY_cut[3]))*pixelMultiplier
+        cutdim5 = calclength((detectedposX[5], detectedposY[5]), (detectedposX_cut[4], detectedposY_cut[4]))*pixelMultiplier
+
+        cutdim6 = calclength((detectedposX[14], detectedposY[14]), (detectedposX_cut[5], detectedposY_cut[5]))*pixelMultiplier
+        cutdim7 = calclength((detectedposX[16], detectedposY[16]), (detectedposX_cut[6], detectedposY_cut[6]))*pixelMultiplier
+        cutdim8 = calclength((detectedposX[17], detectedposY[17]), (detectedposX_cut[7], detectedposY_cut[7]))*pixelMultiplier
+        cutdim9 = calclength((detectedposX[17], detectedposY[17]), (detectedposX_cut[8], detectedposY_cut[8]))*pixelMultiplier
+        cutdim10 = calclength((detectedposX[18], detectedposY[18]), (detectedposX_cut[9], detectedposY_cut[9]))*pixelMultiplier
+
+        # #print all the cut dimension
+        # print(f"Cut Dimension 1: {cutdim1}")
+        # print(f"Cut Dimension 2: {cutdim2}")
+        # print(f"Cut Dimension 3: {cutdim3}")
+        # print(f"Cut Dimension 4: {cutdim4}")
+        # print(f"Cut Dimension 5: {cutdim5}")
+        # print(f"Cut Dimension 6: {cutdim6}")
+        # print(f"Cut Dimension 7: {cutdim7}")
+        # print(f"Cut Dimension 8: {cutdim8}")
+        # print(f"Cut Dimension 9: {cutdim9}")
+        # print(f"Cut Dimension 10: {cutdim10}")
+
+        #append all of it to the measured length
+        measuredPitch.append(cutdim1)
+        measuredPitch.append(cutdim2)
+        measuredPitch.append(cutdim3)
+        measuredPitch.append(cutdim4)
+        measuredPitch.append(cutdim5)
+        measuredPitch.append(cutdim6)
+        measuredPitch.append(cutdim7)
+        measuredPitch.append(cutdim8)
+        measuredPitch.append(cutdim9)
+        measuredPitch.append(cutdim10)
+
+
 
     #round the value to 1 decimal
     measuredPitch = [round(pitch, 1) for pitch in measuredPitch]
+    # print (f"Measured Pistch: {measuredPitch}")
+    # print (f"Detected ID: {detectedid}")
 
-    if len(measuredPitch) == 27:
+
+
+    if len(measuredPitch) == len(pitchSpec):
         resultPitch = check_tolerance(measuredPitch, pitchSpec, tolerance_pitch)
         resultid = check_id(detectedid, idSpec)
 
-    if len(measuredPitch) != 27:
-        resultPitch = [0] * 27
+    # print (f"Result Pitch: {resultPitch}")
+
+    if len(measuredPitch) != len(pitchSpec):
+        resultPitch = [0] * len(pitchSpec)
 
     if any(result != 1 for result in resultPitch):
         flag_pitch_furyou = 1
@@ -189,7 +193,34 @@ def create_masks(segmentation_result, orig_shape):
         polygon = np.array([[int(x * orig_shape[1]), int(y * orig_shape[0])] for x, y in polygon], dtype=np.int32)
         cv2.fillPoly(mask, [polygon], 255)
     return mask
+    
+def draw_status_text_PIL(image, status, print_status, size = "normal"):
 
+    if size == "large":
+        font_scale = 130.0
+    if size == "normal":
+        font_scale = 100.0
+    elif size == "small":
+        font_scale = 50.0
+
+    if status == "OK":
+        color = (10, 210, 60)
+
+    elif status == "NG":
+        color = (200, 30, 50)
+    
+    image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+    img_pil = Image.fromarray(image_rgb)
+    draw = ImageDraw.Draw(img_pil)
+    font = ImageFont.truetype(kanjiFontPath, font_scale)
+
+    draw.text((120, 5), status, font=font, fill=color)  
+    draw.text((120, 100), print_status, font=font, fill=color)
+    image = cv2.cvtColor(np.array(img_pil), cv2.COLOR_RGB2BGR)
+
+    return image
+
+    
 def play_sound(status):
     if status == "OK":
         # ok_sound.play()
@@ -400,7 +431,7 @@ def calclength(p1, p2):
     length = math.sqrt((p1[0] - p2[0])**2 + (p1[1] - p2[1])**2)
     return length
 
-def draw_bounding_box(image, x, y, w, h, img_size, color=(0, 255, 0), thickness=3, bbox_offset=bbox_offset):
+def draw_bounding_box(image, x, y, w, h, img_size, color=(0, 255, 0), thickness=4, bbox_offset=bbox_offset):
     x = int(x)
     y = int(y)
     w = int(w)
@@ -411,6 +442,9 @@ def draw_bounding_box(image, x, y, w, h, img_size, color=(0, 255, 0), thickness=
     cv2.rectangle(image, (x1, y1), (x2, y2), color, thickness)
     center_x, center_y = x, y
     return (center_x, center_y)
+
+def getXY(x, y):
+    return (x, y)
 
 # class BoundingBox:
 #     def __init__(self, minx, miny, maxx, maxy):
