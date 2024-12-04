@@ -568,6 +568,28 @@ Cam5</string>
      <string>Planarize</string>
     </property>
    </widget>
+   <widget class="QPushButton" name="planarize_temp">
+    <property name="geometry">
+     <rect>
+      <x>1660</x>
+      <y>765</y>
+      <width>81</width>
+      <height>51</height>
+     </rect>
+    </property>
+    <property name="font">
+     <font>
+      <pointsize>9</pointsize>
+     </font>
+    </property>
+    <property name="styleSheet">
+     <string notr="true">background-color: rgb(255, 0, 127);</string>
+    </property>
+    <property name="text">
+     <string>Planarize
+temp</string>
+    </property>
+   </widget>
   </widget>
   <widget class="QMenuBar" name="menubar">
    <property name="geometry">

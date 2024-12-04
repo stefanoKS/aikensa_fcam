@@ -14,7 +14,7 @@ from PyQt5.QtGui import QImage, QPixmap
 
 from aikensa.camscripts.cam_init import initialize_camera
 from aikensa.opencv_imgprocessing.cameracalibrate import detectCharucoBoard, detectCharucoBoard_scaledImage, calculatecameramatrix, calculatecameramatrix_scaledImage, warpTwoImages, calculateHomography_template, warpTwoImages_template
-from aikensa.opencv_imgprocessing.arucoplanarize import planarize, planarize_image
+from aikensa.opencv_imgprocessing.arucoplanarize import planarize, planarize_image, planarize_image_temp
 from dataclasses import dataclass, field
 from typing import List, Tuple
 
@@ -53,6 +53,8 @@ class CalibrationConfig:
 
     savePlanarize: bool = False
     delPlanarize: bool = False
+
+    savePlanarize_temp: bool = False
 
     opacity: float = 0.5
     blur: int = 10
@@ -152,6 +154,7 @@ class CalibrationThread(QThread):
 
         self.combinedImage = None
         self.combinedImage_scaled = None
+        self.combinedImage_scaled_temp = None
 
         self.scale_factor = 5.0
         self.frame_width = 3072
@@ -161,6 +164,9 @@ class CalibrationThread(QThread):
 
         self.planarizeTransform = None
         self.planarizeTransform_scaled = None
+
+        self.planarizeTransform_temp = None
+        self.planarizeTransform_temp_scaled = None
 
 
 
@@ -327,6 +333,16 @@ class CalibrationThread(QThread):
             with open("./aikensa/cameracalibration/planarizeTransform_scaled.yaml") as file:
                 transform_list = yaml.load(file, Loader=yaml.FullLoader)
                 self.planarizeTransform_scaled = np.array(transform_list)
+
+        if os.path.exists("./aikensa/cameracalibration/planarizeTransform_temp.yaml"):
+            with open("./aikensa/cameracalibration/planarizeTransform_temp.yaml") as file:
+                transform_list = yaml.load(file, Loader=yaml.FullLoader)
+                self.planarizeTransform_temp = np.array(transform_list)
+
+        if os.path.exists("./aikensa/cameracalibration/planarizeTransform_temp_scaled.yaml"):
+            with open("./aikensa/cameracalibration/planarizeTransform_temp_scaled.yaml") as file:
+                transform_list = yaml.load(file, Loader=yaml.FullLoader)
+                self.planarizeTransform_temp_scaled = np.array(transform_list)     
 
         
 
@@ -638,16 +654,44 @@ class CalibrationThread(QThread):
                         yaml.dump(self.planarizeTransform_scaled.tolist(), file)
 
                     print(f"Image size after warping is {self.combinedImage.shape}")
-                    cv2.imwrite("combinedImage.png", self.combinedImage)
-                    cv2.imwrite("combinedImage_scaled.png", self.combinedImage_scaled)
+                    # cv2.imwrite("combinedImage.png", self.combinedImage)
+                    # cv2.imwrite("combinedImage_scaled.png", self.combinedImage_scaled)
 
+                if self.calib_config.savePlanarize_temp is True:
+                    self.calib_config.savePlanarize_temp = False
+                    self.combinedImage, self.planarizeTransform_temp = planarize_image_temp(self.combinedImage, 
+                                                                                  target_width=self.homography_size[1], target_height=self.homography_size[0], 
+                                                                                  top_offset=0, bottom_offset=0)
+                    self.combinedImage_scaled, self.planarizeTransform_temp_scaled = planarize_image_temp(self.combinedImage_scaled,
+                                                                                                  target_width=int(self.homography_size[1]/self.scale_factor), target_height=int(self.homography_size[0]/self.scale_factor),
+                                                                                                  top_offset=0, bottom_offset=0)
+                    cv2.imwrite("combinedImage_temp.png", self.combinedImage_scaled)
+                    print(f"Planarize Transform Temp: {self.planarizeTransform_temp}")
+                    print(f"Planarize Transform Temp Scaled: {self.planarizeTransform_temp_scaled}")
+
+                    os.makedirs(self._save_dir, exist_ok=True)
+                    with open("./aikensa/cameracalibration/planarizeTransform_temp.yaml", "w") as file:  
+                        yaml.dump(self.planarizeTransform_temp.tolist(), file)
+                    with open("./aikensa/cameracalibration/planarizeTransform_temp_scaled.yaml", "w") as file:
+                        yaml.dump(self.planarizeTransform_temp_scaled.tolist(), file)
+
+                    
+                    # cv2.imwrite("combinedImage_scaled_temp.png", self.combinedImage_scaled)
 
                 # if self.planarizeTransform is not None:
                 #     self.combinedImage = cv2.warpPerspective(self.combinedImage, self.planarizeTransform, (self.homography_size[1],self.homography_size[0]))
 
+
+                self.combinedImage_scaled_temp = self.combinedImage_scaled.copy()
+
                 if self.planarizeTransform_scaled is not None:
                     self.combinedImage_scaled = cv2.warpPerspective(self.combinedImage_scaled, self.planarizeTransform_scaled, (int(self.homography_size[1]/self.scale_factor), int(self.homography_size[0]/self.scale_factor)))
 
+
+                if self.planarizeTransform_temp_scaled is not None:
+                    self.combinedImage_scaled_temp = cv2.warpPerspective(self.combinedImage_scaled_temp, self.planarizeTransform_temp_scaled, (int(self.homography_size[1]/self.scale_factor), int(self.homography_size[0]/self.scale_factor)))
+
+                # cv2.imwrite("combinedImage_scaled_temp.png", self.combinedImage_scaled_temp)
 
                 # self.combinedImage = cv2.resize(self.combinedImage, (self.homography_size[1], int(self.homography_size[0]/1.26)))
                 self.combinedImage_scaled = cv2.resize(self.combinedImage_scaled, (int(self.homography_size[1]/(self.scale_factor*1.48)), int(self.homography_size[0]/(self.scale_factor*1.26*1.48))))#1.48 for the qt, 1.26 for the aspect ratio

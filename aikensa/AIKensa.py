@@ -272,6 +272,9 @@ class AIKensa(QMainWindow):
         planarize_combined = mergeCamera_widget.findChild(QPushButton, "planarize")
         planarize_combined.clicked.connect(lambda: self._set_calib_params(self.calibration_thread, "savePlanarize", True))
 
+        planarize_temp_combined = mergeCamera_widget.findChild(QPushButton, "planarize_temp")
+        planarize_temp_combined.clicked.connect(lambda: self._set_calib_params(self.calibration_thread, "savePlanarize_temp", True))
+
         self.siostatus_server = [self.stackedWidget.widget(i).findChild(QLabel, "status_sio") for i in [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 21, 22, 23]]
 
         # self.inspection_widget_indices = [8]

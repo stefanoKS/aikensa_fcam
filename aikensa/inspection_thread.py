@@ -204,6 +204,9 @@ class InspectionThread(QThread):
 
         self.planarizeTransform = None
         self.planarizeTransform_scaled = None
+
+        self.planarizeTransform_temp = None
+        self.planarizeTransform_temp_scaled = None
         
         self.scaled_height  = int(self.frame_height / self.scale_factor)
         self.scaled_width = int(self.frame_width / self.scale_factor)
@@ -226,11 +229,14 @@ class InspectionThread(QThread):
         self.part4Crop_YPos = 870
         self.part5Crop_YPos = 1150
 
-        self.part1Crop_YPos_hoodFR = 300
-        self.part2Crop_YPos_hoodFR = 500
-        self.part3Crop_YPos_hoodFR = 700
-        self.part4Crop_YPos_hoodFR = 900
-        self.part5Crop_YPos_hoodFR = 1100
+
+        #nissan HOOD FR
+        
+        self.part1Crop_YPos_hoodFR = 25*5
+        self.part2Crop_YPos_hoodFR = 67*5
+        self.part3Crop_YPos_hoodFR = 109*5
+        self.part4Crop_YPos_hoodFR = 151*5
+        self.part5Crop_YPos_hoodFR = 193*5
 
         self.part1Crop_YPos_scaled = int(self.part1Crop_YPos//self.scale_factor)
         self.part2Crop_YPos_scaled = int(self.part2Crop_YPos//self.scale_factor)
@@ -531,6 +537,17 @@ class InspectionThread(QThread):
                 transform_list = yaml.load(file, Loader=yaml.FullLoader)
                 self.planarizeTransform_scaled = np.array(transform_list)
                 print(f"Loaded scaled planarizeTransform matrix")
+
+        if os.path.exists("./aikensa/cameracalibration/planarizeTransform_temp.yaml"):
+            with open("./aikensa/cameracalibration/planarizeTransform_temp.yaml") as file:
+                transform_list = yaml.load(file, Loader=yaml.FullLoader)
+                self.planarizeTransform_temp = np.array(transform_list)
+
+        if os.path.exists("./aikensa/cameracalibration/planarizeTransform_temp_scaled.yaml"):
+            with open("./aikensa/cameracalibration/planarizeTransform_temp_scaled.yaml") as file:
+                transform_list = yaml.load(file, Loader=yaml.FullLoader)
+                self.planarizeTransform_temp_scaled = np.array(transform_list)     
+
 
         while self.running:
 
@@ -1109,17 +1126,17 @@ class InspectionThread(QThread):
                         self.combinedImage_scaled = warpTwoImages_template(self.combinedImage_scaled, self.mergeframe4_scaled, self.H4_scaled)
                         self.combinedImage_scaled = warpTwoImages_template(self.combinedImage_scaled, self.mergeframe5_scaled, self.H5_scaled)
 
-                        self.combinedImage_scaled = cv2.warpPerspective(self.combinedImage_scaled, self.planarizeTransform_scaled, (int(self.homography_size[1]/self.scale_factor), int(self.homography_size[0]/self.scale_factor)))
+                        self.combinedImage_scaled = cv2.warpPerspective(self.combinedImage_scaled, self.planarizeTransform_temp_scaled, (int(self.homography_size[1]/self.scale_factor), int(self.homography_size[0]/self.scale_factor)))
                         self.combinedImage_scaled = cv2.resize(self.combinedImage_scaled, (int(self.homography_size[1]/(self.scale_factor*1.48)), int(self.homography_size[0]/(self.scale_factor*1.26*1.48))))#1.48 for the qt, 1.26 for the aspect ratio
 
-                        # cv2.imwrite("combinedImage_scaled_inference.png", self.combinedImage_scaled)
+                        cv2.imwrite("combinedImage_scaled_inference.png", self.combinedImage_scaled)
 
                         #Crop the image scaled for each part
                         self.part1Crop_scaled = self.combinedImage_scaled[self.part1Crop_Ypos_hoodFR_scaled : self.part1Crop_Ypos_hoodFR_scaled + self.part_height_offset_nissanhoodFR_scaled, 0 : self.homography_size_scaled[1]]
                         self.part2Crop_scaled = self.combinedImage_scaled[self.part2Crop_Ypos_hoodFR_scaled : self.part2Crop_Ypos_hoodFR_scaled + self.part_height_offset_nissanhoodFR_scaled, 0 : self.homography_size_scaled[1]]
                         self.part3Crop_scaled = self.combinedImage_scaled[self.part3Crop_Ypos_hoodFR_scaled : self.part3Crop_Ypos_hoodFR_scaled + self.part_height_offset_nissanhoodFR_scaled, 0 : self.homography_size_scaled[1]]
                         self.part4Crop_scaled = self.combinedImage_scaled[self.part4Crop_Ypos_hoodFR_scaled : self.part4Crop_Ypos_hoodFR_scaled + self.part_height_offset_nissanhoodFR_scaled, 0 : self.homography_size_scaled[1]]
-                        self.part5Crop_scaled = self.combinedImage_scaled[self.part5Crop_Ypos_hoodFR_scaled : self.homography_size_scaled[0]                                                 , 0 : self.homography_size_scaled[1]]
+                        self.part5Crop_scaled = self.combinedImage_scaled[self.part5Crop_Ypos_hoodFR_scaled : self.part5Crop_Ypos_hoodFR_scaled + self.part_height_offset_nissanhoodFR_scaled, 0 : self.homography_size_scaled[1]]
 
                         # cv2.imwrite("part1Crop_scaled_inference.png", self.part1Crop_scaled)
 
@@ -1275,7 +1292,7 @@ class InspectionThread(QThread):
                                 self.combinedImage = warpTwoImages_template(self.combinedImage, self.mergeframe4, self.H4)
                                 self.combinedImage = warpTwoImages_template(self.combinedImage, self.mergeframe5, self.H5)
                                                                             
-                                self.combinedImage = cv2.warpPerspective(self.combinedImage, self.planarizeTransform, (int(self.homography_size[1]), int(self.homography_size[0])))
+                                self.combinedImage = cv2.warpPerspective(self.combinedImage, self.planarizeTransform_temp, (int(self.homography_size[1]), int(self.homography_size[0])))
                                 self.combinedImage = cv2.resize(self.combinedImage, (self.homography_size[1], int(self.homography_size[0]/(1.26))))#1.48 for the qt, 1.26 for the aspect ratio
 
                                 # Crop the image scaled for each part
@@ -1283,7 +1300,7 @@ class InspectionThread(QThread):
                                 self.part2Crop = self.combinedImage[int(self.part2Crop_YPos_hoodFR*1.48) : int((self.part2Crop_YPos_hoodFR + self.part_height_offset_nissanhoodFR)*1.48), 0 : int(self.homography_size[1]*1.48)]
                                 self.part3Crop = self.combinedImage[int(self.part3Crop_YPos_hoodFR*1.48) : int((self.part3Crop_YPos_hoodFR + self.part_height_offset_nissanhoodFR)*1.48), 0 : int(self.homography_size[1]*1.48)]
                                 self.part4Crop = self.combinedImage[int(self.part4Crop_YPos_hoodFR*1.48) : int((self.part4Crop_YPos_hoodFR + self.part_height_offset_nissanhoodFR)*1.48), 0 : int(self.homography_size[1]*1.48)]
-                                self.part5Crop = self.combinedImage[int(self.part5Crop_YPos_hoodFR*1.48) : int(self.homography_size[0]*1.48)                                            , 0 : int(self.homography_size[1]*1.48)]
+                                self.part5Crop = self.combinedImage[int(self.part5Crop_YPos_hoodFR*1.48) : int((self.part5Crop_YPos_hoodFR + self.part_height_offset_nissanhoodFR)*1.48), 0 : int(self.homography_size[1]*1.48)]
 
                                 # self.save_image(self.part1Crop)
                                 # time.sleep(1.5)
