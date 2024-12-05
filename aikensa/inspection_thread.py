@@ -1334,20 +1334,20 @@ class InspectionThread(QThread):
 
                                 # # Do the inspection
                                 for i in range(len(self.InspectionImages)):
-                                    #Only do inspectino on the one with kouden sensor on
+                                    #Only do inspectino on the one with kouden sensor ons
                                     self.inspection_config.kouden_sensor[i] = 1 #forcefully make it 1
                                     if self.inspection_config.kouden_sensor[i] == 1:
                                         self.InspectionResult_ClipDetection[i] = get_sliced_prediction(
                                             self.InspectionImages[i], 
                                             self.P658207YA0A_clipDetectionModel, 
-                                            slice_height=270, slice_width=1980, 
+                                            slice_height=497, slice_width=1960, 
                                             overlap_height_ratio=0.0, overlap_width_ratio=0.2,
                                             postprocess_match_metric="IOS",
-                                            postprocess_match_threshold=0.2,
+                                            postprocess_match_threshold=0.005,
                                             postprocess_class_agnostic=True,
                                             postprocess_type="GREEDYNMM",
                                             verbose=0,
-                                            perform_standard_pred=True
+                                            perform_standard_pred=False
                                         )
 
                                         #Crop image from 0 to 1024 width for the left and width-1024 to 1024 for the right
@@ -1456,7 +1456,7 @@ class InspectionThread(QThread):
                                 self.part4Cam.emit(self.converQImageRGB(self.InspectionImages[3]))
                                 self.part5Cam.emit(self.converQImageRGB(self.InspectionImages[4]))
 
-                                time.sleep(5.5)
+                                time.sleep(10)
 
                                 # self.hoodFR_InspectionStatus.emit(self.InspectionStatus)
 

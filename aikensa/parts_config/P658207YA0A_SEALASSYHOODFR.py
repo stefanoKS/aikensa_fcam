@@ -15,10 +15,12 @@ ng_sound = pygame.mixer.Sound("aikensa/sound/mixkit-classic-short-alarm-993.wav"
 ng_sound_v2 = pygame.mixer.Sound("aikensa/sound/mixkit-system-beep-buzzer-fail-2964.wav")
 kanjiFontPath = "aikensa/font/NotoSansJP-ExtraBold.ttf"
 
-pitchSpec = [77, 109, 123, 116, 114, 122, 120, 119, 158.5, 158.5, 158.5, 119, 120, 122, 114, 116, 123, 79, 107, 45, 38, 88, 66, 61, 61, 66, 88, 38, 15]
-idSpec = [1, 1, 0, 1, 0, 0, 1, 0, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 0, 1, 0, 0, 1, 0, 1, 1]
-tolerance_pitch = [2.0] * 29
-tolerance_pitch[-11:-1] = [5.0] * 10
+pitchSpec = [77, 109, 123, 116, 114, 122, 120, 119, 158.5, 158.5, 158.5, 119, 120, 122, 114, 116, 123, 79, 107, 45, 38, 88, 66, 61, 61, 66, 88, 38, 15, 2, 2, 2, 2, 2, 2]
+# idSpec = [1, 1, 0, 1, 0, 0, 1, 0, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 0, 1, 0, 0, 1, 0, 1, 1]
+idSpec = [0, 0, 1, 0, 1, 1, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 1, 1, 0, 1, 0, 0]
+tolerance_pitch = [2.0] * 35
+tolerance_pitch[-16:-7] = [5.0] * 10
+tolerance_pitch[-6:-1] = [2.0] * 5
 
 color = (0, 255, 0)
 color2 = (255, 200, 10)
@@ -72,11 +74,20 @@ def partcheck(image, sahi_predictionList):
     cutdim9 = 0
     cutdim10 = 0
 
+    posY1 = 0
+    posY2 = 0
+    posY3 = 0
+
+    posY4 = 0
+    posY5 = 0
+    posY6 = 0
+    
+
     status = "OK"
 
     for i, detection in enumerate(sorted_detections):
         detectedid.append(detection.category.id)
-        if detection.category.id == 1:
+        if detection.category.id == 0:
             bbox = detection.bbox
             x, y = get_center(bbox)
             w = bbox.maxx - bbox.minx
@@ -87,17 +98,17 @@ def partcheck(image, sahi_predictionList):
             detectedposY.append(y)
             detectedWidth.append(w)
 
-            #id 0 object is V cut
-            #id 1 object is black clip
+            #id 1 object is V cut
+            #id 0 object is black clip
 
             center = draw_bounding_box(image, x, y, w, h, [image.shape[1], image.shape[0]], color=color)
 
             if prev_center is not None:
-                length = calclength(prev_center, center)*pixelMultiplier
+                length = calclength(prev_center, center, onlyX = True)*pixelMultiplier
                 measuredPitch.append(length)
             prev_center = center
 
-        if detection.category.id == 0:
+        if detection.category.id == 1:
             bbox = detection.bbox
             x, y = get_center(bbox)
             w = bbox.maxx - bbox.minx
@@ -108,11 +119,12 @@ def partcheck(image, sahi_predictionList):
             detectedposY_cut.append(y)
             detectedWidth.append(w)
 
-            #id 0 object is V cut
-            #id 1 object is black clip
+            #id 1 object is V cut
+            #id 0 object is black clip
 
             center = draw_bounding_box(image, x, y, w, h, [image.shape[1], image.shape[0]], color=color2)
-
+    
+    
     #Calculate the extra necessary dimension (the V cut dimension). If the order of the ID is correct
 
     if detectedid == idSpec:
@@ -120,17 +132,17 @@ def partcheck(image, sahi_predictionList):
         print("Correct ID order is Detected")
 
         #Calculated cutdim1
-        cutdim1 = calclength((detectedposX[1], detectedposY[1]), (detectedposX_cut[0], detectedposY_cut[0]))*pixelMultiplier
-        cutdim2 = calclength((detectedposX[2], detectedposY[2]), (detectedposX_cut[1], detectedposY_cut[1]))*pixelMultiplier
-        cutdim3 = calclength((detectedposX[2], detectedposY[2]), (detectedposX_cut[2], detectedposY_cut[2]))*pixelMultiplier
-        cutdim4 = calclength((detectedposX[3], detectedposY[3]), (detectedposX_cut[3], detectedposY_cut[3]))*pixelMultiplier
-        cutdim5 = calclength((detectedposX[5], detectedposY[5]), (detectedposX_cut[4], detectedposY_cut[4]))*pixelMultiplier
+        cutdim1 = calclength((detectedposX[1], detectedposY[1]), (detectedposX_cut[0], detectedposY_cut[0]), onlyX = False)*pixelMultiplier
+        cutdim2 = calclength((detectedposX[2], detectedposY[2]), (detectedposX_cut[1], detectedposY_cut[1]), onlyX = False)*pixelMultiplier
+        cutdim3 = calclength((detectedposX[2], detectedposY[2]), (detectedposX_cut[2], detectedposY_cut[2]), onlyX = False)*pixelMultiplier
+        cutdim4 = calclength((detectedposX[3], detectedposY[3]), (detectedposX_cut[3], detectedposY_cut[3]), onlyX = False)*pixelMultiplier
+        cutdim5 = calclength((detectedposX[5], detectedposY[5]), (detectedposX_cut[4], detectedposY_cut[4]), onlyX = False)*pixelMultiplier
 
-        cutdim6 = calclength((detectedposX[14], detectedposY[14]), (detectedposX_cut[5], detectedposY_cut[5]))*pixelMultiplier
-        cutdim7 = calclength((detectedposX[16], detectedposY[16]), (detectedposX_cut[6], detectedposY_cut[6]))*pixelMultiplier
-        cutdim8 = calclength((detectedposX[17], detectedposY[17]), (detectedposX_cut[7], detectedposY_cut[7]))*pixelMultiplier
-        cutdim9 = calclength((detectedposX[17], detectedposY[17]), (detectedposX_cut[8], detectedposY_cut[8]))*pixelMultiplier
-        cutdim10 = calclength((detectedposX[18], detectedposY[18]), (detectedposX_cut[9], detectedposY_cut[9]))*pixelMultiplier
+        cutdim6 = calclength((detectedposX[14], detectedposY[14]), (detectedposX_cut[5], detectedposY_cut[5]), onlyX = False)*pixelMultiplier
+        cutdim7 = calclength((detectedposX[16], detectedposY[16]), (detectedposX_cut[6], detectedposY_cut[6]), onlyX = False)*pixelMultiplier
+        cutdim8 = calclength((detectedposX[17], detectedposY[17]), (detectedposX_cut[7], detectedposY_cut[7]), onlyX = False)*pixelMultiplier
+        cutdim9 = calclength((detectedposX[17], detectedposY[17]), (detectedposX_cut[8], detectedposY_cut[8]), onlyX = False)*pixelMultiplier
+        cutdim10 = calclength((detectedposX[18], detectedposY[18]), (detectedposX_cut[9], detectedposY_cut[9]), onlyX = False)*pixelMultiplier
 
         # #print all the cut dimension
         # print(f"Cut Dimension 1: {cutdim1}")
@@ -156,11 +168,26 @@ def partcheck(image, sahi_predictionList):
         measuredPitch.append(cutdim9)
         measuredPitch.append(cutdim10)
 
+        posY1 = (detectedposY[6] - detectedposY[5])*pixelMultiplier*-1
+        posY2 = (detectedposY[7] - detectedposY[5])*pixelMultiplier*-1
+        posy3 = (detectedposY[8] - detectedposY[9])*pixelMultiplier*-1
+
+        posY4 = (detectedposY[11] - detectedposY[10])*pixelMultiplier*-1
+        posY5 = (detectedposY[12] - detectedposY[15])*pixelMultiplier*-1
+        posY6 = (detectedposY[13] - detectedposY[15])*pixelMultiplier*-1
+
+        measuredPitch.append(posY1)
+        measuredPitch.append(posY2)
+        measuredPitch.append(posy3)
+        measuredPitch.append(posY4)
+        measuredPitch.append(posY5)
+        measuredPitch.append(posY6)
+
 
 
     #round the value to 1 decimal
     measuredPitch = [round(pitch, 1) for pitch in measuredPitch]
-    # print (f"Measured Pistch: {measuredPitch}")
+    print (f"Measured Pistch: {measuredPitch}")
     # print (f"Detected ID: {detectedid}")
 
 
@@ -183,7 +210,7 @@ def partcheck(image, sahi_predictionList):
     #     status = "NG"
 
     xy_pairs = list(zip(detectedposX, detectedposY))
-    draw_pitch_line(image, xy_pairs, resultPitch, thickness=8)
+    draw_pitch_line(image, xy_pairs, resultPitch, thickness=6)
     
     return image, measuredPitch, resultPitch, resultid, status
 
@@ -427,8 +454,10 @@ def drawtext(image, pos, length, font_scale=1.7, offset = text_offset, font_thic
     cv2.putText(image, text, (text_x, text_y), cv2.FONT_HERSHEY_SIMPLEX, font_scale, (20, 125, 20), font_thickness)
     return image
 
-def calclength(p1, p2):
+def calclength(p1, p2, onlyX = False):
     length = math.sqrt((p1[0] - p2[0])**2 + (p1[1] - p2[1])**2)
+    if onlyX == True:
+        length = abs(p1[0] - p2[0])
     return length
 
 def draw_bounding_box(image, x, y, w, h, img_size, color=(0, 255, 0), thickness=4, bbox_offset=bbox_offset):

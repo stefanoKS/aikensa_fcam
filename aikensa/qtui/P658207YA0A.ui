@@ -4930,7 +4930,7 @@ border-color: rgb(36, 36, 36);</string>
       <set>Qt::AlignCenter</set>
      </property>
     </widget>
-    <widget class="QLabel" name="R_C_25">
+    <widget class="QLabel" name="R_C_36">
      <property name="geometry">
       <rect>
        <x>1250</x>
@@ -5546,6 +5546,1008 @@ border-color: rgb(36, 36, 36);</string>
       <set>Qt::AlignCenter</set>
      </property>
     </widget>
+    <widget class="QLabel" name="R_A_30">
+     <property name="geometry">
+      <rect>
+       <x>500</x>
+       <y>35</y>
+       <width>38</width>
+       <height>11</height>
+      </rect>
+     </property>
+     <property name="font">
+      <font>
+       <family>Ubuntu Mono</family>
+       <pointsize>9</pointsize>
+       <weight>75</weight>
+       <bold>true</bold>
+      </font>
+     </property>
+     <property name="styleSheet">
+      <string notr="true">background-color: rgb(255, 255, 255);
+border-color: rgb(36, 36, 36);</string>
+     </property>
+     <property name="text">
+      <string>XXX</string>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignCenter</set>
+     </property>
+    </widget>
+    <widget class="QLabel" name="R_A_31">
+     <property name="geometry">
+      <rect>
+       <x>590</x>
+       <y>35</y>
+       <width>38</width>
+       <height>11</height>
+      </rect>
+     </property>
+     <property name="font">
+      <font>
+       <family>Ubuntu Mono</family>
+       <pointsize>9</pointsize>
+       <weight>75</weight>
+       <bold>true</bold>
+      </font>
+     </property>
+     <property name="styleSheet">
+      <string notr="true">background-color: rgb(255, 255, 255);
+border-color: rgb(36, 36, 36);</string>
+     </property>
+     <property name="text">
+      <string>XXX</string>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignCenter</set>
+     </property>
+    </widget>
+    <widget class="QLabel" name="R_A_32">
+     <property name="geometry">
+      <rect>
+       <x>690</x>
+       <y>35</y>
+       <width>38</width>
+       <height>11</height>
+      </rect>
+     </property>
+     <property name="font">
+      <font>
+       <family>Ubuntu Mono</family>
+       <pointsize>9</pointsize>
+       <weight>75</weight>
+       <bold>true</bold>
+      </font>
+     </property>
+     <property name="styleSheet">
+      <string notr="true">background-color: rgb(255, 255, 255);
+border-color: rgb(36, 36, 36);</string>
+     </property>
+     <property name="text">
+      <string>XXX</string>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignCenter</set>
+     </property>
+    </widget>
+    <widget class="QLabel" name="R_A_33">
+     <property name="geometry">
+      <rect>
+       <x>1010</x>
+       <y>35</y>
+       <width>38</width>
+       <height>11</height>
+      </rect>
+     </property>
+     <property name="font">
+      <font>
+       <family>Ubuntu Mono</family>
+       <pointsize>9</pointsize>
+       <weight>75</weight>
+       <bold>true</bold>
+      </font>
+     </property>
+     <property name="styleSheet">
+      <string notr="true">background-color: rgb(255, 255, 255);
+border-color: rgb(36, 36, 36);</string>
+     </property>
+     <property name="text">
+      <string>XXX</string>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignCenter</set>
+     </property>
+    </widget>
+    <widget class="QLabel" name="R_A_34">
+     <property name="geometry">
+      <rect>
+       <x>1105</x>
+       <y>35</y>
+       <width>38</width>
+       <height>11</height>
+      </rect>
+     </property>
+     <property name="font">
+      <font>
+       <family>Ubuntu Mono</family>
+       <pointsize>9</pointsize>
+       <weight>75</weight>
+       <bold>true</bold>
+      </font>
+     </property>
+     <property name="styleSheet">
+      <string notr="true">background-color: rgb(255, 255, 255);
+border-color: rgb(36, 36, 36);</string>
+     </property>
+     <property name="text">
+      <string>XXX</string>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignCenter</set>
+     </property>
+    </widget>
+    <widget class="QLabel" name="R_A_35">
+     <property name="geometry">
+      <rect>
+       <x>1185</x>
+       <y>35</y>
+       <width>38</width>
+       <height>11</height>
+      </rect>
+     </property>
+     <property name="font">
+      <font>
+       <family>Ubuntu Mono</family>
+       <pointsize>9</pointsize>
+       <weight>75</weight>
+       <bold>true</bold>
+      </font>
+     </property>
+     <property name="styleSheet">
+      <string notr="true">background-color: rgb(255, 255, 255);
+border-color: rgb(36, 36, 36);</string>
+     </property>
+     <property name="text">
+      <string>XXX</string>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignCenter</set>
+     </property>
+    </widget>
+    <widget class="QLabel" name="P1label_21">
+     <property name="geometry">
+      <rect>
+       <x>500</x>
+       <y>46</y>
+       <width>41</width>
+       <height>12</height>
+      </rect>
+     </property>
+     <property name="font">
+      <font>
+       <family>Ubuntu Mono</family>
+       <pointsize>7</pointsize>
+       <weight>75</weight>
+       <bold>true</bold>
+      </font>
+     </property>
+     <property name="styleSheet">
+      <string notr="true">color: rgb(255, 255, 255);</string>
+     </property>
+     <property name="text">
+      <string>↕P30:2</string>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignCenter</set>
+     </property>
+    </widget>
+    <widget class="QLabel" name="P1label_22">
+     <property name="geometry">
+      <rect>
+       <x>590</x>
+       <y>46</y>
+       <width>41</width>
+       <height>12</height>
+      </rect>
+     </property>
+     <property name="font">
+      <font>
+       <family>Ubuntu Mono</family>
+       <pointsize>7</pointsize>
+       <weight>75</weight>
+       <bold>true</bold>
+      </font>
+     </property>
+     <property name="styleSheet">
+      <string notr="true">color: rgb(255, 255, 255);</string>
+     </property>
+     <property name="text">
+      <string>↕P31:2</string>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignCenter</set>
+     </property>
+    </widget>
+    <widget class="QLabel" name="P1label_23">
+     <property name="geometry">
+      <rect>
+       <x>685</x>
+       <y>46</y>
+       <width>41</width>
+       <height>12</height>
+      </rect>
+     </property>
+     <property name="font">
+      <font>
+       <family>Ubuntu Mono</family>
+       <pointsize>7</pointsize>
+       <weight>75</weight>
+       <bold>true</bold>
+      </font>
+     </property>
+     <property name="styleSheet">
+      <string notr="true">color: rgb(255, 255, 255);</string>
+     </property>
+     <property name="text">
+      <string>↕P32:2</string>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignCenter</set>
+     </property>
+    </widget>
+    <widget class="QLabel" name="P1label_24">
+     <property name="geometry">
+      <rect>
+       <x>1010</x>
+       <y>46</y>
+       <width>41</width>
+       <height>12</height>
+      </rect>
+     </property>
+     <property name="font">
+      <font>
+       <family>Ubuntu Mono</family>
+       <pointsize>7</pointsize>
+       <weight>75</weight>
+       <bold>true</bold>
+      </font>
+     </property>
+     <property name="styleSheet">
+      <string notr="true">color: rgb(255, 255, 255);</string>
+     </property>
+     <property name="text">
+      <string>↕P33:2</string>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignCenter</set>
+     </property>
+    </widget>
+    <widget class="QLabel" name="P1label_25">
+     <property name="geometry">
+      <rect>
+       <x>1100</x>
+       <y>46</y>
+       <width>41</width>
+       <height>12</height>
+      </rect>
+     </property>
+     <property name="font">
+      <font>
+       <family>Ubuntu Mono</family>
+       <pointsize>7</pointsize>
+       <weight>75</weight>
+       <bold>true</bold>
+      </font>
+     </property>
+     <property name="styleSheet">
+      <string notr="true">color: rgb(255, 255, 255);</string>
+     </property>
+     <property name="text">
+      <string>↕P34:2</string>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignCenter</set>
+     </property>
+    </widget>
+    <widget class="QLabel" name="P1label_26">
+     <property name="geometry">
+      <rect>
+       <x>1190</x>
+       <y>46</y>
+       <width>41</width>
+       <height>12</height>
+      </rect>
+     </property>
+     <property name="font">
+      <font>
+       <family>Ubuntu Mono</family>
+       <pointsize>7</pointsize>
+       <weight>75</weight>
+       <bold>true</bold>
+      </font>
+     </property>
+     <property name="styleSheet">
+      <string notr="true">color: rgb(255, 255, 255);</string>
+     </property>
+     <property name="text">
+      <string>↕P35:2</string>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignCenter</set>
+     </property>
+    </widget>
+    <widget class="QLabel" name="R_B_35">
+     <property name="geometry">
+      <rect>
+       <x>1185</x>
+       <y>190</y>
+       <width>38</width>
+       <height>11</height>
+      </rect>
+     </property>
+     <property name="font">
+      <font>
+       <family>Ubuntu Mono</family>
+       <pointsize>9</pointsize>
+       <weight>75</weight>
+       <bold>true</bold>
+      </font>
+     </property>
+     <property name="styleSheet">
+      <string notr="true">background-color: rgb(255, 255, 255);
+border-color: rgb(36, 36, 36);</string>
+     </property>
+     <property name="text">
+      <string>XXX</string>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignCenter</set>
+     </property>
+    </widget>
+    <widget class="QLabel" name="R_B_31">
+     <property name="geometry">
+      <rect>
+       <x>590</x>
+       <y>190</y>
+       <width>38</width>
+       <height>11</height>
+      </rect>
+     </property>
+     <property name="font">
+      <font>
+       <family>Ubuntu Mono</family>
+       <pointsize>9</pointsize>
+       <weight>75</weight>
+       <bold>true</bold>
+      </font>
+     </property>
+     <property name="styleSheet">
+      <string notr="true">background-color: rgb(255, 255, 255);
+border-color: rgb(36, 36, 36);</string>
+     </property>
+     <property name="text">
+      <string>XXX</string>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignCenter</set>
+     </property>
+    </widget>
+    <widget class="QLabel" name="R_B_32">
+     <property name="geometry">
+      <rect>
+       <x>690</x>
+       <y>190</y>
+       <width>38</width>
+       <height>11</height>
+      </rect>
+     </property>
+     <property name="font">
+      <font>
+       <family>Ubuntu Mono</family>
+       <pointsize>9</pointsize>
+       <weight>75</weight>
+       <bold>true</bold>
+      </font>
+     </property>
+     <property name="styleSheet">
+      <string notr="true">background-color: rgb(255, 255, 255);
+border-color: rgb(36, 36, 36);</string>
+     </property>
+     <property name="text">
+      <string>XXX</string>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignCenter</set>
+     </property>
+    </widget>
+    <widget class="QLabel" name="R_B_33">
+     <property name="geometry">
+      <rect>
+       <x>1010</x>
+       <y>190</y>
+       <width>38</width>
+       <height>11</height>
+      </rect>
+     </property>
+     <property name="font">
+      <font>
+       <family>Ubuntu Mono</family>
+       <pointsize>9</pointsize>
+       <weight>75</weight>
+       <bold>true</bold>
+      </font>
+     </property>
+     <property name="styleSheet">
+      <string notr="true">background-color: rgb(255, 255, 255);
+border-color: rgb(36, 36, 36);</string>
+     </property>
+     <property name="text">
+      <string>XXX</string>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignCenter</set>
+     </property>
+    </widget>
+    <widget class="QLabel" name="R_B_30">
+     <property name="geometry">
+      <rect>
+       <x>500</x>
+       <y>190</y>
+       <width>38</width>
+       <height>11</height>
+      </rect>
+     </property>
+     <property name="font">
+      <font>
+       <family>Ubuntu Mono</family>
+       <pointsize>9</pointsize>
+       <weight>75</weight>
+       <bold>true</bold>
+      </font>
+     </property>
+     <property name="styleSheet">
+      <string notr="true">background-color: rgb(255, 255, 255);
+border-color: rgb(36, 36, 36);</string>
+     </property>
+     <property name="text">
+      <string>XXX</string>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignCenter</set>
+     </property>
+    </widget>
+    <widget class="QLabel" name="R_B_34">
+     <property name="geometry">
+      <rect>
+       <x>1105</x>
+       <y>190</y>
+       <width>38</width>
+       <height>11</height>
+      </rect>
+     </property>
+     <property name="font">
+      <font>
+       <family>Ubuntu Mono</family>
+       <pointsize>9</pointsize>
+       <weight>75</weight>
+       <bold>true</bold>
+      </font>
+     </property>
+     <property name="styleSheet">
+      <string notr="true">background-color: rgb(255, 255, 255);
+border-color: rgb(36, 36, 36);</string>
+     </property>
+     <property name="text">
+      <string>XXX</string>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignCenter</set>
+     </property>
+    </widget>
+    <widget class="QLabel" name="R_C_35">
+     <property name="geometry">
+      <rect>
+       <x>1185</x>
+       <y>340</y>
+       <width>38</width>
+       <height>11</height>
+      </rect>
+     </property>
+     <property name="font">
+      <font>
+       <family>Ubuntu Mono</family>
+       <pointsize>9</pointsize>
+       <weight>75</weight>
+       <bold>true</bold>
+      </font>
+     </property>
+     <property name="styleSheet">
+      <string notr="true">background-color: rgb(255, 255, 255);
+border-color: rgb(36, 36, 36);</string>
+     </property>
+     <property name="text">
+      <string>XXX</string>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignCenter</set>
+     </property>
+    </widget>
+    <widget class="QLabel" name="R_C_31">
+     <property name="geometry">
+      <rect>
+       <x>590</x>
+       <y>340</y>
+       <width>38</width>
+       <height>11</height>
+      </rect>
+     </property>
+     <property name="font">
+      <font>
+       <family>Ubuntu Mono</family>
+       <pointsize>9</pointsize>
+       <weight>75</weight>
+       <bold>true</bold>
+      </font>
+     </property>
+     <property name="styleSheet">
+      <string notr="true">background-color: rgb(255, 255, 255);
+border-color: rgb(36, 36, 36);</string>
+     </property>
+     <property name="text">
+      <string>XXX</string>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignCenter</set>
+     </property>
+    </widget>
+    <widget class="QLabel" name="R_C_32">
+     <property name="geometry">
+      <rect>
+       <x>690</x>
+       <y>340</y>
+       <width>38</width>
+       <height>11</height>
+      </rect>
+     </property>
+     <property name="font">
+      <font>
+       <family>Ubuntu Mono</family>
+       <pointsize>9</pointsize>
+       <weight>75</weight>
+       <bold>true</bold>
+      </font>
+     </property>
+     <property name="styleSheet">
+      <string notr="true">background-color: rgb(255, 255, 255);
+border-color: rgb(36, 36, 36);</string>
+     </property>
+     <property name="text">
+      <string>XXX</string>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignCenter</set>
+     </property>
+    </widget>
+    <widget class="QLabel" name="R_C_33">
+     <property name="geometry">
+      <rect>
+       <x>1010</x>
+       <y>340</y>
+       <width>38</width>
+       <height>11</height>
+      </rect>
+     </property>
+     <property name="font">
+      <font>
+       <family>Ubuntu Mono</family>
+       <pointsize>9</pointsize>
+       <weight>75</weight>
+       <bold>true</bold>
+      </font>
+     </property>
+     <property name="styleSheet">
+      <string notr="true">background-color: rgb(255, 255, 255);
+border-color: rgb(36, 36, 36);</string>
+     </property>
+     <property name="text">
+      <string>XXX</string>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignCenter</set>
+     </property>
+    </widget>
+    <widget class="QLabel" name="R_C_30">
+     <property name="geometry">
+      <rect>
+       <x>500</x>
+       <y>340</y>
+       <width>38</width>
+       <height>11</height>
+      </rect>
+     </property>
+     <property name="font">
+      <font>
+       <family>Ubuntu Mono</family>
+       <pointsize>9</pointsize>
+       <weight>75</weight>
+       <bold>true</bold>
+      </font>
+     </property>
+     <property name="styleSheet">
+      <string notr="true">background-color: rgb(255, 255, 255);
+border-color: rgb(36, 36, 36);</string>
+     </property>
+     <property name="text">
+      <string>XXX</string>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignCenter</set>
+     </property>
+    </widget>
+    <widget class="QLabel" name="R_C_34">
+     <property name="geometry">
+      <rect>
+       <x>1105</x>
+       <y>340</y>
+       <width>38</width>
+       <height>11</height>
+      </rect>
+     </property>
+     <property name="font">
+      <font>
+       <family>Ubuntu Mono</family>
+       <pointsize>9</pointsize>
+       <weight>75</weight>
+       <bold>true</bold>
+      </font>
+     </property>
+     <property name="styleSheet">
+      <string notr="true">background-color: rgb(255, 255, 255);
+border-color: rgb(36, 36, 36);</string>
+     </property>
+     <property name="text">
+      <string>XXX</string>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignCenter</set>
+     </property>
+    </widget>
+    <widget class="QLabel" name="R_D_35">
+     <property name="geometry">
+      <rect>
+       <x>1185</x>
+       <y>480</y>
+       <width>38</width>
+       <height>11</height>
+      </rect>
+     </property>
+     <property name="font">
+      <font>
+       <family>Ubuntu Mono</family>
+       <pointsize>9</pointsize>
+       <weight>75</weight>
+       <bold>true</bold>
+      </font>
+     </property>
+     <property name="styleSheet">
+      <string notr="true">background-color: rgb(255, 255, 255);
+border-color: rgb(36, 36, 36);</string>
+     </property>
+     <property name="text">
+      <string>XXX</string>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignCenter</set>
+     </property>
+    </widget>
+    <widget class="QLabel" name="R_D_31">
+     <property name="geometry">
+      <rect>
+       <x>590</x>
+       <y>480</y>
+       <width>38</width>
+       <height>11</height>
+      </rect>
+     </property>
+     <property name="font">
+      <font>
+       <family>Ubuntu Mono</family>
+       <pointsize>9</pointsize>
+       <weight>75</weight>
+       <bold>true</bold>
+      </font>
+     </property>
+     <property name="styleSheet">
+      <string notr="true">background-color: rgb(255, 255, 255);
+border-color: rgb(36, 36, 36);</string>
+     </property>
+     <property name="text">
+      <string>XXX</string>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignCenter</set>
+     </property>
+    </widget>
+    <widget class="QLabel" name="R_D_32">
+     <property name="geometry">
+      <rect>
+       <x>690</x>
+       <y>480</y>
+       <width>38</width>
+       <height>11</height>
+      </rect>
+     </property>
+     <property name="font">
+      <font>
+       <family>Ubuntu Mono</family>
+       <pointsize>9</pointsize>
+       <weight>75</weight>
+       <bold>true</bold>
+      </font>
+     </property>
+     <property name="styleSheet">
+      <string notr="true">background-color: rgb(255, 255, 255);
+border-color: rgb(36, 36, 36);</string>
+     </property>
+     <property name="text">
+      <string>XXX</string>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignCenter</set>
+     </property>
+    </widget>
+    <widget class="QLabel" name="R_D_33">
+     <property name="geometry">
+      <rect>
+       <x>1010</x>
+       <y>480</y>
+       <width>38</width>
+       <height>11</height>
+      </rect>
+     </property>
+     <property name="font">
+      <font>
+       <family>Ubuntu Mono</family>
+       <pointsize>9</pointsize>
+       <weight>75</weight>
+       <bold>true</bold>
+      </font>
+     </property>
+     <property name="styleSheet">
+      <string notr="true">background-color: rgb(255, 255, 255);
+border-color: rgb(36, 36, 36);</string>
+     </property>
+     <property name="text">
+      <string>XXX</string>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignCenter</set>
+     </property>
+    </widget>
+    <widget class="QLabel" name="R_D_30">
+     <property name="geometry">
+      <rect>
+       <x>500</x>
+       <y>480</y>
+       <width>38</width>
+       <height>11</height>
+      </rect>
+     </property>
+     <property name="font">
+      <font>
+       <family>Ubuntu Mono</family>
+       <pointsize>9</pointsize>
+       <weight>75</weight>
+       <bold>true</bold>
+      </font>
+     </property>
+     <property name="styleSheet">
+      <string notr="true">background-color: rgb(255, 255, 255);
+border-color: rgb(36, 36, 36);</string>
+     </property>
+     <property name="text">
+      <string>XXX</string>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignCenter</set>
+     </property>
+    </widget>
+    <widget class="QLabel" name="R_D_34">
+     <property name="geometry">
+      <rect>
+       <x>1105</x>
+       <y>480</y>
+       <width>38</width>
+       <height>11</height>
+      </rect>
+     </property>
+     <property name="font">
+      <font>
+       <family>Ubuntu Mono</family>
+       <pointsize>9</pointsize>
+       <weight>75</weight>
+       <bold>true</bold>
+      </font>
+     </property>
+     <property name="styleSheet">
+      <string notr="true">background-color: rgb(255, 255, 255);
+border-color: rgb(36, 36, 36);</string>
+     </property>
+     <property name="text">
+      <string>XXX</string>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignCenter</set>
+     </property>
+    </widget>
+    <widget class="QLabel" name="R_E_35">
+     <property name="geometry">
+      <rect>
+       <x>1185</x>
+       <y>620</y>
+       <width>38</width>
+       <height>11</height>
+      </rect>
+     </property>
+     <property name="font">
+      <font>
+       <family>Ubuntu Mono</family>
+       <pointsize>9</pointsize>
+       <weight>75</weight>
+       <bold>true</bold>
+      </font>
+     </property>
+     <property name="styleSheet">
+      <string notr="true">background-color: rgb(255, 255, 255);
+border-color: rgb(36, 36, 36);</string>
+     </property>
+     <property name="text">
+      <string>XXX</string>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignCenter</set>
+     </property>
+    </widget>
+    <widget class="QLabel" name="R_E_31">
+     <property name="geometry">
+      <rect>
+       <x>590</x>
+       <y>620</y>
+       <width>38</width>
+       <height>11</height>
+      </rect>
+     </property>
+     <property name="font">
+      <font>
+       <family>Ubuntu Mono</family>
+       <pointsize>9</pointsize>
+       <weight>75</weight>
+       <bold>true</bold>
+      </font>
+     </property>
+     <property name="styleSheet">
+      <string notr="true">background-color: rgb(255, 255, 255);
+border-color: rgb(36, 36, 36);</string>
+     </property>
+     <property name="text">
+      <string>XXX</string>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignCenter</set>
+     </property>
+    </widget>
+    <widget class="QLabel" name="R_E_32">
+     <property name="geometry">
+      <rect>
+       <x>690</x>
+       <y>620</y>
+       <width>38</width>
+       <height>11</height>
+      </rect>
+     </property>
+     <property name="font">
+      <font>
+       <family>Ubuntu Mono</family>
+       <pointsize>9</pointsize>
+       <weight>75</weight>
+       <bold>true</bold>
+      </font>
+     </property>
+     <property name="styleSheet">
+      <string notr="true">background-color: rgb(255, 255, 255);
+border-color: rgb(36, 36, 36);</string>
+     </property>
+     <property name="text">
+      <string>XXX</string>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignCenter</set>
+     </property>
+    </widget>
+    <widget class="QLabel" name="R_E_33">
+     <property name="geometry">
+      <rect>
+       <x>1010</x>
+       <y>620</y>
+       <width>38</width>
+       <height>11</height>
+      </rect>
+     </property>
+     <property name="font">
+      <font>
+       <family>Ubuntu Mono</family>
+       <pointsize>9</pointsize>
+       <weight>75</weight>
+       <bold>true</bold>
+      </font>
+     </property>
+     <property name="styleSheet">
+      <string notr="true">background-color: rgb(255, 255, 255);
+border-color: rgb(36, 36, 36);</string>
+     </property>
+     <property name="text">
+      <string>XXX</string>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignCenter</set>
+     </property>
+    </widget>
+    <widget class="QLabel" name="R_E_30">
+     <property name="geometry">
+      <rect>
+       <x>500</x>
+       <y>620</y>
+       <width>38</width>
+       <height>11</height>
+      </rect>
+     </property>
+     <property name="font">
+      <font>
+       <family>Ubuntu Mono</family>
+       <pointsize>9</pointsize>
+       <weight>75</weight>
+       <bold>true</bold>
+      </font>
+     </property>
+     <property name="styleSheet">
+      <string notr="true">background-color: rgb(255, 255, 255);
+border-color: rgb(36, 36, 36);</string>
+     </property>
+     <property name="text">
+      <string>XXX</string>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignCenter</set>
+     </property>
+    </widget>
+    <widget class="QLabel" name="R_E_34">
+     <property name="geometry">
+      <rect>
+       <x>1105</x>
+       <y>620</y>
+       <width>38</width>
+       <height>11</height>
+      </rect>
+     </property>
+     <property name="font">
+      <font>
+       <family>Ubuntu Mono</family>
+       <pointsize>9</pointsize>
+       <weight>75</weight>
+       <bold>true</bold>
+      </font>
+     </property>
+     <property name="styleSheet">
+      <string notr="true">background-color: rgb(255, 255, 255);
+border-color: rgb(36, 36, 36);</string>
+     </property>
+     <property name="text">
+      <string>XXX</string>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignCenter</set>
+     </property>
+    </widget>
     <zorder>FramePart1</zorder>
     <zorder>FramePart2</zorder>
     <zorder>FramePart3</zorder>
@@ -5726,7 +6728,7 @@ border-color: rgb(36, 36, 36);</string>
     <zorder>R_C_24</zorder>
     <zorder>R_C_26</zorder>
     <zorder>R_C_20</zorder>
-    <zorder>R_C_25</zorder>
+    <zorder>R_C_36</zorder>
     <zorder>R_C_21</zorder>
     <zorder>R_D_22</zorder>
     <zorder>R_D_27</zorder>
@@ -5748,6 +6750,42 @@ border-color: rgb(36, 36, 36);</string>
     <zorder>R_E_20</zorder>
     <zorder>R_E_25</zorder>
     <zorder>R_E_21</zorder>
+    <zorder>R_A_30</zorder>
+    <zorder>R_A_31</zorder>
+    <zorder>R_A_32</zorder>
+    <zorder>R_A_33</zorder>
+    <zorder>R_A_34</zorder>
+    <zorder>R_A_35</zorder>
+    <zorder>P1label_21</zorder>
+    <zorder>P1label_22</zorder>
+    <zorder>P1label_23</zorder>
+    <zorder>P1label_24</zorder>
+    <zorder>P1label_25</zorder>
+    <zorder>P1label_26</zorder>
+    <zorder>R_B_35</zorder>
+    <zorder>R_B_31</zorder>
+    <zorder>R_B_32</zorder>
+    <zorder>R_B_33</zorder>
+    <zorder>R_B_30</zorder>
+    <zorder>R_B_34</zorder>
+    <zorder>R_C_35</zorder>
+    <zorder>R_C_31</zorder>
+    <zorder>R_C_32</zorder>
+    <zorder>R_C_33</zorder>
+    <zorder>R_C_30</zorder>
+    <zorder>R_C_34</zorder>
+    <zorder>R_D_35</zorder>
+    <zorder>R_D_31</zorder>
+    <zorder>R_D_32</zorder>
+    <zorder>R_D_33</zorder>
+    <zorder>R_D_30</zorder>
+    <zorder>R_D_34</zorder>
+    <zorder>R_E_35</zorder>
+    <zorder>R_E_31</zorder>
+    <zorder>R_E_32</zorder>
+    <zorder>R_E_33</zorder>
+    <zorder>R_E_30</zorder>
+    <zorder>R_E_34</zorder>
    </widget>
    <widget class="QPushButton" name="mainmenubutton">
     <property name="geometry">
