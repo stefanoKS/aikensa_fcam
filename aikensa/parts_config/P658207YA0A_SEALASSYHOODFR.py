@@ -18,9 +18,9 @@ kanjiFontPath = "aikensa/font/NotoSansJP-ExtraBold.ttf"
 pitchSpec = [77, 109, 123, 116, 114, 122, 120, 119, 158.5, 158.5, 158.5, 119, 120, 122, 114, 116, 123, 79, 107, 45, 38, 88, 66, 61, 61, 66, 88, 38, 15, 2, 2, 2, 2, 2, 2]
 # idSpec = [1, 1, 0, 1, 0, 0, 1, 0, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 0, 1, 0, 0, 1, 0, 1, 1]
 idSpec = [0, 0, 1, 0, 1, 1, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 1, 1, 0, 1, 0, 0]
-tolerance_pitch = [2.0] * 35
+tolerance_pitch = [2.2] * 35
 tolerance_pitch[-16:-7] = [5.0] * 10
-tolerance_pitch[-6:-1] = [2.0] * 5
+tolerance_pitch[-6:-1] = [1.5] * 5
 
 color = (0, 255, 0)
 color2 = (255, 200, 10)
@@ -28,7 +28,7 @@ text_offset = 40
 endoffset_y = 0
 bbox_offset = 10
 
-pixelMultiplier = 0.1590
+pixelMultiplier = 0.157717741935489
 
 
 def partcheck(image, sahi_predictionList):
@@ -119,7 +119,7 @@ def partcheck(image, sahi_predictionList):
             detectedposY_cut.append(y)
             detectedWidth.append(w)
 
-            #id 1 object is V cut
+            #id 1 object is V cuts
             #id 0 object is black clip
 
             center = draw_bounding_box(image, x, y, w, h, [image.shape[1], image.shape[0]], color=color2)
@@ -129,7 +129,7 @@ def partcheck(image, sahi_predictionList):
 
     if detectedid == idSpec:
         resultid = [1] * len(idSpec)
-        print("Correct ID order is Detected")
+        # print("Correct ID order is Detected")
 
         #Calculated cutdim1
         cutdim1 = calclength((detectedposX[1], detectedposY[1]), (detectedposX_cut[0], detectedposY_cut[0]), onlyX = False)*pixelMultiplier
@@ -169,11 +169,11 @@ def partcheck(image, sahi_predictionList):
         measuredPitch.append(cutdim10)
 
         posY1 = (detectedposY[6] - detectedposY[5])*pixelMultiplier*-1
-        posY2 = (detectedposY[7] - detectedposY[5])*pixelMultiplier*-1
+        posY2 = (detectedposY[7] - detectedposY[9])*pixelMultiplier*-1
         posy3 = (detectedposY[8] - detectedposY[9])*pixelMultiplier*-1
 
         posY4 = (detectedposY[11] - detectedposY[10])*pixelMultiplier*-1
-        posY5 = (detectedposY[12] - detectedposY[15])*pixelMultiplier*-1
+        posY5 = (detectedposY[12] - detectedposY[10])*pixelMultiplier*-1
         posY6 = (detectedposY[13] - detectedposY[15])*pixelMultiplier*-1
 
         measuredPitch.append(posY1)
@@ -187,7 +187,7 @@ def partcheck(image, sahi_predictionList):
 
     #round the value to 1 decimal
     measuredPitch = [round(pitch, 1) for pitch in measuredPitch]
-    print (f"Measured Pistch: {measuredPitch}")
+    # print (f"Measured Pistch: {measuredPitch}")
     # print (f"Detected ID: {detectedid}")
 
 

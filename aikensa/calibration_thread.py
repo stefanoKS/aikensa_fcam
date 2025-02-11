@@ -662,18 +662,23 @@ class CalibrationThread(QThread):
                     self.combinedImage, self.planarizeTransform_temp = planarize_image_temp(self.combinedImage, 
                                                                                   target_width=self.homography_size[1], target_height=self.homography_size[0], 
                                                                                   top_offset=0, bottom_offset=0)
+                    
+                    with open("./aikensa/cameracalibration/planarizeTransform_temp.yaml", "w") as file:  
+                        yaml.dump(self.planarizeTransform_temp.tolist(), file)
+                                  
                     self.combinedImage_scaled, self.planarizeTransform_temp_scaled = planarize_image_temp(self.combinedImage_scaled,
                                                                                                   target_width=int(self.homography_size[1]/self.scale_factor), target_height=int(self.homography_size[0]/self.scale_factor),
                                                                                                   top_offset=0, bottom_offset=0)
+
+                    with open("./aikensa/cameracalibration/planarizeTransform_temp_scaled.yaml", "w") as file:
+                        yaml.dump(self.planarizeTransform_temp_scaled.tolist(), file)
+
                     cv2.imwrite("combinedImage_temp.png", self.combinedImage_scaled)
                     print(f"Planarize Transform Temp: {self.planarizeTransform_temp}")
                     print(f"Planarize Transform Temp Scaled: {self.planarizeTransform_temp_scaled}")
 
                     os.makedirs(self._save_dir, exist_ok=True)
-                    with open("./aikensa/cameracalibration/planarizeTransform_temp.yaml", "w") as file:  
-                        yaml.dump(self.planarizeTransform_temp.tolist(), file)
-                    with open("./aikensa/cameracalibration/planarizeTransform_temp_scaled.yaml", "w") as file:
-                        yaml.dump(self.planarizeTransform_temp_scaled.tolist(), file)
+
 
                     
                     # cv2.imwrite("combinedImage_scaled_temp.png", self.combinedImage_scaled)

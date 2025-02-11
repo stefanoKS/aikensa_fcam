@@ -555,8 +555,8 @@ Camera Merge</string>
    <widget class="QLabel" name="label_7">
     <property name="geometry">
      <rect>
-      <x>570</x>
-      <y>650</y>
+      <x>1185</x>
+      <y>655</y>
       <width>211</width>
       <height>31</height>
      </rect>
@@ -582,8 +582,8 @@ Camera Merge</string>
    <widget class="QPushButton" name="P658207LE0Abutton">
     <property name="geometry">
      <rect>
-      <x>565</x>
-      <y>540</y>
+      <x>1180</x>
+      <y>545</y>
       <width>231</width>
       <height>101</height>
      </rect>

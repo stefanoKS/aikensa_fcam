@@ -4930,7 +4930,7 @@ border-color: rgb(36, 36, 36);</string>
       <set>Qt::AlignCenter</set>
      </property>
     </widget>
-    <widget class="QLabel" name="R_C_36">
+    <widget class="QLabel" name="R_C_25">
      <property name="geometry">
       <rect>
        <x>1250</x>
@@ -6728,7 +6728,7 @@ border-color: rgb(36, 36, 36);</string>
     <zorder>R_C_24</zorder>
     <zorder>R_C_26</zorder>
     <zorder>R_C_20</zorder>
-    <zorder>R_C_36</zorder>
+    <zorder>R_C_25</zorder>
     <zorder>R_C_21</zorder>
     <zorder>R_D_22</zorder>
     <zorder>R_D_27</zorder>
