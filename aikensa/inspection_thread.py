@@ -283,6 +283,7 @@ class InspectionThread(QThread):
         self.InspectionResult_DetectionID = [None]*5
         self.InspectionResult_Status = [None]*5
         self.InspectionResult_DeltaPitch = [None]*30
+        self.InspectionResult_NGReason = [None]*5
         
         self.InspectionStatus = [None]*5
 
