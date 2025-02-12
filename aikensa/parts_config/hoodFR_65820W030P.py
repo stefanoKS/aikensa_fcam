@@ -59,6 +59,7 @@ def partcheck(image, sahi_predictionList, leftSegmentation, rightSegmentation):
 
     status = "OK"
     print_status = ""
+    ngreason = ""
 
     # cannydetection_image = image.copy() #Make sure to copy the image to avoid modifying the original image
 
@@ -74,15 +75,15 @@ def partcheck(image, sahi_predictionList, leftSegmentation, rightSegmentation):
             # cv2.imwrite("leftmask.jpg", combined_lmask)
 
         if lm.masks is None:
-            print_status = print_status + " 製品は見つかりません"
+            print_status = print_status + " 製品認識不良"
             status = "NG"
             resultPitch = [0] * (len(pitchSpec))
             measuredPitch = [0] * (len(pitchSpec))
             resultid = [0] * (len(idSpec))
-
             image = draw_status_text_PIL(image, status, print_status, size="normal")
+            ngreason = "PART NOT FOUND"
 
-            return image, measuredPitch, resultPitch, resultid, status
+            return image, measuredPitch, resultPitch, resultid, status, ngreason
 
     combined_rmask = None
     for rm in rightSegmentation:
@@ -96,15 +97,15 @@ def partcheck(image, sahi_predictionList, leftSegmentation, rightSegmentation):
             # cv2.imwrite("rightmask.jpg", combined_rmask)
 
         if lm.masks is None:
-            print_status = print_status + " 製品は見つかりません"
+            print_status = print_status + " 製品認識不良"
             status = "NG"
             resultPitch = [0] * (len(pitchSpec))
             measuredPitch = [0] * (len(pitchSpec))
             resultid = [0] * (len(idSpec))
-
+            ngreason = "PART NOT FOUND"
             image = draw_status_text_PIL(image, status, print_status, size="normal")
 
-            return image, measuredPitch, resultPitch, resultid, status
+            return image, measuredPitch, resultPitch, resultid, status, ngreason
 
     combined_mask = np.zeros_like(image[:, :, 0])  # Single-channel black mask
 
@@ -163,16 +164,26 @@ def partcheck(image, sahi_predictionList, leftSegmentation, rightSegmentation):
     #round the value to 1 decimal
     measuredPitch = [round(pitch, 1) for pitch in measuredPitch]
 
-    if len(measuredPitch) == 27:
+    if len(measuredPitch) == len(pitchSpec):
+
         resultPitch = check_tolerance(measuredPitch, pitchSpec, tolerance_pitch)
         resultid = check_id(detectedid, idSpec)
 
-    if len(measuredPitch) != 27:
-        resultPitch = [0] * 27
+    if len(measuredPitch) != len(pitchSpec):
+
+        resultPitch = [0] * (len(pitchSpec))
+        measuredPitch = [0] * (len(pitchSpec))
+        resultid = [0] * (len(idSpec))
+        status = "NG"
+        ngreason = "NUMBER OF CLIP MISMATCH"
+
+        return image, measuredPitch, resultPitch, resultid, status, ngreason
+
 
     if any(result != 1 for result in resultPitch):
         flag_pitch_furyou = 1
         status = "NG"
+        ngreason = "CLIP PITCH NG"
 
     # if any(result != 1 for result in resultid):
     #     flag_clip_furyou = 1
@@ -181,7 +192,7 @@ def partcheck(image, sahi_predictionList, leftSegmentation, rightSegmentation):
     xy_pairs = list(zip(detectedposX, detectedposY))
     draw_pitch_line(image, xy_pairs, resultPitch, thickness=8)
     
-    return image, measuredPitch, resultPitch, resultid, status
+    return image, measuredPitch, resultPitch, resultid, status, ngreason
 
 def create_masks(segmentation_result, orig_shape):
     mask = np.zeros((orig_shape[0], orig_shape[1]), dtype=np.uint8)

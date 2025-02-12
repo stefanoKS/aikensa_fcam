@@ -8,6 +8,7 @@ import yaml
 import time
 import logging
 import sqlite3
+import mysql.connector
 
 from sahi import AutoDetectionModel
 from sahi.predict import get_prediction, get_sliced_prediction, predict
@@ -25,8 +26,6 @@ from typing import List, Tuple
 from aikensa.parts_config.sound import play_do_sound, play_picking_sound, play_re_sound, play_mi_sound, play_alarm_sound, play_konpou_sound, play_keisoku_sound
 
 from ultralytics import YOLO
-# from aikensa.parts_config.ctrplr_8283XW0W0P import partcheck as ctrplrCheck
-# from aikensa.parts_config.ctrplr_8283XW0W0P import dailytenkencheck
 from aikensa.parts_config.hoodFR_65820W030P import partcheck
 from aikensa.parts_config.P658207YA0A_SEALASSYHOODFR import partcheck as P658207YA0A_partcheck
 
@@ -318,6 +317,15 @@ class InspectionThread(QThread):
         self.test = 0
         self.firstTimeInspection = True
 
+                # "Read mysql id and password from yaml file"
+        with open("aikensa/mysql/id.yaml") as file:
+            credentials = yaml.load(file, Loader=yaml.FullLoader)
+            self.mysqlID = credentials["id"]
+            self.mysqlPassword = credentials["pass"]
+            self.mysqlHost = credentials["host"]
+            self.mysqlHostPort = credentials["port"]
+
+
     def release_all_camera(self):
         if self.cap_cam0 is not None:
             self.cap_cam0.release()
@@ -437,7 +445,58 @@ class InspectionThread(QThread):
         )
         ''')
 
+        # List of columns to add
+        columns_to_add = [
+            ("resultpitch", "TEXT"),
+            ("status", "TEXT"),
+            ("NGreason", "TEXT")
+        ]
+
+        # Using the function to add columns
+        self.add_columns(self.cursor, "inspection_results", columns_to_add)
+
         self.conn.commit()
+
+
+        #Initialize connection to mysql server if available
+        try:
+            self.mysql_conn = mysql.connector.connect(
+                host=self.mysqlHost,
+                user=self.mysqlID,
+                password=self.mysqlPassword,
+                port=self.mysqlHostPort,
+                database="AIKENSAresults"
+            )
+            print(f"Connected to MySQL database at {self.mysqlHost}")
+        except Exception as e:
+            print(f"Error connecting to MySQL database: {e}")
+            self.mysql_conn = None
+
+        #try adding data to the schema in mysql
+        if self.mysql_conn is not None:
+            self.mysql_cursor = self.mysql_conn.cursor()
+            self.mysql_cursor.execute('''
+            CREATE TABLE IF NOT EXISTS inspection_results (
+                id INTEGER PRIMARY KEY AUTO_INCREMENT,
+                partName TEXT,
+                numofPart TEXT,
+                currentnumofPart TEXT,
+                timestampHour TEXT,
+                timestampDate TEXT,
+                deltaTime REAL,
+                kensainName TEXT,
+                detected_pitch TEXT,
+                delta_pitch TEXT,
+                total_length REAL,
+                resultpitch TEXT,
+                status TEXT,
+                NGreason TEXT
+            )
+            ''')
+            self.mysql_conn.commit()
+
+
+
 
         #print thread started
         print("Inspection Thread Started")
@@ -587,7 +646,10 @@ class InspectionThread(QThread):
                             kensainName = self.inspection_config.kensainNumber, 
                             detected_pitch_str = "COUNTERRESET", 
                             delta_pitch_str = "COUNTERRESET", 
-                            total_length=0)
+                            total_length=0,
+                            resultPitch = "COUNTERRESET",
+                            status = "COUNTERRESET",
+                            NGreason = "COUNTERRESET")
                 #check kouden sensor and tenmetsu status
 
                 for i in range (len(self.inspection_config.kouden_sensor)):
@@ -887,7 +949,7 @@ class InspectionThread(QThread):
                                         self.InspectionResult_EndSegmentation_Left[i] = self.hoodFR_endSegmentationModel(source=self.InspectionImages_endSegmentation_Left[i], conf=0.5, imgsz=960, verbose=False)
                                         self.InspectionResult_EndSegmentation_Right[i] = self.hoodFR_endSegmentationModel(source=self.InspectionImages_endSegmentation_Right[i], conf=0.5, imgsz=960, verbose=False)
 
-                                        self.InspectionImages[i], self.InspectionResult_PitchMeasured[i], self.InspectionResult_PitchResult[i], self.InspectionResult_DetectionID[i], self.InspectionResult_Status[i] = partcheck(self.InspectionImages[i], 
+                                        self.InspectionImages[i], self.InspectionResult_PitchMeasured[i], self.InspectionResult_PitchResult[i], self.InspectionResult_DetectionID[i], self.InspectionResult_Status[i], self.InspectionResult_NGReason[i] = partcheck(self.InspectionImages[i], 
                                                                                                                                                                                                                                   self.InspectionResult_ClipDetection[i].object_prediction_list,
                                                                                                                                                                                                                                   self.InspectionResult_EndSegmentation_Left[i],
                                                                                                                                                                                                                                   self.InspectionResult_EndSegmentation_Right[i])
@@ -937,7 +999,11 @@ class InspectionThread(QThread):
                                         kensainName = self.inspection_config.kensainNumber, 
                                         detected_pitch_str = self.InspectionResult_PitchMeasured[i], 
                                         delta_pitch_str = self.InspectionResult_DeltaPitch[i], 
-                                        total_length=0)
+                                        total_length=0,
+                                        resultPitch = self.InspectionResult_PitchResult[i], 
+                                        status = self.InspectionResult_Status[i], 
+                                        NGreason = self.InspectionResult_NGReason[i])
+                                    
                                     
                                     #save hole image
                                     self.save_image_hole(self.holeFrame1, False, "P1")
@@ -1039,7 +1105,10 @@ class InspectionThread(QThread):
                             kensainName = self.inspection_config.kensainNumber, 
                             detected_pitch_str = "COUNTERRESET", 
                             delta_pitch_str = "COUNTERRESET", 
-                            total_length=0)
+                            total_length=0,
+                            resultPitch = "COUNTERRESET",
+                            status = "COUNTERRESET",
+                            NGreason = "COUNTERRESET")
                 #check kouden sensor and tenmetsu status
 
                 for i in range (len(self.inspection_config.kouden_sensor)):
@@ -1357,7 +1426,7 @@ class InspectionThread(QThread):
                                         # self.InspectionResult_EndSegmentation_Left[i] = self.hoodFR_endSegmentationModel(source=self.InspectionImages_endSegmentation_Left[i], conf=0.5, imgsz=960, verbose=False)
                                         # self.InspectionResult_EndSegmentation_Right[i] = self.hoodFR_endSegmentationModel(source=self.InspectionImages_endSegmentation_Right[i], conf=0.5, imgsz=960, verbose=False)
 
-                                        self.InspectionImages[i], self.InspectionResult_PitchMeasured[i], self.InspectionResult_PitchResult[i], self.InspectionResult_DetectionID[i], self.InspectionResult_Status[i] = P658207YA0A_partcheck(self.InspectionImages[i], self.InspectionResult_ClipDetection[i].object_prediction_list)
+                                        self.InspectionImages[i], self.InspectionResult_PitchMeasured[i], self.InspectionResult_PitchResult[i], self.InspectionResult_DetectionID[i], self.InspectionResult_Status[i], self.InspectionResult_NGReason[i] = P658207YA0A_partcheck(self.InspectionImages[i], self.InspectionResult_ClipDetection[i].object_prediction_list)
                                     else:
                                         #Make pure black image
                                         self.InspectionImages[i] = np.full((24, 1771, 3), (10, 10, 20), dtype=np.uint8)
@@ -1404,7 +1473,11 @@ class InspectionThread(QThread):
                                         kensainName = self.inspection_config.kensainNumber, 
                                         detected_pitch_str = self.InspectionResult_PitchMeasured[i], 
                                         delta_pitch_str = self.InspectionResult_DeltaPitch[i], 
-                                        total_length=0)
+                                        total_length=0,
+                                        resultPitch = self.InspectionResult_PitchResult[i],
+                                        status = self.InspectionStatus[i],
+                                        NGreason = self.InspectionResult_NGReason[i])
+                                    
                                     
                                     # #save hole image
                                     # self.save_image_hole(self.holeFrame1, False, "P1")
@@ -1632,7 +1705,7 @@ class InspectionThread(QThread):
                                         self.InspectionResult_EndSegmentation_Left[i] = self.hoodFR_endSegmentationModel(source=self.InspectionImages_endSegmentation_Left[i], conf=0.5, imgsz=960, verbose=False)
                                         self.InspectionResult_EndSegmentation_Right[i] = self.hoodFR_endSegmentationModel(source=self.InspectionImages_endSegmentation_Right[i], conf=0.5, imgsz=960, verbose=False)
 
-                                        self.InspectionImages[i], self.InspectionResult_PitchMeasured[i], self.InspectionResult_PitchResult[i], self.InspectionResult_DetectionID[i], self.InspectionResult_Status[i] = partcheck(self.InspectionImages[i], 
+                                        self.InspectionImages[i], self.InspectionResult_PitchMeasured[i], self.InspectionResult_PitchResult[i], self.InspectionResult_DetectionID[i], self.InspectionResult_Status[i], self.InspectionResult_NGReason[i] = partcheck(self.InspectionImages[i], 
                                                                                                                                                                                                                                   self.InspectionResult_ClipDetection[i].object_prediction_list,
                                                                                                                                                                                                                                   self.InspectionResult_EndSegmentation_Left[i],
                                                                                                                                                                                                                                   self.InspectionResult_EndSegmentation_Right[i])
@@ -1682,7 +1755,10 @@ class InspectionThread(QThread):
                                         kensainName = self.inspection_config.kensainNumber, 
                                         detected_pitch_str = self.InspectionResult_PitchMeasured[i], 
                                         delta_pitch_str = self.InspectionResult_DeltaPitch[i], 
-                                        total_length=0)
+                                        total_length=0,
+                                        resultPitch = self.InspectionResult_PitchResult[i],
+                                        status = self.InspectionStatus[i],
+                                        NGreason = self.InspectionResult_NGReason[i])
                                     
                                     #save hole image
                                     self.save_image_hole(self.holeFrame1, False, "P1")
@@ -1816,14 +1892,19 @@ class InspectionThread(QThread):
                 kensainName = self.inspection_config.kensainNumber, 
                 detected_pitch_str = "MANUAL", 
                 delta_pitch_str = "MANUAL", 
-                total_length=0)
+                total_length=0,
+                resultPitch = "MANUAL",
+                status = "MANUAL",
+                NGreason = "MANUAL")
 
         return [ok_count_current, ng_count_current], [ok_count_total, ng_count_total]
+    
     
     def save_result_database(self, partname, numofPart, 
                              currentnumofPart, deltaTime, 
                              kensainName, detected_pitch_str, 
-                             delta_pitch_str, total_length):
+                             delta_pitch_str, total_length, 
+                             resultPitch, status, NGreason):
         # Ensure all inputs are strings or compatible types
 
         timestamp = datetime.now()
@@ -1840,12 +1921,27 @@ class InspectionThread(QThread):
         detected_pitch_str = str(detected_pitch_str)
         delta_pitch_str = str(delta_pitch_str)
         total_length = float(total_length)  # Ensure this is a float
+        resultPitch = str(resultPitch)
+        status = str(status)
+        NGreason = str(NGreason)
 
         self.cursor.execute('''
-        INSERT INTO inspection_results (partname, numofPart, currentnumofPart, timestampHour, timestampDate, deltaTime, kensainName, detected_pitch, delta_pitch, total_length)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ''', (partname, numofPart, currentnumofPart, timestamp_hour, timestamp_date, deltaTime, kensainName, detected_pitch_str, delta_pitch_str, total_length))
+        INSERT INTO inspection_results (partname, numofPart, currentnumofPart, timestampHour, timestampDate, deltaTime, kensainName, detected_pitch, delta_pitch, total_length, resultpitch, status, NGreason)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (partname, numofPart, currentnumofPart, timestamp_hour, timestamp_date, deltaTime, kensainName, detected_pitch_str, delta_pitch_str, total_length, resultPitch, status, NGreason))
         self.conn.commit()
+
+        # Update the totatl part number (Maybe the day has been changed)
+        for key, value in self.widget_dir_map.items():
+            self.inspection_config.today_numofPart[key] = self.get_last_entry_total_numofPart(value)
+
+        #Also save to mysql cursor
+        self.mysql_cursor.execute('''
+        INSERT INTO inspection_results (partName, numofPart, currentnumofPart, timestampHour, timestampDate, deltaTime, kensainName, detected_pitch, delta_pitch, total_length, resultpitch, status, NGreason)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        ''', (partname, numofPart, currentnumofPart, timestamp_hour, timestamp_date, deltaTime, kensainName, detected_pitch_str, delta_pitch_str, total_length, resultPitch, status, NGreason))
+        self.mysql_conn.commit()
+
 
     def get_last_entry_currentnumofPart(self, part_name):
         self.cursor.execute('''
@@ -1867,8 +1963,6 @@ class InspectionThread(QThread):
         # Get today's date in yyyymmdd format
         today_date = datetime.now().strftime("%Y%m%d")
 
-        print (today_date)
-
         self.cursor.execute('''
         SELECT numofPart 
         FROM inspection_results 
@@ -1882,7 +1976,22 @@ class InspectionThread(QThread):
             numofPart = eval(row[0])  # Convert the string tuple to an actual tuple
             return numofPart
         else:
-            return [0, 0]  # Default values if no entry is found
+            return [0, 0]  # Default values if no entry is found    def get_last_entry_currentnumofPart(self, part_name):
+        self.cursor.execute('''
+        SELECT currentnumofPart 
+        FROM inspection_results 
+        WHERE partName = ? 
+        ORDER BY id DESC 
+        LIMIT 1
+        ''', (part_name,))
+        
+        row = self.cursor.fetchone()
+        if row:
+            currentnumofPart = eval(row[0])
+            return currentnumofPart
+        else:
+            return [0, 0]
+            
 
     def draw_status_text_PIL(self, image, text, color, size = "normal", x_offset = 0, y_offset = 0):
 
@@ -2018,3 +2127,14 @@ class InspectionThread(QThread):
         self.release_all_camera()
         self.running = False
         print("Inspection thread stopped.")
+
+    def add_columns(self, cursor, table_name, columns):
+        for column_name, column_type in columns:
+            try:
+                cursor.execute(f'''
+                ALTER TABLE {table_name}
+                ADD COLUMN {column_name} {column_type};
+                ''')
+                print(f"Added column: {column_name}")
+            except sqlite3.OperationalError as e:
+                print(f"Could not add column {column_name}: {e}")
