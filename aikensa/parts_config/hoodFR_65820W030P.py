@@ -17,7 +17,7 @@ kanjiFontPath = "aikensa/font/NotoSansJP-ExtraBold.ttf"
 
 pitchSpec = [26, 107, 75, 75, 75, 75, 75, 92, 75, 102, 100, 129, 103, 109, 103, 129, 100, 102, 75, 92, 75, 75, 75, 75, 75, 107, 26]
 idSpec = [0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-tolerance_pitch = [3.0] * 27
+tolerance_pitch = [2.2] * 27
 tolerance_pitch[0] = 3.5
 tolerance_pitch[-1] = 3.5
 
@@ -423,6 +423,32 @@ def draw_bounding_box(image, x, y, w, h, img_size, color=(0, 255, 0), thickness=
     center_x, center_y = x, y
     return (center_x, center_y)
 
+def draw_status_text_PIL(image, status, print_status, size = "normal"):
+
+    if size == "large":
+        font_scale = 50.0
+    if size == "normal":
+        font_scale = 90.0
+    elif size == "small":
+        font_scale = 50.0
+
+    if status == "OK":
+        color = (10, 210, 60)
+
+    elif status == "NG":
+        color = (200, 30, 50)
+    
+    image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+    img_pil = Image.fromarray(image_rgb)
+    draw = ImageDraw.Draw(img_pil)
+    font = ImageFont.truetype(kanjiFontPath, font_scale)
+
+    draw.text((300, 5), status, font=font, fill=color)  
+    draw.text((300, 100), print_status, font=font, fill=color)
+    image = cv2.cvtColor(np.array(img_pil), cv2.COLOR_RGB2BGR)
+    cv2.imwrite("test.png", image)
+    return image
+    
 # class BoundingBox:
 #     def __init__(self, minx, miny, maxx, maxy):
 #         self.minx = minx

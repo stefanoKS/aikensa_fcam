@@ -947,8 +947,8 @@ class InspectionThread(QThread):
                                         self.InspectionImages_endSegmentation_Left[i] = self.InspectionImages[i][:, :1024, :]
                                         self.InspectionImages_endSegmentation_Right[i] = self.InspectionImages[i][:, -1024:, :]
 
-                                        self.InspectionResult_EndSegmentation_Left[i] = self.hoodFR_endSegmentationModel(source=self.InspectionImages_endSegmentation_Left[i], conf=0.5, imgsz=960, verbose=False)
-                                        self.InspectionResult_EndSegmentation_Right[i] = self.hoodFR_endSegmentationModel(source=self.InspectionImages_endSegmentation_Right[i], conf=0.5, imgsz=960, verbose=False)
+                                        self.InspectionResult_EndSegmentation_Left[i] = self.hoodFR_endSegmentationModel(source=self.InspectionImages_endSegmentation_Left[i], conf=0.5, imgsz=1080, verbose=False, retina_masks=True)
+                                        self.InspectionResult_EndSegmentation_Right[i] = self.hoodFR_endSegmentationModel(source=self.InspectionImages_endSegmentation_Right[i], conf=0.5, imgsz=1080, verbose=False, retina_masks=True)
 
                                         self.InspectionImages[i], self.InspectionResult_PitchMeasured[i], self.InspectionResult_PitchResult[i], self.InspectionResult_DetectionID[i], self.InspectionResult_Status[i], self.InspectionResult_NGReason[i] = partcheck(self.InspectionImages[i], 
                                                                                                                                                                                                                                   self.InspectionResult_ClipDetection[i].object_prediction_list,
@@ -2103,7 +2103,7 @@ class InspectionThread(QThread):
         if os.path.exists(path_hoodFR_clipDetectionModel):
             hoodFR_clipDetectionModel = AutoDetectionModel.from_pretrained(model_type="yolov8",
                                                                             model_path=path_hoodFR_clipDetectionModel,
-                                                                            confidence_threshold=0.5,
+                                                                            confidence_threshold=0.6,
                                                                             device="cuda:0")
         if os.path.exists(path_hoodFR_endSegmentationModel):
             hoodFR_endSegmentationModel = YOLO(path_hoodFR_endSegmentationModel)
