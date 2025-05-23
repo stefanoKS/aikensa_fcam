@@ -31,6 +31,9 @@ from aikensa.parts_config.P658207YA0A_SEALASSYHOODFR import partcheck as P658207
 
 from PIL import ImageFont, ImageDraw, Image
 
+from aikensa.tools.yolo_tools import remove_imageborder_yolo
+from aikensa.tools.opencv_tools import add_imageborder
+
 @dataclass
 class InspectionConfig:
     widget: int = 0
@@ -947,8 +950,18 @@ class InspectionThread(QThread):
                                         self.InspectionImages_endSegmentation_Left[i] = self.InspectionImages[i][:, :1024, :]
                                         self.InspectionImages_endSegmentation_Right[i] = self.InspectionImages[i][:, -1024:, :]
 
-                                        self.InspectionResult_EndSegmentation_Left[i] = self.hoodFR_endSegmentationModel(source=self.InspectionImages_endSegmentation_Left[i], conf=0.5, imgsz=1280, verbose=False, retina_masks=True)
-                                        self.InspectionResult_EndSegmentation_Right[i] = self.hoodFR_endSegmentationModel(source=self.InspectionImages_endSegmentation_Right[i], conf=0.5, imgsz=1280, verbose=False, retina_masks=True)
+                                        self.InspectionImages_endSegmentation_Left[i] = add_imageborder(img = self.InspectionImages_endSegmentation_Left[i], width = 480)
+                                        self.InspectionImages_endSegmentation_Right[i] = add_imageborder(img = self.InspectionImages_endSegmentation_Right[i], width = 480)
+
+                                        #bgr to rgb
+                                        self.InspectionImages_endSegmentation_Left[i] = cv2.cvtColor(self.InspectionImages_endSegmentation_Left[i], cv2.COLOR_BGR2RGB)
+                                        self.InspectionImages_endSegmentation_Right[i] = cv2.cvtColor(self.InspectionImages_endSegmentation_Right[i], cv2.COLOR_BGR2RGB)
+
+                                        # cv2.imwrite(f"InspectionImages_endSegmentation_Left_{i}.png", self.InspectionImages_endSegmentation_Left[i])
+                                        # cv2.imwrite(f"InspectionImages_endSegmentation_Right_{i}.png", self.InspectionImages_endSegmentation_Right[i])
+
+                                        self.InspectionResult_EndSegmentation_Left[i] = self.hoodFR_endSegmentationModel(source=self.InspectionImages_endSegmentation_Left[i], conf=0.5, imgsz=1680, verbose=False, retina_masks=True)
+                                        self.InspectionResult_EndSegmentation_Right[i] = self.hoodFR_endSegmentationModel(source=self.InspectionImages_endSegmentation_Right[i], conf=0.5, imgsz=1680, verbose=False, retina_masks=True)
 
                                         self.InspectionImages[i], self.InspectionResult_PitchMeasured[i], self.InspectionResult_PitchResult[i], self.InspectionResult_DetectionID[i], self.InspectionResult_Status[i], self.InspectionResult_NGReason[i] = partcheck(self.InspectionImages[i], 
                                                                                                                                                                                                                                   self.InspectionResult_ClipDetection[i].object_prediction_list,

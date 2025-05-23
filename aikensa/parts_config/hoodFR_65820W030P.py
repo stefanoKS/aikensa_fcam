@@ -26,7 +26,10 @@ text_offset = 40
 endoffset_y = 0
 bbox_offset = 10
 
-pixelMultiplier = 0.1590
+pixelMultiplier = 0.1620
+
+segmentation_width = 1024
+border_width = 480
 
 
 def partcheck(image, sahi_predictionList, leftSegmentation, rightSegmentation):
@@ -66,13 +69,16 @@ def partcheck(image, sahi_predictionList, leftSegmentation, rightSegmentation):
     combined_lmask = None
     for lm in leftSegmentation:
         if lm.masks is not None:
-            orig_shape = (image.shape[0], 1024)
+            orig_shape = (image.shape[0] + border_width * 2 , segmentation_width + border_width * 2 )
             segmentation_xyn = lm.masks.xyn
             lmask = create_masks(segmentation_xyn, orig_shape)
             if combined_lmask is None:
                 combined_lmask = np.zeros_like(lmask)
             combined_lmask = cv2.bitwise_or(combined_lmask, lmask)
+            combined_lmask = combined_lmask[border_width:-border_width, border_width:-border_width]
+            combined_lmask = cv2.resize(combined_lmask, (segmentation_width, image.shape[0]))
             # cv2.imwrite("leftmask.jpg", combined_lmask)
+
 
         if lm.masks is None:
             print_status = print_status + " 製品認識不良"
@@ -88,12 +94,14 @@ def partcheck(image, sahi_predictionList, leftSegmentation, rightSegmentation):
     combined_rmask = None
     for rm in rightSegmentation:
         if rm.masks is not None:
-            orig_shape = (image.shape[0], 1024)
+            orig_shape = (image.shape[0] + border_width * 2 , segmentation_width + border_width * 2 )
             segmentation_xyn = rm.masks.xyn
             rmask = create_masks(segmentation_xyn, orig_shape)
             if combined_rmask is None:
                 combined_rmask = np.zeros_like(rmask)
             combined_rmask = cv2.bitwise_or(combined_rmask, rmask)
+            combined_rmask = combined_rmask[border_width:-border_width, border_width:-border_width]
+            combined_rmask = cv2.resize(combined_rmask, (segmentation_width, image.shape[0]))
             # cv2.imwrite("rightmask.jpg", combined_rmask)
 
         if lm.masks is None:
@@ -110,8 +118,8 @@ def partcheck(image, sahi_predictionList, leftSegmentation, rightSegmentation):
     combined_mask = np.zeros_like(image[:, :, 0])  # Single-channel black mask
 
     if combined_lmask is not None and combined_rmask is not None:
-        combined_mask[:, :1024] = combined_lmask 
-        combined_mask[:, -1024:] = combined_rmask 
+        combined_mask[:, :segmentation_width] = combined_lmask 
+        combined_mask[:, -segmentation_width:] = combined_rmask 
         # cv2.imwrite("combined_mask.jpg", combined_mask)
 
     for i, detection in enumerate(sorted_detections):

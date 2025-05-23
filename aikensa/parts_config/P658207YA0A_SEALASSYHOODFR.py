@@ -29,6 +29,7 @@ endoffset_y = 0
 bbox_offset = 10
 
 pixelMultiplier = 0.157717741935489
+#
 
 
 def partcheck(image, sahi_predictionList):
