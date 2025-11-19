@@ -755,12 +755,6 @@ class InspectionThread(QThread):
                         self.part4Crop_scaled = self.downSampling(self.part4Crop_scaled, width=1771, height=24)
                         self.part5Crop_scaled = self.downSampling(self.part5Crop_scaled, width=1771, height=24)
 
-                        # self.save_image_hole(self.holeFrame1, False, "P1")
-                        # self.save_image_hole(self.holeFrame2, False, "P2")
-                        # self.save_image_hole(self.holeFrame3, False, "P3")
-                        # self.save_image_hole(self.holeFrame4, False, "P4")
-                        # self.save_image_hole(self.holeFrame5, False, "P5")
-
                         self.holeImageMerge[0] = self.holeFrame1.copy()
                         self.holeImageMerge[1] = self.holeFrame2.copy()
                         self.holeImageMerge[2] = self.holeFrame3.copy()
