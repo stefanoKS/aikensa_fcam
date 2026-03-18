@@ -225,11 +225,11 @@ class InspectionThread(QThread):
         self.dailyTenken_cropWidth = 950
         self.dailyTenken_cropWidth_scaled = int(self.dailyTenken_cropWidth//self.scale_factor)
 
-        self.part1Crop_YPos = 15
-        self.part2Crop_YPos = 290
+        self.part1Crop_YPos = 45
+        self.part2Crop_YPos = 300
         self.part3Crop_YPos = 580
-        self.part4Crop_YPos = 870
-        self.part5Crop_YPos = 1150
+        self.part4Crop_YPos = 860
+        self.part5Crop_YPos = 1130
 
 
         #nissan HOOD FR
@@ -2110,7 +2110,7 @@ class InspectionThread(QThread):
         if os.path.exists(path_hoodFR_clipDetectionModel):
             hoodFR_clipDetectionModel = AutoDetectionModel.from_pretrained(model_type="yolov8",
                                                                             model_path=path_hoodFR_clipDetectionModel,
-                                                                            confidence_threshold=0.6,
+                                                                            confidence_threshold=0.4,
                                                                             device="cuda:0")
         if os.path.exists(path_hoodFR_endSegmentationModel):
             hoodFR_endSegmentationModel = YOLO(path_hoodFR_endSegmentationModel)

@@ -643,10 +643,10 @@ class CalibrationThread(QThread):
                     self.calib_config.savePlanarize = False
                     self.combinedImage, self.planarizeTransform = planarize_image(self.combinedImage, 
                                                                                   target_width=self.homography_size[1], target_height=self.homography_size[0], 
-                                                                                  top_offset=250, bottom_offset=250)
+                                                                                  top_offset=350, bottom_offset=350)
                     self.combinedImage_scaled, self.planarizeTransform_scaled = planarize_image(self.combinedImage_scaled,
                                                                                                   target_width=int(self.homography_size[1]/self.scale_factor), target_height=int(self.homography_size[0]/self.scale_factor),
-                                                                                                  top_offset=int(250/self.scale_factor), bottom_offset=int(250/self.scale_factor))
+                                                                                                  top_offset=int(350/self.scale_factor), bottom_offset=int(350/self.scale_factor))
                     os.makedirs(self._save_dir, exist_ok=True)
                     with open("./aikensa/cameracalibration/planarizeTransform.yaml", "w") as file:  
                         yaml.dump(self.planarizeTransform.tolist(), file)

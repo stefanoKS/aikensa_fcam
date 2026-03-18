@@ -17,7 +17,7 @@ kanjiFontPath = "aikensa/font/NotoSansJP-ExtraBold.ttf"
 
 pitchSpec = [26, 107, 75, 75, 75, 75, 75, 92, 75, 102, 100, 129, 103, 109, 103, 129, 100, 102, 75, 92, 75, 75, 75, 75, 75, 107, 26]
 idSpec = [0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-tolerance_pitch = [2.2] * 27
+tolerance_pitch = [2.5] * 27
 tolerance_pitch[0] = 3.5
 tolerance_pitch[-1] = 3.5
 
@@ -26,7 +26,7 @@ text_offset = 40
 endoffset_y = 0
 bbox_offset = 10
 
-pixelMultiplier = 0.1620
+pixelMultiplier = 0.15723
 
 segmentation_width = 1024
 border_width = 480
