@@ -176,6 +176,17 @@ class InspectionThread(QThread):
         self.H3_scaled = None
         self.H4_scaled = None
         self.H5_scaled = None
+        self.H1_FR = None
+        self.H2_FR = None
+        self.H3_FR = None
+        self.H4_FR = None
+        self.H5_FR = None
+        self.H1_scaled_FR = None
+        self.H2_scaled_FR = None
+        self.H3_scaled_FR = None
+        self.H4_scaled_FR = None
+        self.H5_scaled_FR = None
+        self.homography_adjustment_FR = {}
 
         self.part1Crop = None
         self.part2Crop = None
@@ -234,11 +245,11 @@ class InspectionThread(QThread):
 
         #nissan HOOD FR
         
-        self.part1Crop_YPos_hoodFR = 25*5
-        self.part2Crop_YPos_hoodFR = 67*5
-        self.part3Crop_YPos_hoodFR = 109*5
-        self.part4Crop_YPos_hoodFR = 151*5
-        self.part5Crop_YPos_hoodFR = 193*5
+        self.part1Crop_YPos_hoodFR = 63*5
+        self.part2Crop_YPos_hoodFR = 101*5
+        self.part3Crop_YPos_hoodFR = 139*5
+        self.part4Crop_YPos_hoodFR = 174*5
+        self.part5Crop_YPos_hoodFR = 212*5
 
         self.part1Crop_YPos_scaled = int(self.part1Crop_YPos//self.scale_factor)
         self.part2Crop_YPos_scaled = int(self.part2Crop_YPos//self.scale_factor)
@@ -510,6 +521,7 @@ class InspectionThread(QThread):
         self.current_cameraID = self.inspection_config.cameraID
         self.initialize_single_camera(self.current_cameraID)
         self._save_dir = f"aikensa/cameracalibration/"
+        self.homography_adjustment_fr_path = os.path.join(self._save_dir, "homography_adjustment_FR.yaml")
 
         self.homography_template = cv2.imread("aikensa/homography_template/homography_template_border.png")
         self.homography_size = (self.homography_template.shape[0], self.homography_template.shape[1])
@@ -529,65 +541,8 @@ class InspectionThread(QThread):
 
         #INIT all variables
 
-        if os.path.exists("./aikensa/cameracalibration/homography_param_cam1.yaml"):
-            with open("./aikensa/cameracalibration/homography_param_cam1.yaml") as file:
-                self.homography_matrix1 = yaml.load(file, Loader=yaml.FullLoader)
-                self.H1 = np.array(self.homography_matrix1)
-                print(f"Loaded homography matrix for camera 1")
-
-        if os.path.exists("./aikensa/cameracalibration/homography_param_cam2.yaml"):
-            with open("./aikensa/cameracalibration/homography_param_cam2.yaml") as file:
-                self.homography_matrix2 = yaml.load(file, Loader=yaml.FullLoader)
-                self.H2 = np.array(self.homography_matrix2)
-                print(f"Loaded homography matrix for camera 2")
-
-        if os.path.exists("./aikensa/cameracalibration/homography_param_cam3.yaml"):
-            with open("./aikensa/cameracalibration/homography_param_cam3.yaml") as file:
-                self.homography_matrix3 = yaml.load(file, Loader=yaml.FullLoader)
-                self.H3 = np.array(self.homography_matrix3)
-                print(f"Loaded homography matrix for camera 3")
-
-        if os.path.exists("./aikensa/cameracalibration/homography_param_cam4.yaml"):
-            with open("./aikensa/cameracalibration/homography_param_cam4.yaml") as file:
-                self.homography_matrix4 = yaml.load(file, Loader=yaml.FullLoader)
-                self.H4 = np.array(self.homography_matrix4)
-                print(f"Loaded homography matrix for camera 4")
-
-        if os.path.exists("./aikensa/cameracalibration/homography_param_cam5.yaml"):
-            with open("./aikensa/cameracalibration/homography_param_cam5.yaml") as file:
-                self.homography_matrix5 = yaml.load(file, Loader=yaml.FullLoader)
-                self.H5 = np.array(self.homography_matrix5)
-                print(f"Loaded homography matrix for camera 5")
-
-        if os.path.exists("./aikensa/cameracalibration/homography_param_cam1_scaled.yaml"):
-            with open("./aikensa/cameracalibration/homography_param_cam1_scaled.yaml") as file:
-                self.homography_matrix1_scaled = yaml.load(file, Loader=yaml.FullLoader)
-                self.H1_scaled = np.array(self.homography_matrix1_scaled)
-                print(f"Loaded scaled homography matrix for camera 1")
-
-        if os.path.exists("./aikensa/cameracalibration/homography_param_cam2_scaled.yaml"):
-            with open("./aikensa/cameracalibration/homography_param_cam2_scaled.yaml") as file:
-                self.homography_matrix2_scaled = yaml.load(file, Loader=yaml.FullLoader)
-                self.H2_scaled = np.array(self.homography_matrix2_scaled)
-                print(f"Loaded scaled homography matrix for camera 2")
-
-        if os.path.exists("./aikensa/cameracalibration/homography_param_cam3_scaled.yaml"):
-            with open("./aikensa/cameracalibration/homography_param_cam3_scaled.yaml") as file:
-                self.homography_matrix3_scaled = yaml.load(file, Loader=yaml.FullLoader)
-                self.H3_scaled = np.array(self.homography_matrix3_scaled)
-                print(f"Loaded scaled homography matrix for camera 3")
-
-        if os.path.exists("./aikensa/cameracalibration/homography_param_cam4_scaled.yaml"):
-            with open("./aikensa/cameracalibration/homography_param_cam4_scaled.yaml") as file:
-                self.homography_matrix4_scaled = yaml.load(file, Loader=yaml.FullLoader)
-                self.H4_scaled = np.array(self.homography_matrix4_scaled)
-                print(f"Loaded scaled homography matrix for camera 4")
-
-        if os.path.exists("./aikensa/cameracalibration/homography_param_cam5_scaled.yaml"):
-            with open("./aikensa/cameracalibration/homography_param_cam5_scaled.yaml") as file:
-                self.homography_matrix5_scaled = yaml.load(file, Loader=yaml.FullLoader)
-                self.H5_scaled = np.array(self.homography_matrix5_scaled)
-                print(f"Loaded scaled homography matrix for camera 5")
+        self.load_homography_set()
+        self.load_homography_set(suffix="_FR")
 
         if os.path.exists("./aikensa/cameracalibration/planarizeTransform.yaml"):
             with open("./aikensa/cameracalibration/planarizeTransform.yaml") as file:
@@ -1197,11 +1152,11 @@ class InspectionThread(QThread):
                         self.mergeframe4_scaled = cv2.remap(self.mergeframe4_scaled, self.inspection_config.map1_downscaled[4], self.inspection_config.map2_downscaled[4], interpolation=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT)
                         self.mergeframe5_scaled = cv2.remap(self.mergeframe5_scaled, self.inspection_config.map1_downscaled[5], self.inspection_config.map2_downscaled[5], interpolation=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT)
 
-                        self.combinedImage_scaled = warpTwoImages_template(self.homography_blank_canvas_scaled, self.mergeframe1_scaled, self.H1_scaled)
-                        self.combinedImage_scaled = warpTwoImages_template(self.combinedImage_scaled, self.mergeframe2_scaled, self.H2_scaled)
-                        self.combinedImage_scaled = warpTwoImages_template(self.combinedImage_scaled, self.mergeframe3_scaled, self.H3_scaled)
-                        self.combinedImage_scaled = warpTwoImages_template(self.combinedImage_scaled, self.mergeframe4_scaled, self.H4_scaled)
-                        self.combinedImage_scaled = warpTwoImages_template(self.combinedImage_scaled, self.mergeframe5_scaled, self.H5_scaled)
+                        self.combinedImage_scaled = warpTwoImages_template(self.homography_blank_canvas_scaled, self.mergeframe1_scaled, self.H1_scaled_FR)
+                        self.combinedImage_scaled = warpTwoImages_template(self.combinedImage_scaled, self.mergeframe2_scaled, self.H2_scaled_FR)
+                        self.combinedImage_scaled = warpTwoImages_template(self.combinedImage_scaled, self.mergeframe3_scaled, self.H3_scaled_FR)
+                        self.combinedImage_scaled = warpTwoImages_template(self.combinedImage_scaled, self.mergeframe4_scaled, self.H4_scaled_FR)
+                        self.combinedImage_scaled = warpTwoImages_template(self.combinedImage_scaled, self.mergeframe5_scaled, self.H5_scaled_FR)
 
                         self.combinedImage_scaled = cv2.warpPerspective(self.combinedImage_scaled, self.planarizeTransform_temp_scaled, (int(self.homography_size[1]/self.scale_factor), int(self.homography_size[0]/self.scale_factor)))
                         self.combinedImage_scaled = cv2.resize(self.combinedImage_scaled, (int(self.homography_size[1]/(self.scale_factor*1.48)), int(self.homography_size[0]/(self.scale_factor*1.26*1.48))))#1.48 for the qt, 1.26 for the aspect ratio
@@ -1363,11 +1318,11 @@ class InspectionThread(QThread):
                                 self.mergeframe4 = cv2.remap(self.mergeframe4, self.inspection_config.map1[4], self.inspection_config.map2[4], interpolation=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT)
                                 self.mergeframe5 = cv2.remap(self.mergeframe5, self.inspection_config.map1[5], self.inspection_config.map2[5], interpolation=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT)
 
-                                self.combinedImage = warpTwoImages_template(self.homography_blank_canvas, self.mergeframe1, self.H1)
-                                self.combinedImage = warpTwoImages_template(self.combinedImage, self.mergeframe2, self.H2)
-                                self.combinedImage = warpTwoImages_template(self.combinedImage, self.mergeframe3, self.H3)
-                                self.combinedImage = warpTwoImages_template(self.combinedImage, self.mergeframe4, self.H4)
-                                self.combinedImage = warpTwoImages_template(self.combinedImage, self.mergeframe5, self.H5)
+                                self.combinedImage = warpTwoImages_template(self.homography_blank_canvas, self.mergeframe1, self.H1_FR)
+                                self.combinedImage = warpTwoImages_template(self.combinedImage, self.mergeframe2, self.H2_FR)
+                                self.combinedImage = warpTwoImages_template(self.combinedImage, self.mergeframe3, self.H3_FR)
+                                self.combinedImage = warpTwoImages_template(self.combinedImage, self.mergeframe4, self.H4_FR)
+                                self.combinedImage = warpTwoImages_template(self.combinedImage, self.mergeframe5, self.H5_FR)
                                                                             
                                 self.combinedImage = cv2.warpPerspective(self.combinedImage, self.planarizeTransform_temp, (int(self.homography_size[1]), int(self.homography_size[0])))
                                 self.combinedImage = cv2.resize(self.combinedImage, (self.homography_size[1], int(self.homography_size[0]/(1.26))))#1.48 for the qt, 1.26 for the aspect ratio
@@ -2089,6 +2044,122 @@ class InspectionThread(QThread):
             distortion_coeff = np.array(calibration_param.get('distortion_coefficients'))
         return camera_matrix, distortion_coeff
 
+    def load_homography_matrix(self, filename):
+        with open(filename, 'r') as file:
+            homography_matrix = yaml.load(file, Loader=yaml.FullLoader)
+        return np.array(homography_matrix, dtype=np.float64)
+
+    def load_homography_adjustment_config(self):
+        default_camera_adjustment = {
+            "x_offset": 0.0,
+            "y_offset": 0.0,
+            "rotation_deg": 0.0,
+        }
+        default_config = {
+            f"camera_{camera_index}": default_camera_adjustment.copy()
+            for camera_index in range(1, 6)
+        }
+
+        if os.path.exists(self.homography_adjustment_fr_path):
+            with open(self.homography_adjustment_fr_path, 'r') as file:
+                loaded_config = yaml.load(file, Loader=yaml.FullLoader) or {}
+            if isinstance(loaded_config, dict):
+                if any(key in loaded_config for key in ("x_offset", "y_offset", "rotation_deg")):
+                    legacy_adjustment = default_camera_adjustment.copy()
+                    legacy_adjustment.update({
+                        "x_offset": loaded_config.get("x_offset", 0.0),
+                        "y_offset": loaded_config.get("y_offset", 0.0),
+                        "rotation_deg": loaded_config.get("rotation_deg", 0.0),
+                    })
+                    default_config = {
+                        f"camera_{camera_index}": legacy_adjustment.copy()
+                        for camera_index in range(1, 6)
+                    }
+                else:
+                    for camera_index in range(1, 6):
+                        camera_key = f"camera_{camera_index}"
+                        camera_adjustment = loaded_config.get(camera_key, {})
+                        if isinstance(camera_adjustment, dict):
+                            default_config[camera_key].update(camera_adjustment)
+
+        return default_config
+
+    def build_homography_adjustment_matrix(self, x_offset, y_offset, rotation_deg, image_size):
+        height, width = image_size
+        center_x = width / 2.0
+        center_y = height / 2.0
+        theta = np.deg2rad(rotation_deg)
+        cos_theta = np.cos(theta)
+        sin_theta = np.sin(theta)
+
+        translate_to_origin = np.array([
+            [1.0, 0.0, -center_x],
+            [0.0, 1.0, -center_y],
+            [0.0, 0.0, 1.0],
+        ], dtype=np.float64)
+        rotation_matrix = np.array([
+            [cos_theta, -sin_theta, 0.0],
+            [sin_theta, cos_theta, 0.0],
+            [0.0, 0.0, 1.0],
+        ], dtype=np.float64)
+        translate_back = np.array([
+            [1.0, 0.0, center_x],
+            [0.0, 1.0, center_y],
+            [0.0, 0.0, 1.0],
+        ], dtype=np.float64)
+        translation_matrix = np.array([
+            [1.0, 0.0, x_offset],
+            [0.0, 1.0, y_offset],
+            [0.0, 0.0, 1.0],
+        ], dtype=np.float64)
+
+        rotation_about_center = translate_back @ rotation_matrix @ translate_to_origin
+        return translation_matrix @ rotation_about_center
+
+    def apply_homography_adjustment(self, homography_matrix, adjustment_matrix):
+        if homography_matrix is None:
+            return None
+        return adjustment_matrix @ homography_matrix
+
+    def load_homography_set(self, suffix=""):
+        adjustment_config = None
+        attribute_suffix = suffix if suffix else ""
+
+        if suffix == "_FR":
+            adjustment_config = self.load_homography_adjustment_config()
+
+        for camera_index in range(1, 6):
+            matrix_path = f"./aikensa/cameracalibration/homography_param_cam{camera_index}{suffix}.yaml"
+            if os.path.exists(matrix_path):
+                matrix = self.load_homography_matrix(matrix_path)
+                if adjustment_config is not None:
+                    camera_adjustment = adjustment_config.get(f"camera_{camera_index}", {})
+                    adjustment_matrix = self.build_homography_adjustment_matrix(
+                        camera_adjustment.get("x_offset", 0.0),
+                        camera_adjustment.get("y_offset", 0.0),
+                        camera_adjustment.get("rotation_deg", 0.0),
+                        self.homography_size,
+                    )
+                    matrix = self.apply_homography_adjustment(matrix, adjustment_matrix)
+                    self.homography_adjustment_FR[camera_index] = adjustment_matrix
+                setattr(self, f"H{camera_index}{attribute_suffix}", matrix)
+                print(f"Loaded homography matrix for camera {camera_index}{suffix}")
+
+            scaled_matrix_path = f"./aikensa/cameracalibration/homography_param_cam{camera_index}_scaled{suffix}.yaml"
+            if os.path.exists(scaled_matrix_path):
+                scaled_matrix = self.load_homography_matrix(scaled_matrix_path)
+                if adjustment_config is not None:
+                    camera_adjustment = adjustment_config.get(f"camera_{camera_index}", {})
+                    scaled_adjustment_matrix = self.build_homography_adjustment_matrix(
+                        camera_adjustment.get("x_offset", 0.0) / self.scale_factor,
+                        camera_adjustment.get("y_offset", 0.0) / self.scale_factor,
+                        camera_adjustment.get("rotation_deg", 0.0),
+                        self.homography_size_scaled,
+                    )
+                    scaled_matrix = self.apply_homography_adjustment(scaled_matrix, scaled_adjustment_matrix)
+                setattr(self, f"H{camera_index}_scaled{attribute_suffix}", scaled_matrix)
+                print(f"Loaded scaled homography matrix for camera {camera_index}{suffix}")
+
     def initialize_model(self):
         #Change based on the widget
         hoodFR_holeDetectionModel = None
@@ -2110,7 +2181,7 @@ class InspectionThread(QThread):
         if os.path.exists(path_hoodFR_clipDetectionModel):
             hoodFR_clipDetectionModel = AutoDetectionModel.from_pretrained(model_type="yolov8",
                                                                             model_path=path_hoodFR_clipDetectionModel,
-                                                                            confidence_threshold=0.4,
+                                                                            confidence_threshold=0.7,
                                                                             device="cuda:0")
         if os.path.exists(path_hoodFR_endSegmentationModel):
             hoodFR_endSegmentationModel = YOLO(path_hoodFR_endSegmentationModel)

@@ -20,7 +20,7 @@ pitchSpec = [77, 109, 123, 116, 114, 122, 120, 119, 158.5, 158.5, 158.5, 119, 12
 idSpec = [0, 0, 1, 0, 1, 1, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 1, 1, 0, 1, 0, 0]
 tolerance_pitch = [2.2] * 35
 tolerance_pitch[-16:-7] = [5.0] * 10
-tolerance_pitch[-6:-1] = [1.5] * 5
+tolerance_pitch[-6:-1] = [2.5] * 5
 
 color = (0, 255, 0)
 color2 = (255, 200, 10)
@@ -28,7 +28,7 @@ text_offset = 40
 endoffset_y = 0
 bbox_offset = 10
 
-pixelMultiplier = 0.157717741935489
+pixelMultiplier = 0.15893
 #
 
 
@@ -85,6 +85,7 @@ def partcheck(image, sahi_predictionList):
     
 
     status = "OK"
+    ngreason = ""
 
     for i, detection in enumerate(sorted_detections):
         detectedid.append(detection.category.id)
@@ -201,10 +202,27 @@ def partcheck(image, sahi_predictionList):
 
     if len(measuredPitch) != len(pitchSpec):
         resultPitch = [0] * len(pitchSpec)
+        ngreason = "NUMBER OF CLIP MISMATCH"
+        print(
+            f"P658207YA0A pitch count mismatch: measured={len(measuredPitch)}, expected={len(pitchSpec)}"
+        )
 
     if any(result != 1 for result in resultPitch):
         flag_pitch_furyou = 1
         status = "NG"
+        ngreason = "CLIP PITCH NG"
+        ng_pitch_details = []
+        for index, result in enumerate(resultPitch):
+            if result != 1:
+                measured_value = measuredPitch[index] if index < len(measuredPitch) else None
+                spec_value = pitchSpec[index] if index < len(pitchSpec) else None
+                tolerance_value = tolerance_pitch[index] if index < len(tolerance_pitch) else None
+                ng_pitch_details.append(
+                    f"pitch_{index + 1}: measured={measured_value}, spec={spec_value}, tolerance={tolerance_value}"
+                )
+
+        if ng_pitch_details:
+            print("P658207YA0A NG pitches -> " + "; ".join(ng_pitch_details))
 
     # if any(result != 1 for result in resultid):
     #     flag_clip_furyou = 1
@@ -213,7 +231,7 @@ def partcheck(image, sahi_predictionList):
     xy_pairs = list(zip(detectedposX, detectedposY))
     draw_pitch_line(image, xy_pairs, resultPitch, thickness=6)
     
-    return image, measuredPitch, resultPitch, resultid, status
+    return image, measuredPitch, resultPitch, resultid, status, ngreason
 
 def create_masks(segmentation_result, orig_shape):
     mask = np.zeros((orig_shape[0], orig_shape[1]), dtype=np.uint8)

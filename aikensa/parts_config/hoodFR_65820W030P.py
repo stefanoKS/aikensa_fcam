@@ -26,7 +26,7 @@ text_offset = 40
 endoffset_y = 0
 bbox_offset = 10
 
-pixelMultiplier = 0.15723
+pixelMultiplier = 0.1588
 
 segmentation_width = 1024
 border_width = 480
