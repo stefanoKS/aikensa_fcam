@@ -1,0 +1,27 @@
+part_name: 658207YA0A
+planarize:
+  left_offset: 0.0
+  right_offset: 0.0
+  top_offset: 0.0
+  bottom_offset: 0.0
+homography_adjustment:
+  camera_1:
+    x_offset: 0.0
+    y_offset: -30.0
+    rotation_deg: -0.27
+  camera_2:
+    x_offset: 0.0
+    y_offset: 28.0
+    rotation_deg: 0.5
+  camera_3:
+    x_offset: 0.0
+    y_offset: 18.0
+    rotation_deg: 0.13
+  camera_4:
+    x_offset: -8.0
+    y_offset: 18.0
+    rotation_deg: 0.05
+  camera_5:
+    x_offset: -17.0
+    y_offset: 32.0
+    rotation_deg: -0.1

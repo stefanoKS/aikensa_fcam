@@ -221,10 +221,46 @@ class InspectionThread(QThread):
 
         self.planarizeTransform_temp = None
         self.planarizeTransform_temp_scaled = None
+        self.basePlanarizeTransform = None
+        self.basePlanarizeTransform_scaled = None
+        self.baseHomographyMatrices = {}
         self.homographyWarpCache = {}
         self.planarizeWarpCache = {}
         self.homography_adjustment_path = os.path.join("aikensa", "cameracalibration", "homography_adjustment.yaml")
         self.crop_settings_path = os.path.join("aikensa", "inspection", "crop_settings.yaml")
+        self.part_merge_config_paths = {
+            8: os.path.join("aikensa", "cameracalibration", "merge_config_65820W030P.yaml"),
+            9: os.path.join("aikensa", "cameracalibration", "merge_config_658207YA0A.yaml"),
+        }
+        self.base_planarize_reference = {
+            "left_offset": 0.0,
+            "right_offset": 0.0,
+            "top_offset": 350.0,
+            "bottom_offset": 350.0,
+        }
+        self.part_merge_profiles = {
+            8: {
+                "part_name": "65820W030P",
+                "planarize_defaults": {
+                    "left_offset": 0.0,
+                    "right_offset": 0.0,
+                    "top_offset": 350.0,
+                    "bottom_offset": 350.0,
+                },
+                "legacy_homography_adjustment_path": None,
+            },
+            9: {
+                "part_name": "658207YA0A",
+                "planarize_defaults": {
+                    "left_offset": 0.0,
+                    "right_offset": 0.0,
+                    "top_offset": 0.0,
+                    "bottom_offset": 0.0,
+                },
+                "legacy_homography_adjustment_path": os.path.join("aikensa", "cameracalibration", "homography_adjustment_FR.yaml"),
+            },
+        }
+        self.part_merge_configs = {}
         self.crop_position_profiles = {
             "65820W030P": {
                 "attrs": [
@@ -572,6 +608,8 @@ class InspectionThread(QThread):
             with open("./aikensa/cameracalibration/planarizeTransform_temp_scaled.yaml") as file:
                 transform_list = yaml.load(file, Loader=yaml.FullLoader)
                 self.planarizeTransform_temp_scaled = np.array(transform_list)     
+
+        self.apply_part_merge_configs()
 
         self.cache_perspective_maps()
 
@@ -2087,6 +2125,195 @@ class InspectionThread(QThread):
         if homography_matrix is None:
             return None
         return adjustment_matrix @ homography_matrix
+
+    def build_default_camera_adjustment_config(self):
+        return {
+            f"camera_{camera_index}": {
+                "x_offset": 0.0,
+                "y_offset": 0.0,
+                "rotation_deg": 0.0,
+            }
+            for camera_index in range(1, 6)
+        }
+
+    def build_default_part_merge_config(self, widget_index):
+        profile = self.part_merge_profiles.get(widget_index, {})
+        legacy_path = profile.get("legacy_homography_adjustment_path")
+        default_homography_adjustment = self.build_default_camera_adjustment_config()
+
+        if legacy_path:
+            default_homography_adjustment = self.load_homography_adjustment_config(legacy_path)
+
+        return {
+            "part_name": profile.get("part_name", ""),
+            "planarize": dict(profile.get("planarize_defaults", {})),
+            "homography_adjustment": default_homography_adjustment,
+        }
+
+    def save_part_merge_config(self, widget_index, config):
+        config_path = self.part_merge_config_paths.get(widget_index)
+        if config_path is None:
+            return
+
+        os.makedirs(os.path.dirname(config_path), exist_ok=True)
+        with open(config_path, "w") as file:
+            yaml.dump(config, file, sort_keys=False)
+
+    def load_part_merge_config(self, widget_index):
+        config = self.build_default_part_merge_config(widget_index)
+        config_path = self.part_merge_config_paths.get(widget_index)
+
+        if config_path and os.path.exists(config_path):
+            with open(config_path, "r") as file:
+                loaded_config = yaml.load(file, Loader=yaml.FullLoader) or {}
+
+            if isinstance(loaded_config, dict):
+                loaded_part_name = loaded_config.get("part_name")
+                if loaded_part_name is not None:
+                    config["part_name"] = str(loaded_part_name)
+
+                loaded_planarize = loaded_config.get("planarize", {})
+                if isinstance(loaded_planarize, dict):
+                    for offset_key in config["planarize"]:
+                        if offset_key in loaded_planarize:
+                            config["planarize"][offset_key] = float(loaded_planarize[offset_key])
+
+                loaded_homography_adjustment = loaded_config.get("homography_adjustment", {})
+                if isinstance(loaded_homography_adjustment, dict):
+                    for camera_index in range(1, 6):
+                        camera_key = f"camera_{camera_index}"
+                        loaded_camera_adjustment = loaded_homography_adjustment.get(camera_key, {})
+                        if isinstance(loaded_camera_adjustment, dict):
+                            for field_name in ("x_offset", "y_offset", "rotation_deg"):
+                                if field_name in loaded_camera_adjustment:
+                                    config["homography_adjustment"][camera_key][field_name] = float(loaded_camera_adjustment[field_name])
+
+        self.save_part_merge_config(widget_index, config)
+        return config
+
+    def load_part_merge_configs(self):
+        for widget_index in self.part_merge_profiles:
+            self.part_merge_configs[widget_index] = self.load_part_merge_config(widget_index)
+
+    def capture_base_merge_transforms(self):
+        self.baseHomographyMatrices = {}
+
+        for camera_index in range(1, 6):
+            matrix = getattr(self, f"H{camera_index}", None)
+            scaled_matrix = getattr(self, f"H{camera_index}_scaled", None)
+            self.baseHomographyMatrices[f"H{camera_index}"] = None if matrix is None else np.array(matrix, dtype=np.float64)
+            self.baseHomographyMatrices[f"H{camera_index}_scaled"] = None if scaled_matrix is None else np.array(scaled_matrix, dtype=np.float64)
+
+        self.basePlanarizeTransform = None if self.planarizeTransform is None else np.array(self.planarizeTransform, dtype=np.float64)
+        self.basePlanarizeTransform_scaled = None if self.planarizeTransform_scaled is None else np.array(self.planarizeTransform_scaled, dtype=np.float64)
+
+    def scale_planarize_offsets(self, offsets, scale_factor):
+        return {
+            key: float(value) / scale_factor
+            for key, value in offsets.items()
+        }
+
+    def build_planarize_destination_plane(self, image_size, offsets):
+        height, width = image_size
+        left_offset = max(0.0, float(offsets.get("left_offset", 0.0)))
+        right_offset = max(0.0, float(offsets.get("right_offset", 0.0)))
+        top_offset = max(0.0, float(offsets.get("top_offset", 0.0)))
+        bottom_offset = max(0.0, float(offsets.get("bottom_offset", 0.0)))
+
+        max_right = max(0.0, width - left_offset - 1.0)
+        max_bottom = max(0.0, height - top_offset - 1.0)
+        right_offset = min(right_offset, max_right)
+        bottom_offset = min(bottom_offset, max_bottom)
+
+        return np.array([
+            [left_offset, top_offset],
+            [width - right_offset, top_offset],
+            [left_offset, height - bottom_offset],
+            [width - right_offset, height - bottom_offset],
+        ], dtype=np.float32)
+
+    def derive_planarize_transform(self, base_transform, image_size, target_offsets, reference_offsets):
+        if base_transform is None:
+            return None
+
+        reference_plane = self.build_planarize_destination_plane(image_size, reference_offsets)
+        target_plane = self.build_planarize_destination_plane(image_size, target_offsets)
+        plane_adjustment = cv2.getPerspectiveTransform(reference_plane, target_plane)
+        return np.array(plane_adjustment, dtype=np.float64) @ np.array(base_transform, dtype=np.float64)
+
+    def apply_widget_planarize_config(self, widget_index, target_attribute, scaled_target_attribute):
+        part_config = self.part_merge_configs.get(widget_index)
+        if part_config is None:
+            return
+
+        planarize_offsets = part_config.get("planarize", {})
+        scaled_offsets = self.scale_planarize_offsets(planarize_offsets, self.scale_factor)
+        scaled_reference_offsets = self.scale_planarize_offsets(self.base_planarize_reference, self.scale_factor)
+
+        derived_transform = self.derive_planarize_transform(
+            self.basePlanarizeTransform,
+            self.homography_size,
+            planarize_offsets,
+            self.base_planarize_reference,
+        )
+        if derived_transform is not None:
+            setattr(self, target_attribute, derived_transform)
+
+        derived_scaled_transform = self.derive_planarize_transform(
+            self.basePlanarizeTransform_scaled,
+            self.homography_size_scaled,
+            scaled_offsets,
+            scaled_reference_offsets,
+        )
+        if derived_scaled_transform is not None:
+            setattr(self, scaled_target_attribute, derived_scaled_transform)
+
+    def apply_widget_homography_config(self, widget_index, attribute_suffix):
+        part_config = self.part_merge_configs.get(widget_index)
+        if part_config is None:
+            return
+
+        homography_adjustment = part_config.get("homography_adjustment", {})
+
+        for camera_index in range(1, 6):
+            camera_key = f"camera_{camera_index}"
+            camera_adjustment = homography_adjustment.get(camera_key, {})
+
+            base_matrix = self.baseHomographyMatrices.get(f"H{camera_index}")
+            if base_matrix is not None:
+                adjustment_matrix = self.build_homography_adjustment_matrix(
+                    camera_adjustment.get("x_offset", 0.0),
+                    camera_adjustment.get("y_offset", 0.0),
+                    camera_adjustment.get("rotation_deg", 0.0),
+                    self.homography_size,
+                )
+                setattr(
+                    self,
+                    f"H{camera_index}{attribute_suffix}",
+                    self.apply_homography_adjustment(np.array(base_matrix, dtype=np.float64), adjustment_matrix),
+                )
+
+            base_scaled_matrix = self.baseHomographyMatrices.get(f"H{camera_index}_scaled")
+            if base_scaled_matrix is not None:
+                scaled_adjustment_matrix = self.build_homography_adjustment_matrix(
+                    camera_adjustment.get("x_offset", 0.0) / self.scale_factor,
+                    camera_adjustment.get("y_offset", 0.0) / self.scale_factor,
+                    camera_adjustment.get("rotation_deg", 0.0),
+                    self.homography_size_scaled,
+                )
+                setattr(
+                    self,
+                    f"H{camera_index}_scaled{attribute_suffix}",
+                    self.apply_homography_adjustment(np.array(base_scaled_matrix, dtype=np.float64), scaled_adjustment_matrix),
+                )
+
+    def apply_part_merge_configs(self):
+        self.load_part_merge_configs()
+        self.capture_base_merge_transforms()
+        self.apply_widget_homography_config(8, "")
+        self.apply_widget_homography_config(9, "_FR")
+        self.apply_widget_planarize_config(8, "planarizeTransform", "planarizeTransform_scaled")
+        self.apply_widget_planarize_config(9, "planarizeTransform_temp", "planarizeTransform_temp_scaled")
 
     def refresh_crop_position_cache(self):
         self.part1Crop_YPos_scaled = int(self.part1Crop_YPos // self.scale_factor)

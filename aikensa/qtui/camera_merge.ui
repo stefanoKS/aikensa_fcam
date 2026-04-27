@@ -552,7 +552,7 @@ Cam5</string>
      <rect>
       <x>1660</x>
       <y>745</y>
-      <width>81</width>
+      <width>141</width>
       <height>51</height>
      </rect>
     </property>
@@ -566,28 +566,6 @@ Cam5</string>
     </property>
     <property name="text">
      <string>Planarize</string>
-    </property>
-   </widget>
-   <widget class="QPushButton" name="planarize_temp">
-    <property name="geometry">
-     <rect>
-      <x>1660</x>
-      <y>800</y>
-      <width>81</width>
-      <height>51</height>
-     </rect>
-    </property>
-    <property name="font">
-     <font>
-      <pointsize>9</pointsize>
-     </font>
-    </property>
-    <property name="styleSheet">
-     <string notr="true">background-color: rgb(255, 0, 127);</string>
-    </property>
-    <property name="text">
-     <string>Planarize
-temp</string>
     </property>
    </widget>
    <widget class="QWidget" name="gridLayoutWidget">

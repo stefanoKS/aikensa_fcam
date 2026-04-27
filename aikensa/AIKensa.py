@@ -271,10 +271,12 @@ class AIKensa(QMainWindow):
         calcHomoCam5.clicked.connect(lambda: self._set_calib_params(self.calibration_thread, "calculateHomo_cam5", True))
 
         planarize_combined = mergeCamera_widget.findChild(QPushButton, "planarize")
-        planarize_combined.clicked.connect(lambda: self._set_calib_params(self.calibration_thread, "savePlanarize", True))
+        if planarize_combined is not None:
+            planarize_combined.clicked.connect(lambda: self._set_calib_params(self.calibration_thread, "savePlanarize", True))
 
         planarize_temp_combined = mergeCamera_widget.findChild(QPushButton, "planarize_temp")
-        planarize_temp_combined.clicked.connect(lambda: self._set_calib_params(self.calibration_thread, "savePlanarize_temp", True))
+        if planarize_temp_combined is not None:
+            planarize_temp_combined.clicked.connect(lambda: self._set_calib_params(self.calibration_thread, "savePlanarize_temp", True))
 
         for camera_index in range(1, 6):
             self.connect_camera_merge_adjustment_button(6, f"CAM{camera_index}_LEFT", camera_index, x_delta=-0.05)
