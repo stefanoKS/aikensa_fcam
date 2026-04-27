@@ -13,8 +13,7 @@ from PyQt5.QtCore import QThread, pyqtSignal, Qt, QTimer
 from PyQt5.QtGui import QImage, QPixmap
 
 from aikensa.camscripts.cam_init import initialize_camera
-from aikensa.opencv_imgprocessing.cameracalibrate import detectCharucoBoard, detectCharucoBoard_scaledImage, calculatecameramatrix, calculatecameramatrix_scaledImage, warpTwoImages, calculateHomography_template, warpTwoImages_template
-from aikensa.opencv_imgprocessing.arucoplanarize import planarize, planarize_image, planarize_image_temp
+from aikensa.opencv_imgprocessing.cameracalibrate import detectCharucoBoard, detectCharucoBoard_scaledImage, calculatecameramatrix, calculatecameramatrix_scaledImage, warpTwoImages, calculateHomography_template, warpTwoImages_template, normalize_homography_matrix
 from dataclasses import dataclass, field
 from typing import List, Tuple
 
@@ -171,6 +170,97 @@ class CalibrationThread(QThread):
         self.planarizeTransform_temp = None
         self.planarizeTransform_temp_scaled = None
 
+        self.planarize_export_targets = {
+            "savePlanarize": {
+                "config_path": os.path.join("aikensa", "cameracalibration", "merge_config_65820W030P.yaml"),
+                "image_path": os.path.join("aikensa", "cameracalibration", "combinedImage_65820W030P_manual_planarize.png"),
+                "part_name": "65820W030P",
+                "planarize": {
+                    "left_offset": 0.0,
+                    "right_offset": 0.0,
+                    "top_offset": 350.0,
+                    "bottom_offset": 350.0,
+                },
+            },
+            "savePlanarize_temp": {
+                "config_path": os.path.join("aikensa", "cameracalibration", "merge_config_658207YA0A.yaml"),
+                "image_path": os.path.join("aikensa", "cameracalibration", "combinedImage_658207YA0A_manual_planarize.png"),
+                "part_name": "658207YA0A",
+                "planarize": {
+                    "left_offset": 0.0,
+                    "right_offset": 0.0,
+                    "top_offset": 0.0,
+                    "bottom_offset": 0.0,
+                },
+            },
+        }
+
+
+    def build_default_manual_planarize_points(self, planarize_offsets=None):
+        if self.homography_size is None:
+            return {
+                "x1": 0.0,
+                "y1": 0.0,
+                "x2": 1.0,
+                "y2": 0.0,
+                "x3": 0.0,
+                "y3": 1.0,
+                "x4": 1.0,
+                "y4": 1.0,
+            }
+
+        offsets = planarize_offsets or {}
+        height, width = self.homography_size
+        left_offset = max(0.0, float(offsets.get("left_offset", 0.0)))
+        right_offset = max(0.0, float(offsets.get("right_offset", 0.0)))
+        top_offset = max(0.0, float(offsets.get("top_offset", 0.0)))
+        bottom_offset = max(0.0, float(offsets.get("bottom_offset", 0.0)))
+
+        return {
+            "x1": left_offset,
+            "y1": top_offset,
+            "x2": float(width) - right_offset,
+            "y2": top_offset,
+            "x3": left_offset,
+            "y3": float(height) - bottom_offset,
+            "x4": float(width) - right_offset,
+            "y4": float(height) - bottom_offset,
+        }
+
+    def export_manual_planarize_image(self, export_key, image):
+        if image is None:
+            return
+
+        export_target = self.planarize_export_targets.get(export_key)
+        if export_target is None:
+            return
+
+        config_path = export_target["config_path"]
+        image_path = export_target["image_path"]
+        config = {}
+
+        if os.path.exists(config_path):
+            with open(config_path, "r") as file:
+                loaded_config = yaml.load(file, Loader=yaml.FullLoader) or {}
+                if isinstance(loaded_config, dict):
+                    config = loaded_config
+
+        config.setdefault("part_name", export_target["part_name"])
+        config.setdefault("planarize", dict(export_target["planarize"]))
+        config["manual_planarize_points"] = {
+            **self.build_default_manual_planarize_points(config.get("planarize", export_target["planarize"])),
+            **(config.get("manual_planarize_points", {}) if isinstance(config.get("manual_planarize_points", {}), dict) else {}),
+        }
+
+        os.makedirs(os.path.dirname(config_path), exist_ok=True)
+        with open(config_path, "w") as file:
+            yaml.dump(config, file, sort_keys=False)
+
+        os.makedirs(os.path.dirname(image_path), exist_ok=True)
+        cv2.imwrite(image_path, cv2.cvtColor(image, cv2.COLOR_RGB2BGR))
+        print(f"Saved manual planarize reference image to {image_path}")
+        print(f"Manual planarize points should be updated in {config_path}")
+
 
 
     def initialize_single_camera(self, camID):
@@ -281,74 +371,59 @@ class CalibrationThread(QThread):
         if os.path.exists("./aikensa/cameracalibration/homography_param_cam1.yaml"):
             with open("./aikensa/cameracalibration/homography_param_cam1.yaml") as file:
                 self.homography_matrix1 = yaml.load(file, Loader=yaml.FullLoader)
-                self.H1 = np.array(self.homography_matrix1)
+                self.H1 = normalize_homography_matrix(self.homography_matrix1)
 
         if os.path.exists("./aikensa/cameracalibration/homography_param_cam2.yaml"):
             with open("./aikensa/cameracalibration/homography_param_cam2.yaml") as file:
                 self.homography_matrix2 = yaml.load(file, Loader=yaml.FullLoader)
-                self.H2 = np.array(self.homography_matrix2)
+                self.H2 = normalize_homography_matrix(self.homography_matrix2)
 
         if os.path.exists("./aikensa/cameracalibration/homography_param_cam3.yaml"):
             with open("./aikensa/cameracalibration/homography_param_cam3.yaml") as file:
                 self.homography_matrix3 = yaml.load(file, Loader=yaml.FullLoader)
-                self.H3 = np.array(self.homography_matrix3)
+                self.H3 = normalize_homography_matrix(self.homography_matrix3)
 
         if os.path.exists("./aikensa/cameracalibration/homography_param_cam4.yaml"):
             with open("./aikensa/cameracalibration/homography_param_cam4.yaml") as file:
                 self.homography_matrix4 = yaml.load(file, Loader=yaml.FullLoader)
-                self.H4 = np.array(self.homography_matrix4)
+                self.H4 = normalize_homography_matrix(self.homography_matrix4)
 
         if os.path.exists("./aikensa/cameracalibration/homography_param_cam5.yaml"):
             with open("./aikensa/cameracalibration/homography_param_cam5.yaml") as file:
                 self.homography_matrix5 = yaml.load(file, Loader=yaml.FullLoader)
-                self.H5 = np.array(self.homography_matrix5)
+                self.H5 = normalize_homography_matrix(self.homography_matrix5)
 
         if os.path.exists("./aikensa/cameracalibration/homography_param_cam1_scaled.yaml"):
             with open("./aikensa/cameracalibration/homography_param_cam1_scaled.yaml") as file:
                 self.homography_matrix1_scaled = yaml.load(file, Loader=yaml.FullLoader)
-                self.H1_scaled = np.array(self.homography_matrix1_scaled)
+                self.H1_scaled = normalize_homography_matrix(self.homography_matrix1_scaled)
 
         if os.path.exists("./aikensa/cameracalibration/homography_param_cam2_scaled.yaml"):
             with open("./aikensa/cameracalibration/homography_param_cam2_scaled.yaml") as file:
                 self.homography_matrix2_scaled = yaml.load(file, Loader=yaml.FullLoader)
-                self.H2_scaled = np.array(self.homography_matrix2_scaled)
+                self.H2_scaled = normalize_homography_matrix(self.homography_matrix2_scaled)
 
         if os.path.exists("./aikensa/cameracalibration/homography_param_cam3_scaled.yaml"):
             with open("./aikensa/cameracalibration/homography_param_cam3_scaled.yaml") as file:
                 self.homography_matrix3_scaled = yaml.load(file, Loader=yaml.FullLoader)
-                self.H3_scaled = np.array(self.homography_matrix3_scaled)
+                self.H3_scaled = normalize_homography_matrix(self.homography_matrix3_scaled)
 
         if os.path.exists("./aikensa/cameracalibration/homography_param_cam4_scaled.yaml"):
             with open("./aikensa/cameracalibration/homography_param_cam4_scaled.yaml") as file:
                 self.homography_matrix4_scaled = yaml.load(file, Loader=yaml.FullLoader)
-                self.H4_scaled = np.array(self.homography_matrix4_scaled)
+                self.H4_scaled = normalize_homography_matrix(self.homography_matrix4_scaled)
 
         if os.path.exists("./aikensa/cameracalibration/homography_param_cam5_scaled.yaml"):
             with open("./aikensa/cameracalibration/homography_param_cam5_scaled.yaml") as file:
                 self.homography_matrix5_scaled = yaml.load(file, Loader=yaml.FullLoader)
-                self.H5_scaled = np.array(self.homography_matrix5_scaled)
+                self.H5_scaled = normalize_homography_matrix(self.homography_matrix5_scaled)
 
         self.refresh_all_homography_adjustments()
 
-        if os.path.exists("./aikensa/cameracalibration/planarizeTransform.yaml"):
-            with open("./aikensa/cameracalibration/planarizeTransform.yaml") as file:
-                transform_list = yaml.load(file, Loader=yaml.FullLoader)
-                self.planarizeTransform = np.array(transform_list)
-
-        if os.path.exists("./aikensa/cameracalibration/planarizeTransform_scaled.yaml"):
-            with open("./aikensa/cameracalibration/planarizeTransform_scaled.yaml") as file:
-                transform_list = yaml.load(file, Loader=yaml.FullLoader)
-                self.planarizeTransform_scaled = np.array(transform_list)
-
-        if os.path.exists("./aikensa/cameracalibration/planarizeTransform_temp.yaml"):
-            with open("./aikensa/cameracalibration/planarizeTransform_temp.yaml") as file:
-                transform_list = yaml.load(file, Loader=yaml.FullLoader)
-                self.planarizeTransform_temp = np.array(transform_list)
-
-        if os.path.exists("./aikensa/cameracalibration/planarizeTransform_temp_scaled.yaml"):
-            with open("./aikensa/cameracalibration/planarizeTransform_temp_scaled.yaml") as file:
-                transform_list = yaml.load(file, Loader=yaml.FullLoader)
-                self.planarizeTransform_temp_scaled = np.array(transform_list)     
+        self.planarizeTransform = None
+        self.planarizeTransform_scaled = None
+        self.planarizeTransform_temp = None
+        self.planarizeTransform_temp_scaled = None
 
         
 
@@ -700,47 +775,11 @@ class CalibrationThread(QThread):
 
                 if self.calib_config.savePlanarize is True:
                     self.calib_config.savePlanarize = False
-                    self.combinedImage, self.planarizeTransform = planarize_image(self.combinedImage, 
-                                                                                  target_width=self.homography_size[1], target_height=self.homography_size[0], 
-                                                                                  top_offset=350, bottom_offset=350)
-                    self.combinedImage_scaled, self.planarizeTransform_scaled = planarize_image(self.combinedImage_scaled,
-                                                                                                  target_width=int(self.homography_size[1]/self.scale_factor), target_height=int(self.homography_size[0]/self.scale_factor),
-                                                                                                  top_offset=int(350/self.scale_factor), bottom_offset=int(350/self.scale_factor))
-                    os.makedirs(self._save_dir, exist_ok=True)
-                    with open("./aikensa/cameracalibration/planarizeTransform.yaml", "w") as file:  
-                        yaml.dump(self.planarizeTransform.tolist(), file)
-                    with open("./aikensa/cameracalibration/planarizeTransform_scaled.yaml", "w") as file:
-                        yaml.dump(self.planarizeTransform_scaled.tolist(), file)
-
-                    print(f"Image size after warping is {self.combinedImage.shape}")
-                    # cv2.imwrite("combinedImage.png", self.combinedImage)
-                    # cv2.imwrite("combinedImage_scaled.png", self.combinedImage_scaled)
+                    self.export_manual_planarize_image("savePlanarize", self.combinedImage)
 
                 if self.calib_config.savePlanarize_temp is True:
                     self.calib_config.savePlanarize_temp = False
-                    self.combinedImage, self.planarizeTransform_temp = planarize_image_temp(self.combinedImage, 
-                                                                                  target_width=self.homography_size[1], target_height=self.homography_size[0], 
-                                                                                  top_offset=0, bottom_offset=0)
-                    
-                    with open("./aikensa/cameracalibration/planarizeTransform_temp.yaml", "w") as file:  
-                        yaml.dump(self.planarizeTransform_temp.tolist(), file)
-                                  
-                    self.combinedImage_scaled, self.planarizeTransform_temp_scaled = planarize_image_temp(self.combinedImage_scaled,
-                                                                                                  target_width=int(self.homography_size[1]/self.scale_factor), target_height=int(self.homography_size[0]/self.scale_factor),
-                                                                                                  top_offset=0, bottom_offset=0)
-
-                    with open("./aikensa/cameracalibration/planarizeTransform_temp_scaled.yaml", "w") as file:
-                        yaml.dump(self.planarizeTransform_temp_scaled.tolist(), file)
-
-                    cv2.imwrite("combinedImage_temp.png", self.combinedImage_scaled)
-                    print(f"Planarize Transform Temp: {self.planarizeTransform_temp}")
-                    print(f"Planarize Transform Temp Scaled: {self.planarizeTransform_temp_scaled}")
-
-                    os.makedirs(self._save_dir, exist_ok=True)
-
-
-                    
-                    # cv2.imwrite("combinedImage_scaled_temp.png", self.combinedImage_scaled)
+                    self.export_manual_planarize_image("savePlanarize_temp", self.combinedImage)
 
                 # if self.planarizeTransform is not None:
                 #     self.combinedImage = cv2.warpPerspective(self.combinedImage, self.planarizeTransform, (self.homography_size[1],self.homography_size[0]))
@@ -878,6 +917,7 @@ class CalibrationThread(QThread):
         return translation_matrix @ rotation_about_center
 
     def apply_homography_adjustment(self, homography_matrix, adjustment_matrix):
+        homography_matrix = normalize_homography_matrix(homography_matrix)
         if homography_matrix is None:
             return None
         return adjustment_matrix @ homography_matrix
@@ -894,7 +934,7 @@ class CalibrationThread(QThread):
                 camera_adjustment.get("rotation_deg", 0.0),
                 self.homography_size,
             )
-            setattr(self, f"H{camera_index}", self.apply_homography_adjustment(np.array(base_matrix, dtype=np.float64), adjustment_matrix))
+            setattr(self, f"H{camera_index}", self.apply_homography_adjustment(base_matrix, adjustment_matrix))
 
         base_matrix_scaled = getattr(self, f"homography_matrix{camera_index}_scaled", None)
         if base_matrix_scaled is not None and self.homography_size_scaled is not None:
@@ -904,7 +944,7 @@ class CalibrationThread(QThread):
                 camera_adjustment.get("rotation_deg", 0.0),
                 self.homography_size_scaled,
             )
-            setattr(self, f"H{camera_index}_scaled", self.apply_homography_adjustment(np.array(base_matrix_scaled, dtype=np.float64), adjustment_matrix_scaled))
+            setattr(self, f"H{camera_index}_scaled", self.apply_homography_adjustment(base_matrix_scaled, adjustment_matrix_scaled))
 
     def refresh_all_homography_adjustments(self):
         for camera_index in range(1, 6):

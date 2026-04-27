@@ -587,27 +587,10 @@ class InspectionThread(QThread):
         self.load_homography_set()
         self.load_homography_set(suffix="_FR")
 
-        if os.path.exists("./aikensa/cameracalibration/planarizeTransform.yaml"):
-            with open("./aikensa/cameracalibration/planarizeTransform.yaml") as file:
-                transform_list = yaml.load(file, Loader=yaml.FullLoader)
-                self.planarizeTransform = np.array(transform_list)
-                print(f"Loaded planarizeTransform matrix")
-
-        if os.path.exists("./aikensa/cameracalibration/planarizeTransform_scaled.yaml"):
-            with open("./aikensa/cameracalibration/planarizeTransform_scaled.yaml") as file:
-                transform_list = yaml.load(file, Loader=yaml.FullLoader)
-                self.planarizeTransform_scaled = np.array(transform_list)
-                print(f"Loaded scaled planarizeTransform matrix")
-
-        if os.path.exists("./aikensa/cameracalibration/planarizeTransform_temp.yaml"):
-            with open("./aikensa/cameracalibration/planarizeTransform_temp.yaml") as file:
-                transform_list = yaml.load(file, Loader=yaml.FullLoader)
-                self.planarizeTransform_temp = np.array(transform_list)
-
-        if os.path.exists("./aikensa/cameracalibration/planarizeTransform_temp_scaled.yaml"):
-            with open("./aikensa/cameracalibration/planarizeTransform_temp_scaled.yaml") as file:
-                transform_list = yaml.load(file, Loader=yaml.FullLoader)
-                self.planarizeTransform_temp_scaled = np.array(transform_list)     
+        self.planarizeTransform = None
+        self.planarizeTransform_scaled = None
+        self.planarizeTransform_temp = None
+        self.planarizeTransform_temp_scaled = None
 
         self.apply_part_merge_configs()
 
@@ -2140,14 +2123,35 @@ class InspectionThread(QThread):
         profile = self.part_merge_profiles.get(widget_index, {})
         legacy_path = profile.get("legacy_homography_adjustment_path")
         default_homography_adjustment = self.build_default_camera_adjustment_config()
+        planarize_defaults = dict(profile.get("planarize_defaults", {}))
 
         if legacy_path:
             default_homography_adjustment = self.load_homography_adjustment_config(legacy_path)
 
         return {
             "part_name": profile.get("part_name", ""),
-            "planarize": dict(profile.get("planarize_defaults", {})),
+            "planarize": planarize_defaults,
+            "manual_planarize_points": self.build_default_manual_planarize_points(planarize_defaults),
             "homography_adjustment": default_homography_adjustment,
+        }
+
+    def build_default_manual_planarize_points(self, planarize_offsets=None, image_size=None):
+        if image_size is None:
+            image_size = self.homography_size
+
+        if image_size is None:
+            image_size = (1, 1)
+
+        source_plane = self.build_planarize_destination_plane(image_size, planarize_offsets or {})
+        return {
+            "x1": float(source_plane[0][0]),
+            "y1": float(source_plane[0][1]),
+            "x2": float(source_plane[1][0]),
+            "y2": float(source_plane[1][1]),
+            "x3": float(source_plane[2][0]),
+            "y3": float(source_plane[2][1]),
+            "x4": float(source_plane[3][0]),
+            "y4": float(source_plane[3][1]),
         }
 
     def save_part_merge_config(self, widget_index, config):
@@ -2178,6 +2182,14 @@ class InspectionThread(QThread):
                         if offset_key in loaded_planarize:
                             config["planarize"][offset_key] = float(loaded_planarize[offset_key])
 
+                default_manual_points = self.build_default_manual_planarize_points(config["planarize"])
+                loaded_manual_points = loaded_config.get("manual_planarize_points", {})
+                if isinstance(loaded_manual_points, dict):
+                    for point_key in default_manual_points:
+                        if point_key in loaded_manual_points:
+                            default_manual_points[point_key] = float(loaded_manual_points[point_key])
+                config["manual_planarize_points"] = default_manual_points
+
                 loaded_homography_adjustment = loaded_config.get("homography_adjustment", {})
                 if isinstance(loaded_homography_adjustment, dict):
                     for camera_index in range(1, 6):
@@ -2204,21 +2216,30 @@ class InspectionThread(QThread):
             self.baseHomographyMatrices[f"H{camera_index}"] = None if matrix is None else np.array(matrix, dtype=np.float64)
             self.baseHomographyMatrices[f"H{camera_index}_scaled"] = None if scaled_matrix is None else np.array(scaled_matrix, dtype=np.float64)
 
-        self.basePlanarizeTransform = None if self.planarizeTransform is None else np.array(self.planarizeTransform, dtype=np.float64)
-        self.basePlanarizeTransform_scaled = None if self.planarizeTransform_scaled is None else np.array(self.planarizeTransform_scaled, dtype=np.float64)
-
     def scale_planarize_offsets(self, offsets, scale_factor):
         return {
-            key: float(value) / scale_factor
+            key: self.parse_float_config_value(value, 0.0) / scale_factor
             for key, value in offsets.items()
         }
 
+    def scale_planarize_points(self, points, scale_factor):
+        return {
+            key: self.parse_float_config_value(value, 0.0) / scale_factor
+            for key, value in points.items()
+        }
+
+    def parse_float_config_value(self, value, default):
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            return float(default)
+
     def build_planarize_destination_plane(self, image_size, offsets):
         height, width = image_size
-        left_offset = max(0.0, float(offsets.get("left_offset", 0.0)))
-        right_offset = max(0.0, float(offsets.get("right_offset", 0.0)))
-        top_offset = max(0.0, float(offsets.get("top_offset", 0.0)))
-        bottom_offset = max(0.0, float(offsets.get("bottom_offset", 0.0)))
+        left_offset = max(0.0, self.parse_float_config_value(offsets.get("left_offset", 0.0), 0.0))
+        right_offset = max(0.0, self.parse_float_config_value(offsets.get("right_offset", 0.0), 0.0))
+        top_offset = max(0.0, self.parse_float_config_value(offsets.get("top_offset", 0.0), 0.0))
+        bottom_offset = max(0.0, self.parse_float_config_value(offsets.get("bottom_offset", 0.0), 0.0))
 
         max_right = max(0.0, width - left_offset - 1.0)
         max_bottom = max(0.0, height - top_offset - 1.0)
@@ -2232,14 +2253,51 @@ class InspectionThread(QThread):
             [width - right_offset, height - bottom_offset],
         ], dtype=np.float32)
 
-    def derive_planarize_transform(self, base_transform, image_size, target_offsets, reference_offsets):
-        if base_transform is None:
+    def build_planarize_source_plane(self, image_size, points, planarize_offsets=None):
+        default_points = self.build_default_manual_planarize_points(planarize_offsets, image_size)
+        width = float(image_size[1])
+        height = float(image_size[0])
+        normalized_points = dict(default_points)
+
+        if isinstance(points, dict):
+            for point_key in normalized_points:
+                if point_key in points:
+                    normalized_points[point_key] = self.parse_float_config_value(points[point_key], normalized_points[point_key])
+
+        for point_key in ("x1", "x2", "x3", "x4"):
+            normalized_points[point_key] = min(max(0.0, normalized_points[point_key]), width)
+
+        for point_key in ("y1", "y2", "y3", "y4"):
+            normalized_points[point_key] = min(max(0.0, normalized_points[point_key]), height)
+
+        source_plane = np.array([
+            [normalized_points["x1"], normalized_points["y1"]],
+            [normalized_points["x2"], normalized_points["y2"]],
+            [normalized_points["x3"], normalized_points["y3"]],
+            [normalized_points["x4"], normalized_points["y4"]],
+        ], dtype=np.float32)
+
+        if len(np.unique(source_plane, axis=0)) < 4:
+            source_plane = self.build_planarize_destination_plane(image_size, planarize_offsets or {})
+
+        polygon_area = abs(cv2.contourArea(np.array([
+            source_plane[0],
+            source_plane[1],
+            source_plane[3],
+            source_plane[2],
+        ], dtype=np.float32)))
+        if polygon_area < 1.0:
             return None
 
-        reference_plane = self.build_planarize_destination_plane(image_size, reference_offsets)
+        return source_plane
+
+    def derive_planarize_transform(self, image_size, source_points, target_offsets):
+        source_plane = self.build_planarize_source_plane(image_size, source_points, target_offsets)
+        if source_plane is None:
+            return None
+
         target_plane = self.build_planarize_destination_plane(image_size, target_offsets)
-        plane_adjustment = cv2.getPerspectiveTransform(reference_plane, target_plane)
-        return np.array(plane_adjustment, dtype=np.float64) @ np.array(base_transform, dtype=np.float64)
+        return np.array(cv2.getPerspectiveTransform(source_plane, target_plane), dtype=np.float64)
 
     def apply_widget_planarize_config(self, widget_index, target_attribute, scaled_target_attribute):
         part_config = self.part_merge_configs.get(widget_index)
@@ -2247,26 +2305,23 @@ class InspectionThread(QThread):
             return
 
         planarize_offsets = part_config.get("planarize", {})
+        manual_points = part_config.get("manual_planarize_points", {})
         scaled_offsets = self.scale_planarize_offsets(planarize_offsets, self.scale_factor)
-        scaled_reference_offsets = self.scale_planarize_offsets(self.base_planarize_reference, self.scale_factor)
+        scaled_points = self.scale_planarize_points(manual_points, self.scale_factor)
 
         derived_transform = self.derive_planarize_transform(
-            self.basePlanarizeTransform,
             self.homography_size,
+            manual_points,
             planarize_offsets,
-            self.base_planarize_reference,
         )
-        if derived_transform is not None:
-            setattr(self, target_attribute, derived_transform)
+        setattr(self, target_attribute, derived_transform)
 
         derived_scaled_transform = self.derive_planarize_transform(
-            self.basePlanarizeTransform_scaled,
             self.homography_size_scaled,
+            scaled_points,
             scaled_offsets,
-            scaled_reference_offsets,
         )
-        if derived_scaled_transform is not None:
-            setattr(self, scaled_target_attribute, derived_scaled_transform)
+        setattr(self, scaled_target_attribute, derived_scaled_transform)
 
     def apply_widget_homography_config(self, widget_index, attribute_suffix):
         part_config = self.part_merge_configs.get(widget_index)

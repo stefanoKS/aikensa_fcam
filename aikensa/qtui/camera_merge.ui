@@ -928,6 +928,27 @@ Cam5</string>
      </item>
     </layout>
    </widget>
+   <widget class="QPushButton" name="planarize_J42U">
+    <property name="geometry">
+     <rect>
+      <x>1660</x>
+      <y>805</y>
+      <width>141</width>
+      <height>51</height>
+     </rect>
+    </property>
+    <property name="font">
+     <font>
+      <pointsize>9</pointsize>
+     </font>
+    </property>
+    <property name="styleSheet">
+     <string notr="true">background-color: rgb(255, 37, 21);</string>
+    </property>
+    <property name="text">
+     <string>Planarize J42U</string>
+    </property>
+   </widget>
   </widget>
   <widget class="QMenuBar" name="menubar">
    <property name="geometry">
@@ -935,7 +956,7 @@ Cam5</string>
      <x>0</x>
      <y>0</y>
      <width>1926</width>
-     <height>20</height>
+     <height>21</height>
     </rect>
    </property>
   </widget>

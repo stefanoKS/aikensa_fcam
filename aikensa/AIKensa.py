@@ -278,6 +278,10 @@ class AIKensa(QMainWindow):
         if planarize_temp_combined is not None:
             planarize_temp_combined.clicked.connect(lambda: self._set_calib_params(self.calibration_thread, "savePlanarize_temp", True))
 
+        planarize_j42u_combined = mergeCamera_widget.findChild(QPushButton, "planarize_J42U")
+        if planarize_j42u_combined is not None:
+            planarize_j42u_combined.clicked.connect(lambda: self._set_calib_params(self.calibration_thread, "savePlanarize_temp", True))
+
         for camera_index in range(1, 6):
             self.connect_camera_merge_adjustment_button(6, f"CAM{camera_index}_LEFT", camera_index, x_delta=-0.05)
             self.connect_camera_merge_adjustment_button(6, f"CAM{camera_index}_RIGHT", camera_index, x_delta=0.05)

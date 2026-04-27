@@ -36,6 +36,25 @@ imageSize_scaledImage = None
 calibration_image_scaledImage = 0
 
 
+def normalize_homography_matrix(matrix):
+    if matrix is None:
+        return None
+
+    try:
+        normalized = np.asarray(matrix, dtype=np.float64)
+    except (TypeError, ValueError):
+        return None
+
+    if normalized.size != 9:
+        return None
+
+    normalized = normalized.reshape(3, 3)
+    if not np.isfinite(normalized).all():
+        return None
+
+    return normalized
+
+
 
 
 @dataclass
@@ -353,6 +372,10 @@ def warpTwoImages(img1, img2, H):
 
 def warpTwoImages_template(img1, img2, H): #image1 is template
     h1, w1 = img1.shape[:2]
+    H = normalize_homography_matrix(H)
+
+    if H is None:
+        return img1.copy()
     
     # Warp img2 to the perspective of img1
     img2_warped = cv2.warpPerspective(img2, H, (w1, h1))
