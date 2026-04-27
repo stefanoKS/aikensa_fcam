@@ -469,7 +469,8 @@ class CalibrationThread(QThread):
                             print(f"map1 and map2 value is calculated")
                             self.calib_config.mapCalculated[i] = True
                             print(f"Calibration map is calculated for Camera {i}")
-                        #do the same for map1_downscaled and map2_downscaled
+                    #do the same for map1_downscaled and map2_downscaled
+                    if self.calib_config.map1_downscaled[i] is None or self.calib_config.map2_downscaled[i] is None:
                         if os.path.exists(self._save_dir + f"Calibration_camera_scaled_{i}.yaml"):
                             camera_matrix, dist_coeffs = self.load_matrix_from_yaml(self._save_dir + f"Calibration_camera_scaled_{i}.yaml")
                             # Precompute the undistort and rectify map for faster processing
@@ -478,7 +479,19 @@ class CalibrationThread(QThread):
                             print(f"map1_downscaled and map2_downscaled value is calculated")
                
 
-                if all(self.calib_config.mapCalculated[i] for i in range(1, 6)):
+                full_maps_ready = all(
+                    self.calib_config.mapCalculated[i]
+                    and self.calib_config.map1[i] is not None
+                    and self.calib_config.map2[i] is not None
+                    for i in range(1, 6)
+                )
+                scaled_maps_ready = all(
+                    self.calib_config.map1_downscaled[i] is not None
+                    and self.calib_config.map2_downscaled[i] is not None
+                    for i in range(1, 6)
+                )
+
+                if full_maps_ready and scaled_maps_ready:
                     # print("All calibration maps are calculated.")
                     self.mergeframe1 = cv2.remap(self.mergeframe1, self.calib_config.map1[1], self.calib_config.map2[1], interpolation=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT)
                     self.mergeframe2 = cv2.remap(self.mergeframe2, self.calib_config.map1[2], self.calib_config.map2[2], interpolation=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT)
