@@ -153,13 +153,14 @@ class AIKensa(QMainWindow):
 
         self.inspection_thread.hoodFR_HoleStatus.connect(self._inspectionStatusHole)
 
-        self.inspection_thread.P8462284S00_InspectionResult_PitchMeasured.connect(self._P8462284S00_outputMeasurementText)
-        self.inspection_thread.P8462284S00_InspectionStatus.connect(self._P8462284S00_inspectionStatusText)
+        self.inspection_thread.P658207YA0A_InspectionResult_PitchMeasured.connect(self._P658207YA0A_outputMeasurementText)
+        self.inspection_thread.P658207YA0A_InspectionStatus.connect(self._P658207YA0A_inspectionStatusText)
 
 
         self.inspection_thread.ethernet_status_red_tenmetsu.connect(self._setEthernetStatusTenmetsuRed)
         self.inspection_thread.ethernet_status_green_hold.connect(self._setEthernetStatusHoldGreen)
         self.inspection_thread.ethernet_status_red_hold.connect(self._setEthernetStatusHoldRed)
+        self.inspection_thread.cropPositionChanged.connect(self._setCropValueLabels)
 
         self.inspection_thread.current_numofPart_signal.connect(self._update_OKNG_label)
         self.inspection_thread.today_numofPart_signal.connect(self._update_todayOKNG_label)
@@ -275,6 +276,14 @@ class AIKensa(QMainWindow):
         planarize_temp_combined = mergeCamera_widget.findChild(QPushButton, "planarize_temp")
         planarize_temp_combined.clicked.connect(lambda: self._set_calib_params(self.calibration_thread, "savePlanarize_temp", True))
 
+        for camera_index in range(1, 6):
+            self.connect_camera_merge_adjustment_button(6, f"CAM{camera_index}_LEFT", camera_index, x_delta=-0.05)
+            self.connect_camera_merge_adjustment_button(6, f"CAM{camera_index}_RIGHT", camera_index, x_delta=0.05)
+            self.connect_camera_merge_adjustment_button(6, f"CAM{camera_index}_UP", camera_index, y_delta=-0.05)
+            self.connect_camera_merge_adjustment_button(6, f"CAM{camera_index}_DOWN", camera_index, y_delta=0.05)
+            self.connect_camera_merge_adjustment_button(6, f"CAM{camera_index}_RLEFT", camera_index, rotation_delta=-0.1)
+            self.connect_camera_merge_adjustment_button(6, f"CAM{camera_index}_RRIGHT", camera_index, rotation_delta=0.1)
+
         self.siostatus_server = [self.stackedWidget.widget(i).findChild(QLabel, "status_sio") for i in [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 21, 22, 23]]
 
         # self.inspection_widget_indices = [8]
@@ -303,6 +312,9 @@ class AIKensa(QMainWindow):
             self.connect_inspectionConfig_button(i, "furyou_minus_10", "furyou_minus_10", True)
             #connect reset button
             self.connect_inspectionConfig_button(i, "counterReset", "counterReset", True)
+            for part_index in range(1, 6):
+                self.connect_crop_adjustment_button(i, f"P{part_index}UP", part_index, -1)
+                self.connect_crop_adjustment_button(i, f"P{part_index}DOWN", part_index, 1)
 
         self.connect_line_edit_text_changed(widget_index=8, line_edit_name="kensain_name", inspection_param="kensainNumber")
 
@@ -328,6 +340,7 @@ class AIKensa(QMainWindow):
 
         self.setCentralWidget(self.stackedWidget)
         self.showFullScreen()
+        self.inspection_thread.emit_crop_values()
 
 
 
@@ -358,6 +371,29 @@ class AIKensa(QMainWindow):
         if button:
             button.pressed.connect(lambda: self._set_inspection_params(self.inspection_thread, cam_param, value))
             # print(f"Button '{button_name}' connected to cam_param '{cam_param}' with value '{value}' in widget {widget_index}")
+
+    def connect_crop_adjustment_button(self, widget_index, button_name, part_index, delta):
+        widget = self.stackedWidget.widget(widget_index)
+        button = widget.findChild(QPushButton, button_name)
+        if button:
+            button.clicked.connect(
+                lambda checked=False, widget_index=widget_index, part_index=part_index, delta=delta:
+                self.inspection_thread.adjust_crop_position(widget_index, part_index, delta)
+            )
+
+    def connect_camera_merge_adjustment_button(self, widget_index, button_name, camera_index, x_delta=0.0, y_delta=0.0, rotation_delta=0.0):
+        widget = self.stackedWidget.widget(widget_index)
+        button = widget.findChild(QPushButton, button_name)
+        if button:
+            button.clicked.connect(
+                lambda checked=False, camera_index=camera_index, x_delta=x_delta, y_delta=y_delta, rotation_delta=rotation_delta:
+                self.calibration_thread.adjust_homography_alignment(
+                    camera_index,
+                    x_delta=x_delta,
+                    y_delta=y_delta,
+                    rotation_delta=rotation_delta,
+                )
+            )
 
 
     def _close_app(self):
@@ -486,6 +522,16 @@ class AIKensa(QMainWindow):
             label5 = widget.findChild(QLabel, "FramePart5")
             label5.setPixmap(QPixmap.fromImage(image))
 
+    def _setCropValueLabels(self, widget_index, crop_values):
+        widget = self.stackedWidget.widget(widget_index)
+        if widget is None:
+            return
+
+        for part_index, crop_value in enumerate(crop_values, start=1):
+            label = widget.findChild(QLabel, f"CROPVAL_{part_index}")
+            if label:
+                label.setText(str(crop_value))
+
     def _setHoleFrame1(self, image):
         widget = self.stackedWidget.widget(8)
         label1 = widget.findChild(QLabel, "MizuAnaPart1")
@@ -593,7 +639,7 @@ class AIKensa(QMainWindow):
                 elif status == "NG":
                     label.setStyleSheet("QLabel { background-color: red; }")
 
-    def _P8462284S00_inspectionStatusText(self, inspectionStatus):
+    def _P658207YA0A_inspectionStatusText(self, inspectionStatus):
         label_names = ["StatusP1", "StatusP2", "StatusP3", "StatusP4", "StatusP5"]
 
         for i, status in enumerate(inspectionStatus):
@@ -659,7 +705,7 @@ class AIKensa(QMainWindow):
                     label.setText(str(part_measurements[i]))
 
 
-    def _P8462284S00_outputMeasurementText(self, measurementValue):
+    def _P658207YA0A_outputMeasurementText(self, measurementValue):
 
         # label_names_part_A = ["R_A_1", "R_A_2", "R_A_3", ......, "R_A_29"]
         # label_names_part_B = ["R_B_1", "R_B_2", "R_B_3", ......, "R_B_29"]

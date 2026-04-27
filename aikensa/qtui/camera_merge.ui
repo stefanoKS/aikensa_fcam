@@ -551,7 +551,7 @@ Cam5</string>
     <property name="geometry">
      <rect>
       <x>1660</x>
-      <y>710</y>
+      <y>745</y>
       <width>81</width>
       <height>51</height>
      </rect>
@@ -572,7 +572,7 @@ Cam5</string>
     <property name="geometry">
      <rect>
       <x>1660</x>
-      <y>765</y>
+      <y>800</y>
       <width>81</width>
       <height>51</height>
      </rect>
@@ -590,6 +590,366 @@ Cam5</string>
 temp</string>
     </property>
    </widget>
+   <widget class="QWidget" name="gridLayoutWidget">
+    <property name="geometry">
+     <rect>
+      <x>160</x>
+      <y>650</y>
+      <width>254</width>
+      <height>54</height>
+     </rect>
+    </property>
+    <layout class="QGridLayout" name="gridLayout">
+     <item row="0" column="1">
+      <widget class="QPushButton" name="CAM1_LEFT">
+       <property name="styleSheet">
+        <string notr="true">background-color: rgb(255, 203, 112);</string>
+       </property>
+       <property name="text">
+        <string>LEFT</string>
+       </property>
+      </widget>
+     </item>
+     <item row="0" column="0">
+      <widget class="QPushButton" name="CAM1_UP">
+       <property name="styleSheet">
+        <string notr="true">background-color: rgb(175, 255, 47);</string>
+       </property>
+       <property name="text">
+        <string>UP</string>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="0">
+      <widget class="QPushButton" name="CAM1_DOWN">
+       <property name="styleSheet">
+        <string notr="true">background-color: rgb(128, 117, 255);</string>
+       </property>
+       <property name="text">
+        <string>DOWN</string>
+       </property>
+      </widget>
+     </item>
+     <item row="0" column="2">
+      <widget class="QPushButton" name="CAM1_RIGHT">
+       <property name="styleSheet">
+        <string notr="true">background-color: rgb(255, 76, 163);</string>
+       </property>
+       <property name="text">
+        <string>RIGHT</string>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="1">
+      <widget class="QPushButton" name="CAM1_RLEFT">
+       <property name="styleSheet">
+        <string notr="true">background-color: rgb(255, 203, 112);</string>
+       </property>
+       <property name="text">
+        <string>RLEFT</string>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="2">
+      <widget class="QPushButton" name="CAM1_RRIGHT">
+       <property name="styleSheet">
+        <string notr="true">background-color: rgb(255, 76, 163);</string>
+       </property>
+       <property name="text">
+        <string>RRIGHT</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </widget>
+   <widget class="QWidget" name="gridLayoutWidget_2">
+    <property name="geometry">
+     <rect>
+      <x>510</x>
+      <y>650</y>
+      <width>254</width>
+      <height>54</height>
+     </rect>
+    </property>
+    <layout class="QGridLayout" name="gridLayout_2">
+     <item row="0" column="1">
+      <widget class="QPushButton" name="CAM2_LEFT">
+       <property name="styleSheet">
+        <string notr="true">background-color: rgb(255, 203, 112);</string>
+       </property>
+       <property name="text">
+        <string>LEFT</string>
+       </property>
+      </widget>
+     </item>
+     <item row="0" column="0">
+      <widget class="QPushButton" name="CAM2_UP">
+       <property name="styleSheet">
+        <string notr="true">background-color: rgb(175, 255, 47);</string>
+       </property>
+       <property name="text">
+        <string>UP</string>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="0">
+      <widget class="QPushButton" name="CAM2_DOWN">
+       <property name="styleSheet">
+        <string notr="true">background-color: rgb(128, 117, 255);</string>
+       </property>
+       <property name="text">
+        <string>DOWN</string>
+       </property>
+      </widget>
+     </item>
+     <item row="0" column="2">
+      <widget class="QPushButton" name="CAM2_RIGHT">
+       <property name="styleSheet">
+        <string notr="true">background-color: rgb(255, 76, 163);</string>
+       </property>
+       <property name="text">
+        <string>RIGHT</string>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="2">
+      <widget class="QPushButton" name="CAM2_RRIGHT">
+       <property name="styleSheet">
+        <string notr="true">background-color: rgb(255, 76, 163);</string>
+       </property>
+       <property name="text">
+        <string>RRIGHT</string>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="1">
+      <widget class="QPushButton" name="CAM2_RLEFT">
+       <property name="styleSheet">
+        <string notr="true">background-color: rgb(255, 203, 112);</string>
+       </property>
+       <property name="text">
+        <string>RLEFT</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </widget>
+   <widget class="QWidget" name="gridLayoutWidget_3">
+    <property name="geometry">
+     <rect>
+      <x>860</x>
+      <y>650</y>
+      <width>254</width>
+      <height>54</height>
+     </rect>
+    </property>
+    <layout class="QGridLayout" name="gridLayout_3">
+     <item row="0" column="1">
+      <widget class="QPushButton" name="CAM3_LEFT">
+       <property name="styleSheet">
+        <string notr="true">background-color: rgb(255, 203, 112);</string>
+       </property>
+       <property name="text">
+        <string>LEFT</string>
+       </property>
+      </widget>
+     </item>
+     <item row="0" column="0">
+      <widget class="QPushButton" name="CAM3_UP">
+       <property name="styleSheet">
+        <string notr="true">background-color: rgb(175, 255, 47);</string>
+       </property>
+       <property name="text">
+        <string>UP</string>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="0">
+      <widget class="QPushButton" name="CAM3_DOWN">
+       <property name="styleSheet">
+        <string notr="true">background-color: rgb(128, 117, 255);</string>
+       </property>
+       <property name="text">
+        <string>DOWN</string>
+       </property>
+      </widget>
+     </item>
+     <item row="0" column="2">
+      <widget class="QPushButton" name="CAM3_RIGHT">
+       <property name="styleSheet">
+        <string notr="true">background-color: rgb(255, 76, 163);</string>
+       </property>
+       <property name="text">
+        <string>RIGHT</string>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="1">
+      <widget class="QPushButton" name="CAM3_RLEFT">
+       <property name="styleSheet">
+        <string notr="true">background-color: rgb(255, 203, 112);</string>
+       </property>
+       <property name="text">
+        <string>RLEFT</string>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="2">
+      <widget class="QPushButton" name="CAM3_RRIGHT">
+       <property name="styleSheet">
+        <string notr="true">background-color: rgb(255, 76, 163);</string>
+       </property>
+       <property name="text">
+        <string>RRIGHT</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </widget>
+   <widget class="QWidget" name="gridLayoutWidget_4">
+    <property name="geometry">
+     <rect>
+      <x>1210</x>
+      <y>650</y>
+      <width>254</width>
+      <height>54</height>
+     </rect>
+    </property>
+    <layout class="QGridLayout" name="gridLayout_4">
+     <item row="0" column="1">
+      <widget class="QPushButton" name="CAM4_LEFT">
+       <property name="styleSheet">
+        <string notr="true">background-color: rgb(255, 203, 112);</string>
+       </property>
+       <property name="text">
+        <string>LEFT</string>
+       </property>
+      </widget>
+     </item>
+     <item row="0" column="0">
+      <widget class="QPushButton" name="CAM4_UP">
+       <property name="styleSheet">
+        <string notr="true">background-color: rgb(175, 255, 47);</string>
+       </property>
+       <property name="text">
+        <string>UP</string>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="0">
+      <widget class="QPushButton" name="CAM4_DOWN">
+       <property name="styleSheet">
+        <string notr="true">background-color: rgb(128, 117, 255);</string>
+       </property>
+       <property name="text">
+        <string>DOWN</string>
+       </property>
+      </widget>
+     </item>
+     <item row="0" column="2">
+      <widget class="QPushButton" name="CAM4_RIGHT">
+       <property name="styleSheet">
+        <string notr="true">background-color: rgb(255, 76, 163);</string>
+       </property>
+       <property name="text">
+        <string>RIGHT</string>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="2">
+      <widget class="QPushButton" name="CAM4_RRIGHT">
+       <property name="styleSheet">
+        <string notr="true">background-color: rgb(255, 76, 163);</string>
+       </property>
+       <property name="text">
+        <string>RRIGHT</string>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="1">
+      <widget class="QPushButton" name="CAM4_RLEFT">
+       <property name="styleSheet">
+        <string notr="true">background-color: rgb(255, 203, 112);</string>
+       </property>
+       <property name="text">
+        <string>RLEFT</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </widget>
+   <widget class="QWidget" name="gridLayoutWidget_5">
+    <property name="geometry">
+     <rect>
+      <x>1580</x>
+      <y>650</y>
+      <width>254</width>
+      <height>54</height>
+     </rect>
+    </property>
+    <layout class="QGridLayout" name="gridLayout_5">
+     <item row="0" column="1">
+      <widget class="QPushButton" name="CAM5_LEFT">
+       <property name="styleSheet">
+        <string notr="true">background-color: rgb(255, 203, 112);</string>
+       </property>
+       <property name="text">
+        <string>LEFT</string>
+       </property>
+      </widget>
+     </item>
+     <item row="0" column="0">
+      <widget class="QPushButton" name="CAM5_UP">
+       <property name="styleSheet">
+        <string notr="true">background-color: rgb(175, 255, 47);</string>
+       </property>
+       <property name="text">
+        <string>UP</string>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="0">
+      <widget class="QPushButton" name="CAM5_DOWN">
+       <property name="styleSheet">
+        <string notr="true">background-color: rgb(128, 117, 255);</string>
+       </property>
+       <property name="text">
+        <string>DOWN</string>
+       </property>
+      </widget>
+     </item>
+     <item row="0" column="2">
+      <widget class="QPushButton" name="CAM5_RIGHT">
+       <property name="styleSheet">
+        <string notr="true">background-color: rgb(255, 76, 163);</string>
+       </property>
+       <property name="text">
+        <string>RIGHT</string>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="2">
+      <widget class="QPushButton" name="CAM5_RRIGHT">
+       <property name="styleSheet">
+        <string notr="true">background-color: rgb(255, 76, 163);</string>
+       </property>
+       <property name="text">
+        <string>RRIGHT</string>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="1">
+      <widget class="QPushButton" name="CAM5_RLEFT">
+       <property name="styleSheet">
+        <string notr="true">background-color: rgb(255, 203, 112);</string>
+       </property>
+       <property name="text">
+        <string>RLEFT</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </widget>
   </widget>
   <widget class="QMenuBar" name="menubar">
    <property name="geometry">
@@ -597,7 +957,7 @@ temp</string>
      <x>0</x>
      <y>0</y>
      <width>1926</width>
-     <height>21</height>
+     <height>20</height>
     </rect>
    </property>
   </widget>

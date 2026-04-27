@@ -146,9 +146,12 @@ class CalibrationThread(QThread):
         self.H3_scaled = None
         self.H4_scaled = None
         self.H5_scaled = None
+        self.homography_adjustment_path = os.path.join("aikensa", "cameracalibration", "homography_adjustment.yaml")
+        self.homography_adjustment_config = self.load_homography_adjustment_config()
 
 
         self.homography_size = None
+        self.homography_size_scaled = None
         self.homography_blank_canvas = None
         self.homography_blank_canvas_scaled = None
 
@@ -267,6 +270,7 @@ class CalibrationThread(QThread):
         self.homography_blank_canvas = cv2.cvtColor(self.homography_blank_canvas, cv2.COLOR_GRAY2RGB)
         
         self.homography_template_scaled = cv2.resize(self.homography_template, (self.homography_template.shape[1]//5, self.homography_template.shape[0]//5), interpolation=cv2.INTER_LINEAR)
+        self.homography_size_scaled = (self.homography_template_scaled.shape[0], self.homography_template_scaled.shape[1])
         self.homography_blank_canvas_scaled = cv2.resize(self.homography_blank_canvas, (self.homography_blank_canvas.shape[1]//5, self.homography_blank_canvas.shape[0]//5), interpolation=cv2.INTER_LINEAR)
 
         self.scaled_height  = int(self.frame_height / self.scale_factor)
@@ -324,6 +328,8 @@ class CalibrationThread(QThread):
                 self.homography_matrix5_scaled = yaml.load(file, Loader=yaml.FullLoader)
                 self.H5_scaled = np.array(self.homography_matrix5_scaled)
 
+        self.refresh_all_homography_adjustments()
+
         if os.path.exists("./aikensa/cameracalibration/planarizeTransform.yaml"):
             with open("./aikensa/cameracalibration/planarizeTransform.yaml") as file:
                 transform_list = yaml.load(file, Loader=yaml.FullLoader)
@@ -376,24 +382,30 @@ class CalibrationThread(QThread):
                         print("An error occurred while reading frames from the cameras:", str(e))
 
 
+                raw_frame = self.frame
+                raw_frame_scaled = self.frame_scaled
+
                 self.calib_config.cameraID = self.calib_config.widget
             
-                if self.calib_config.mapCalculated[self.calib_config.cameraID] is False and self.frame is not None:
+                if self.calib_config.mapCalculated[self.calib_config.cameraID] is False and raw_frame is not None:
                     if os.path.exists(self._save_dir + f"Calibration_camera_{self.calib_config.cameraID}.yaml"):
                         camera_matrix, dist_coeffs = self.load_matrix_from_yaml(self._save_dir + f"Calibration_camera_{self.calib_config.cameraID}.yaml")
                         # Precompute the undistort and rectify map for faster processing
-                        h, w = self.frame.shape[:2]
+                        h, w = raw_frame.shape[:2]
                         self.calib_config.map1[self.calib_config.cameraID], self.calib_config.map2[self.calib_config.cameraID] = cv2.initUndistortRectifyMap(camera_matrix, dist_coeffs, None, camera_matrix, (w, h), cv2.CV_16SC2)
                         print(f"map1 and map2 value is calculated for camera {self.calib_config.cameraID}")
                         self.calib_config.mapCalculated[self.calib_config.cameraID] = True
-                
-                if self.calib_config.mapCalculated[self.calib_config.cameraID] is True:
-                    self.frame = cv2.remap(self.frame, self.calib_config.map1[self.calib_config.cameraID], self.calib_config.map2[self.calib_config.cameraID], interpolation=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT)
 
                 if self.calib_config.calculateSingeFrameMatrix:
-                    self.frame, _, _ = detectCharucoBoard(self.frame)
-                    self.frame_scaled, _, _ = detectCharucoBoard_scaledImage(self.frame_scaled)
+                    # Collect calibration points from the raw sensor frame, not an already-undistorted preview.
+                    self.frame, _, _ = detectCharucoBoard(raw_frame)
+                    self.frame_scaled, _, _ = detectCharucoBoard_scaledImage(raw_frame_scaled)
                     self.calib_config.calculateSingeFrameMatrix = False
+                else:
+                    self.frame = raw_frame
+                    self.frame_scaled = raw_frame_scaled
+                    if self.calib_config.mapCalculated[self.calib_config.cameraID] is True:
+                        self.frame = cv2.remap(self.frame, self.calib_config.map1[self.calib_config.cameraID], self.calib_config.map2[self.calib_config.cameraID], interpolation=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT)
 
                 if self.calib_config.calculateCamMatrix:
                     self.calib_config.calibrationMatrix = calculatecameramatrix()
@@ -405,6 +417,11 @@ class CalibrationThread(QThread):
                     os.makedirs(self._save_dir, exist_ok=True)
                     self.save_calibration_to_yaml(self.calib_config.calibrationMatrix, self._save_dir + f"Calibration_camera_{self.calib_config.cameraID}.yaml")
                     self.save_calibration_to_yaml(self.calib_config.calibrationMatrix_scaled, self._save_dir + f"Calibration_camera_scaled_{self.calib_config.cameraID}.yaml")
+                    self.calib_config.mapCalculated[self.calib_config.cameraID] = False
+                    self.calib_config.map1[self.calib_config.cameraID] = None
+                    self.calib_config.map2[self.calib_config.cameraID] = None
+                    self.calib_config.map1_downscaled[self.calib_config.cameraID] = None
+                    self.calib_config.map2_downscaled[self.calib_config.cameraID] = None
                     self.calib_config.calculateCamMatrix = False
 
                 if self.frame is not None:
@@ -480,82 +497,112 @@ class CalibrationThread(QThread):
                     self.calib_config.calculateHomo_cam1 = False
                     if self.mergeframe1 is not None:
                         _, self.homography_matrix1 = calculateHomography_template(self.homography_template, self.mergeframe1)
-                        self.H1 = np.array(self.homography_matrix1)
-                        print(f"Homography matrix is calculated for Camera 1 with value {self.homography_matrix1}")
-                        os.makedirs(self._save_dir, exist_ok=True)
-                        with open("./aikensa/cameracalibration/homography_param_cam1.yaml", "w") as file:
-                            yaml.dump(self.homography_matrix1.tolist(), file)
+                        if self.homography_matrix1 is not None:
+                            self.update_adjusted_homography(1)
+                            print(f"Homography matrix is calculated for Camera 1 with value {self.homography_matrix1}")
+                            os.makedirs(self._save_dir, exist_ok=True)
+                            with open("./aikensa/cameracalibration/homography_param_cam1.yaml", "w") as file:
+                                yaml.dump(self.homography_matrix1.tolist(), file)
+                        else:
+                            print("Homography matrix calculation failed for Camera 1")
                     else:
                         ("mergeframe1 is empty")
 
                     if self.mergeframe1_scaled is not None:
                         _, self.homography_matrix1_scaled = calculateHomography_template(self.homography_template_scaled, self.mergeframe1_scaled)
-                        self.H1_scaled = np.array(self.homography_matrix1_scaled)
-                        print(f"Homography scaled matrix is calculated for Camera 1 with value {self.homography_matrix1_scaled}")
-                        with open("./aikensa/cameracalibration/homography_param_cam1_scaled.yaml", "w") as file:
-                            yaml.dump(self.homography_matrix1_scaled.tolist(), file)
+                        if self.homography_matrix1_scaled is not None:
+                            self.update_adjusted_homography(1)
+                            print(f"Homography scaled matrix is calculated for Camera 1 with value {self.homography_matrix1_scaled}")
+                            with open("./aikensa/cameracalibration/homography_param_cam1_scaled.yaml", "w") as file:
+                                yaml.dump(self.homography_matrix1_scaled.tolist(), file)
+                        else:
+                            print("Scaled homography matrix calculation failed for Camera 1")
                     else:
                         ("mergeframe1 scaled is empty")
 
                 if self.calib_config.calculateHomo_cam2 is True:
                     self.calib_config.calculateHomo_cam2 = False
                     _, self.homography_matrix2 = calculateHomography_template(self.homography_template, self.mergeframe2)
-                    self.H2 = np.array(self.homography_matrix2)
-                    print(f"Homography matrix is calculated for Camera 2 with value {self.homography_matrix2}")
-                    os.makedirs(self._save_dir, exist_ok=True)
-                    with open("./aikensa/cameracalibration/homography_param_cam2.yaml", "w") as file:
-                        yaml.dump(self.homography_matrix2.tolist(), file)
+                    if self.homography_matrix2 is not None:
+                        self.update_adjusted_homography(2)
+                        print(f"Homography matrix is calculated for Camera 2 with value {self.homography_matrix2}")
+                        os.makedirs(self._save_dir, exist_ok=True)
+                        with open("./aikensa/cameracalibration/homography_param_cam2.yaml", "w") as file:
+                            yaml.dump(self.homography_matrix2.tolist(), file)
+                    else:
+                        print("Homography matrix calculation failed for Camera 2")
 
                     _, self.homography_matrix2_scaled = calculateHomography_template(self.homography_template_scaled, self.mergeframe2_scaled)
-                    self.H2_scaled = np.array(self.homography_matrix2_scaled)
-                    print(f"Homography scaled matrix is calculated for Camera 2 with value {self.homography_matrix2_scaled}")
-                    with open("./aikensa/cameracalibration/homography_param_cam2_scaled.yaml", "w") as file:
-                        yaml.dump(self.homography_matrix2_scaled.tolist(), file) 
+                    if self.homography_matrix2_scaled is not None:
+                        self.update_adjusted_homography(2)
+                        print(f"Homography scaled matrix is calculated for Camera 2 with value {self.homography_matrix2_scaled}")
+                        with open("./aikensa/cameracalibration/homography_param_cam2_scaled.yaml", "w") as file:
+                            yaml.dump(self.homography_matrix2_scaled.tolist(), file)
+                    else:
+                        print("Scaled homography matrix calculation failed for Camera 2")
 
                 if self.calib_config.calculateHomo_cam3 is True:
                     self.calib_config.calculateHomo_cam3 = False
                     _, self.homography_matrix3 = calculateHomography_template(self.homography_template, self.mergeframe3)
-                    self.H3 = np.array(self.homography_matrix3)
-                    print(f"Homography matrix is calculated for Camera 3 with value {self.homography_matrix3}")
-                    os.makedirs(self._save_dir, exist_ok=True)
-                    with open("./aikensa/cameracalibration/homography_param_cam3.yaml", "w") as file:
-                        yaml.dump(self.homography_matrix3.tolist(), file)
+                    if self.homography_matrix3 is not None:
+                        self.update_adjusted_homography(3)
+                        print(f"Homography matrix is calculated for Camera 3 with value {self.homography_matrix3}")
+                        os.makedirs(self._save_dir, exist_ok=True)
+                        with open("./aikensa/cameracalibration/homography_param_cam3.yaml", "w") as file:
+                            yaml.dump(self.homography_matrix3.tolist(), file)
+                    else:
+                        print("Homography matrix calculation failed for Camera 3")
 
                     _, self.homography_matrix3_scaled = calculateHomography_template(self.homography_template_scaled, self.mergeframe3_scaled)
-                    self.H3_scaled = np.array(self.homography_matrix3_scaled)
-                    print(f"Homography scaled matrix is calculated for Camera 3 with value {self.homography_matrix3_scaled}")
-                    with open("./aikensa/cameracalibration/homography_param_cam3_scaled.yaml", "w") as file:
-                        yaml.dump(self.homography_matrix3_scaled.tolist(), file)
+                    if self.homography_matrix3_scaled is not None:
+                        self.update_adjusted_homography(3)
+                        print(f"Homography scaled matrix is calculated for Camera 3 with value {self.homography_matrix3_scaled}")
+                        with open("./aikensa/cameracalibration/homography_param_cam3_scaled.yaml", "w") as file:
+                            yaml.dump(self.homography_matrix3_scaled.tolist(), file)
+                    else:
+                        print("Scaled homography matrix calculation failed for Camera 3")
     
                 if self.calib_config.calculateHomo_cam4 is True:
                     self.calib_config.calculateHomo_cam4 = False
                     _, self.homography_matrix4 = calculateHomography_template(self.homography_template, self.mergeframe4)
-                    self.H4 = np.array(self.homography_matrix4)
-                    print(f"Homography matrix is calculated for Camera 4 with value {self.homography_matrix4}")
-                    os.makedirs(self._save_dir, exist_ok=True)
-                    with open("./aikensa/cameracalibration/homography_param_cam4.yaml", "w") as file:
-                        yaml.dump(self.homography_matrix4.tolist(), file)
+                    if self.homography_matrix4 is not None:
+                        self.update_adjusted_homography(4)
+                        print(f"Homography matrix is calculated for Camera 4 with value {self.homography_matrix4}")
+                        os.makedirs(self._save_dir, exist_ok=True)
+                        with open("./aikensa/cameracalibration/homography_param_cam4.yaml", "w") as file:
+                            yaml.dump(self.homography_matrix4.tolist(), file)
+                    else:
+                        print("Homography matrix calculation failed for Camera 4")
 
                     _, self.homography_matrix4_scaled = calculateHomography_template(self.homography_template_scaled, self.mergeframe4_scaled)
-                    self.H4_scaled = np.array(self.homography_matrix4_scaled)
-                    print(f"Homography scaled matrix is calculated for Camera 4 with value {self.homography_matrix4_scaled}")
-                    with open("./aikensa/cameracalibration/homography_param_cam4_scaled.yaml", "w") as file:
-                        yaml.dump(self.homography_matrix4_scaled.tolist(), file)
+                    if self.homography_matrix4_scaled is not None:
+                        self.update_adjusted_homography(4)
+                        print(f"Homography scaled matrix is calculated for Camera 4 with value {self.homography_matrix4_scaled}")
+                        with open("./aikensa/cameracalibration/homography_param_cam4_scaled.yaml", "w") as file:
+                            yaml.dump(self.homography_matrix4_scaled.tolist(), file)
+                    else:
+                        print("Scaled homography matrix calculation failed for Camera 4")
 
                 if self.calib_config.calculateHomo_cam5 is True:
                     self.calib_config.calculateHomo_cam5 = False
                     _, self.homography_matrix5 = calculateHomography_template(self.homography_template, self.mergeframe5)
-                    self.H5 = np.array(self.homography_matrix5)
-                    print(f"Homography matrix is calculated for Camera 5 with value {self.homography_matrix5}")
-                    os.makedirs(self._save_dir, exist_ok=True)
-                    with open("./aikensa/cameracalibration/homography_param_cam5.yaml", "w") as file:
-                        yaml.dump(self.homography_matrix5.tolist(), file)
+                    if self.homography_matrix5 is not None:
+                        self.update_adjusted_homography(5)
+                        print(f"Homography matrix is calculated for Camera 5 with value {self.homography_matrix5}")
+                        os.makedirs(self._save_dir, exist_ok=True)
+                        with open("./aikensa/cameracalibration/homography_param_cam5.yaml", "w") as file:
+                            yaml.dump(self.homography_matrix5.tolist(), file)
+                    else:
+                        print("Homography matrix calculation failed for Camera 5")
 
                     _, self.homography_matrix5_scaled = calculateHomography_template(self.homography_template_scaled, self.mergeframe5_scaled)
-                    self.H5_scaled = np.array(self.homography_matrix5_scaled)
-                    print(f"Homography scaled matrix is calculated for Camera 5 with value {self.homography_matrix5_scaled}")
-                    with open("./aikensa/cameracalibration/homography_param_cam5_scaled.yaml", "w") as file:
-                        yaml.dump(self.homography_matrix5_scaled.tolist(), file)
+                    if self.homography_matrix5_scaled is not None:
+                        self.update_adjusted_homography(5)
+                        print(f"Homography scaled matrix is calculated for Camera 5 with value {self.homography_matrix5_scaled}")
+                        with open("./aikensa/cameracalibration/homography_param_cam5_scaled.yaml", "w") as file:
+                            yaml.dump(self.homography_matrix5_scaled.tolist(), file)
+                    else:
+                        print("Scaled homography matrix calculation failed for Camera 5")
 
 
                 if self.H1 is None:
@@ -563,31 +610,31 @@ class CalibrationThread(QThread):
                     if os.path.exists("./aikensa/cameracalibration/homography_param_cam1.yaml"):
                         with open("./aikensa/cameracalibration/homography_param_cam1.yaml") as file:
                             self.homography_matrix1 = yaml.load(file, Loader=yaml.FullLoader)
-                        self.H1 = np.array(self.homography_matrix1)
+                        self.update_adjusted_homography(1)
                 if self.H2 is None:
                     print("H2 is None")  
                     if os.path.exists("./aikensa/cameracalibration/homography_param_cam2.yaml"):
                         with open("./aikensa/cameracalibration/homography_param_cam2.yaml") as file:
                             self.homography_matrix2 = yaml.load(file, Loader=yaml.FullLoader)
-                            self.H2 = np.array(self.homography_matrix2)
+                            self.update_adjusted_homography(2)
                 if self.H3 is None:
                     print("H3 is none")
                     if os.path.exists("./aikensa/cameracalibration/homography_param_cam3.yaml"):
                         with open("./aikensa/cameracalibration/homography_param_cam3.yaml") as file:
                             self.homography_matrix3 = yaml.load(file, Loader=yaml.FullLoader)
-                            self.H3 = np.array(self.homography_matrix3)
+                            self.update_adjusted_homography(3)
                 if self.H4 is None:
                     print("H4 is none")
                     if os.path.exists("./aikensa/cameracalibration/homography_param_cam4.yaml"):
                         with open("./aikensa/cameracalibration/homography_param_cam4.yaml") as file:
                             self.homography_matrix4 = yaml.load(file, Loader=yaml.FullLoader)
-                            self.H4 = np.array(self.homography_matrix4)
+                            self.update_adjusted_homography(4)
                 if self.H5 is None:
                     print("H5 is None")
                     if os.path.exists("./aikensa/cameracalibration/homography_param_cam5.yaml"):
                         with open("./aikensa/cameracalibration/homography_param_cam5.yaml") as file:
                             self.homography_matrix5 = yaml.load(file, Loader=yaml.FullLoader)
-                            self.H5 = np.array(self.homography_matrix5)
+                            self.update_adjusted_homography(5)
 
 
                 if self.H1_scaled is None:
@@ -595,49 +642,48 @@ class CalibrationThread(QThread):
                     if os.path.exists("./aikensa/cameracalibration/homography_param_cam1_scaled.yaml"):
                         with open("./aikensa/cameracalibration/homography_param_cam1_scaled.yaml") as file:
                             self.homography_matrix1_scaled = yaml.load(file, Loader=yaml.FullLoader)
-                        self.H1_scaled = np.array(self.homography_matrix1_scaled)
+                        self.update_adjusted_homography(1)
                 if self.H2_scaled is None:
                     print("H2_scaled is None")  
                     if os.path.exists("./aikensa/cameracalibration/homography_param_cam2_scaled.yaml"):
                         with open("./aikensa/cameracalibration/homography_param_cam2_scaled.yaml") as file:
                             self.homography_matrix2_scaled = yaml.load(file, Loader=yaml.FullLoader)
-                            self.H2_scaled = np.array(self.homography_matrix2_scaled)
+                            self.update_adjusted_homography(2)
                 if self.H3_scaled is None:
                     print("H3_scaled is none")
                     if os.path.exists("./aikensa/cameracalibration/homography_param_cam3_scaled.yaml"):
                         with open("./aikensa/cameracalibration/homography_param_cam3_scaled.yaml") as file:
                             self.homography_matrix3_scaled = yaml.load(file, Loader=yaml.FullLoader)
-                            self.H3_scaled = np.array(self.homography_matrix3_scaled)
+                            self.update_adjusted_homography(3)
                 if self.H4_scaled is None:
                     print("H4_scaled is none")
                     if os.path.exists("./aikensa/cameracalibration/homography_param_cam4_scaled.yaml"):
                         with open("./aikensa/cameracalibration/homography_param_cam4_scaled.yaml") as file:
                             self.homography_matrix4_scaled = yaml.load(file, Loader=yaml.FullLoader)
-                            self.H4_scaled = np.array(self.homography_matrix4_scaled)
+                            self.update_adjusted_homography(4)
                 if self.H5_scaled is None:
                     print("H5_scaled is None")
                     if os.path.exists("./aikensa/cameracalibration/homography_param_cam5_scaled.yaml"):
                         with open("./aikensa/cameracalibration/homography_param_cam5_scaled.yaml") as file:
                             self.homography_matrix5_scaled = yaml.load(file, Loader=yaml.FullLoader)
-                            self.H5_scaled = np.array(self.homography_matrix5_scaled)
+                            self.update_adjusted_homography(5)
 
-                self.combinedImage = warpTwoImages_template(self.homography_blank_canvas, self.mergeframe1, self.H1)
-                self.combinedImage = warpTwoImages_template(self.combinedImage, self.mergeframe2, self.H2)
-                self.combinedImage = warpTwoImages_template(self.combinedImage, self.mergeframe3, self.H3)
-                self.combinedImage = warpTwoImages_template(self.combinedImage, self.mergeframe4, self.H4)
-                self.combinedImage = warpTwoImages_template(self.combinedImage, self.mergeframe5, self.H5)
+                needs_full_resolution_merge = self.calib_config.savePlanarize or self.calib_config.savePlanarize_temp
+
+                if needs_full_resolution_merge:
+                    self.combinedImage = warpTwoImages_template(self.homography_blank_canvas, self.mergeframe1, self.H1)
+                    self.combinedImage = warpTwoImages_template(self.combinedImage, self.mergeframe2, self.H2)
+                    self.combinedImage = warpTwoImages_template(self.combinedImage, self.mergeframe3, self.H3)
+                    self.combinedImage = warpTwoImages_template(self.combinedImage, self.mergeframe4, self.H4)
+                    self.combinedImage = warpTwoImages_template(self.combinedImage, self.mergeframe5, self.H5)
+                else:
+                    self.combinedImage = None
 
                 self.combinedImage_scaled = warpTwoImages_template(self.homography_blank_canvas_scaled, self.mergeframe1_scaled, self.H1_scaled)
                 self.combinedImage_scaled = warpTwoImages_template(self.combinedImage_scaled, self.mergeframe2_scaled, self.H2_scaled)
                 self.combinedImage_scaled = warpTwoImages_template(self.combinedImage_scaled, self.mergeframe3_scaled, self.H3_scaled)
                 self.combinedImage_scaled = warpTwoImages_template(self.combinedImage_scaled, self.mergeframe4_scaled, self.H4_scaled)
                 self.combinedImage_scaled = warpTwoImages_template(self.combinedImage_scaled, self.mergeframe5_scaled, self.H5_scaled)
-
-                # cv2.imwrite("combinedImage_scaled.png", self.combinedImage_scaled)
-                combined_image_copy = self.combinedImage.copy()
-                #bgr to rgb
-                combined_image_copy = cv2.cvtColor(combined_image_copy, cv2.COLOR_BGR2RGB)
-                cv2.imwrite("combinedImage.png", combined_image_copy)
 
                 if self.calib_config.savePlanarize is True:
                     self.calib_config.savePlanarize = False
@@ -756,6 +802,115 @@ class CalibrationThread(QThread):
     def save_calibration_to_yaml(self, calibrationMatrix, filename):
         with open(filename, 'w') as file:
             yaml.dump(calibrationMatrix, file)
+
+    def load_homography_adjustment_config(self):
+        default_camera_adjustment = {
+            "x_offset": 0.0,
+            "y_offset": 0.0,
+            "rotation_deg": 0.0,
+        }
+        default_config = {
+            f"camera_{camera_index}": default_camera_adjustment.copy()
+            for camera_index in range(1, 6)
+        }
+
+        if os.path.exists(self.homography_adjustment_path):
+            with open(self.homography_adjustment_path, "r") as file:
+                loaded_config = yaml.load(file, Loader=yaml.FullLoader) or {}
+
+            if isinstance(loaded_config, dict):
+                for camera_index in range(1, 6):
+                    camera_key = f"camera_{camera_index}"
+                    camera_adjustment = loaded_config.get(camera_key, {})
+                    if isinstance(camera_adjustment, dict):
+                        default_config[camera_key].update(camera_adjustment)
+
+        return default_config
+
+    def save_homography_adjustment_config(self):
+        os.makedirs(os.path.dirname(self.homography_adjustment_path), exist_ok=True)
+        with open(self.homography_adjustment_path, "w") as file:
+            yaml.dump(self.homography_adjustment_config, file, sort_keys=False)
+
+    def build_homography_adjustment_matrix(self, x_offset, y_offset, rotation_deg, image_size):
+        height, width = image_size
+        center_x = width / 2.0
+        center_y = height / 2.0
+        theta = np.deg2rad(rotation_deg)
+        cos_theta = np.cos(theta)
+        sin_theta = np.sin(theta)
+
+        translate_to_origin = np.array([
+            [1.0, 0.0, -center_x],
+            [0.0, 1.0, -center_y],
+            [0.0, 0.0, 1.0],
+        ], dtype=np.float64)
+        rotation_matrix = np.array([
+            [cos_theta, -sin_theta, 0.0],
+            [sin_theta, cos_theta, 0.0],
+            [0.0, 0.0, 1.0],
+        ], dtype=np.float64)
+        translate_back = np.array([
+            [1.0, 0.0, center_x],
+            [0.0, 1.0, center_y],
+            [0.0, 0.0, 1.0],
+        ], dtype=np.float64)
+        translation_matrix = np.array([
+            [1.0, 0.0, x_offset],
+            [0.0, 1.0, y_offset],
+            [0.0, 0.0, 1.0],
+        ], dtype=np.float64)
+
+        rotation_about_center = translate_back @ rotation_matrix @ translate_to_origin
+        return translation_matrix @ rotation_about_center
+
+    def apply_homography_adjustment(self, homography_matrix, adjustment_matrix):
+        if homography_matrix is None:
+            return None
+        return adjustment_matrix @ homography_matrix
+
+    def update_adjusted_homography(self, camera_index):
+        camera_key = f"camera_{camera_index}"
+        camera_adjustment = self.homography_adjustment_config.get(camera_key, {})
+
+        base_matrix = getattr(self, f"homography_matrix{camera_index}", None)
+        if base_matrix is not None and self.homography_size is not None:
+            adjustment_matrix = self.build_homography_adjustment_matrix(
+                camera_adjustment.get("x_offset", 0.0),
+                camera_adjustment.get("y_offset", 0.0),
+                camera_adjustment.get("rotation_deg", 0.0),
+                self.homography_size,
+            )
+            setattr(self, f"H{camera_index}", self.apply_homography_adjustment(np.array(base_matrix, dtype=np.float64), adjustment_matrix))
+
+        base_matrix_scaled = getattr(self, f"homography_matrix{camera_index}_scaled", None)
+        if base_matrix_scaled is not None and self.homography_size_scaled is not None:
+            adjustment_matrix_scaled = self.build_homography_adjustment_matrix(
+                camera_adjustment.get("x_offset", 0.0) / self.scale_factor,
+                camera_adjustment.get("y_offset", 0.0) / self.scale_factor,
+                camera_adjustment.get("rotation_deg", 0.0),
+                self.homography_size_scaled,
+            )
+            setattr(self, f"H{camera_index}_scaled", self.apply_homography_adjustment(np.array(base_matrix_scaled, dtype=np.float64), adjustment_matrix_scaled))
+
+    def refresh_all_homography_adjustments(self):
+        for camera_index in range(1, 6):
+            self.update_adjusted_homography(camera_index)
+
+    def adjust_homography_alignment(self, camera_index, x_delta=0.0, y_delta=0.0, rotation_delta=0.0):
+        camera_key = f"camera_{camera_index}"
+        camera_adjustment = self.homography_adjustment_config.setdefault(camera_key, {
+            "x_offset": 0.0,
+            "y_offset": 0.0,
+            "rotation_deg": 0.0,
+        })
+        camera_adjustment["x_offset"] = float(camera_adjustment.get("x_offset", 0.0) + x_delta)
+        camera_adjustment["y_offset"] = float(camera_adjustment.get("y_offset", 0.0) + y_delta)
+        camera_adjustment["rotation_deg"] = float(camera_adjustment.get("rotation_deg", 0.0) + rotation_delta)
+
+        self.save_homography_adjustment_config()
+        self.update_adjusted_homography(camera_index)
+        print(f"Updated camera {camera_index} homography adjustment to {camera_adjustment}")
 
     def load_matrix_from_yaml(self, filename):
         with open(filename, 'r') as file:

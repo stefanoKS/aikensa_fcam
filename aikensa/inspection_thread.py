@@ -88,19 +88,20 @@ class InspectionThread(QThread):
     current_numofPart_signal = pyqtSignal(list)
     
     hoodFR_InspectionResult_PitchMeasured = pyqtSignal(list)
-    P8462284S00_InspectionResult_PitchMeasured = pyqtSignal(list)
+    P658207YA0A_InspectionResult_PitchMeasured = pyqtSignal(list)
 
     hoodFR_InspectionResult_PitchResult = pyqtSignal(list)
-    P8462284S00_InspectionResult_PitchResult = pyqtSignal(list)
+    P658207YA0A_InspectionResult_PitchResult = pyqtSignal(list)
     
     hoodFR_InspectionStatus = pyqtSignal(list)
-    P8462284S00_InspectionStatus = pyqtSignal(list)
+    P658207YA0A_InspectionStatus = pyqtSignal(list)
 
     hoodFR_HoleStatus = pyqtSignal(list)
 
     ethernet_status_red_tenmetsu = pyqtSignal(list)
     ethernet_status_green_hold = pyqtSignal(list)
     ethernet_status_red_hold = pyqtSignal(list)
+    cropPositionChanged = pyqtSignal(int, list)
 
 
     
@@ -220,6 +221,32 @@ class InspectionThread(QThread):
 
         self.planarizeTransform_temp = None
         self.planarizeTransform_temp_scaled = None
+        self.homographyWarpCache = {}
+        self.planarizeWarpCache = {}
+        self.homography_adjustment_path = os.path.join("aikensa", "cameracalibration", "homography_adjustment.yaml")
+        self.crop_settings_path = os.path.join("aikensa", "inspection", "crop_settings.yaml")
+        self.crop_position_profiles = {
+            "65820W030P": {
+                "attrs": [
+                    "part1Crop_YPos",
+                    "part2Crop_YPos",
+                    "part3Crop_YPos",
+                    "part4Crop_YPos",
+                    "part5Crop_YPos",
+                ],
+                "defaults": [45, 300, 580, 860, 1130],
+            },
+            "658207YA0A": {
+                "attrs": [
+                    "part1Crop_YPos_hoodFR",
+                    "part2Crop_YPos_hoodFR",
+                    "part3Crop_YPos_hoodFR",
+                    "part4Crop_YPos_hoodFR",
+                    "part5Crop_YPos_hoodFR",
+                ],
+                "defaults": [63 * 5, 101 * 5, 139 * 5, 174 * 5, 212 * 5],
+            },
+        }
         
         self.scaled_height  = int(self.frame_height / self.scale_factor)
         self.scaled_width = int(self.frame_width / self.scale_factor)
@@ -236,32 +263,12 @@ class InspectionThread(QThread):
         self.dailyTenken_cropWidth = 950
         self.dailyTenken_cropWidth_scaled = int(self.dailyTenken_cropWidth//self.scale_factor)
 
-        self.part1Crop_YPos = 45
-        self.part2Crop_YPos = 300
-        self.part3Crop_YPos = 580
-        self.part4Crop_YPos = 860
-        self.part5Crop_YPos = 1130
+        for profile_config in self.crop_position_profiles.values():
+            for attr_name, default_value in zip(profile_config["attrs"], profile_config["defaults"]):
+                setattr(self, attr_name, default_value)
 
-
-        #nissan HOOD FR
-        
-        self.part1Crop_YPos_hoodFR = 63*5
-        self.part2Crop_YPos_hoodFR = 101*5
-        self.part3Crop_YPos_hoodFR = 139*5
-        self.part4Crop_YPos_hoodFR = 174*5
-        self.part5Crop_YPos_hoodFR = 212*5
-
-        self.part1Crop_YPos_scaled = int(self.part1Crop_YPos//self.scale_factor)
-        self.part2Crop_YPos_scaled = int(self.part2Crop_YPos//self.scale_factor)
-        self.part3Crop_YPos_scaled = int(self.part3Crop_YPos//self.scale_factor)
-        self.part4Crop_YPos_scaled = int(self.part4Crop_YPos//self.scale_factor)
-        self.part5Crop_YPos_scaled = int(self.part5Crop_YPos//self.scale_factor)
-
-        self.part1Crop_Ypos_hoodFR_scaled = int(self.part1Crop_YPos_hoodFR//self.scale_factor)
-        self.part2Crop_Ypos_hoodFR_scaled = int(self.part2Crop_YPos_hoodFR//self.scale_factor)
-        self.part3Crop_Ypos_hoodFR_scaled = int(self.part3Crop_YPos_hoodFR//self.scale_factor)
-        self.part4Crop_Ypos_hoodFR_scaled = int(self.part4Crop_YPos_hoodFR//self.scale_factor)
-        self.part5Crop_Ypos_hoodFR_scaled = int(self.part5Crop_YPos_hoodFR//self.scale_factor)
+        self.refresh_crop_position_cache()
+        self.load_crop_settings()
         
         self.hole1Crop_XYpos_scaled = (int(70//self.scale_factor_hole), int(180//self.scale_factor_hole))
         self.hole2Crop_XYpos_scaled = (int(295//self.scale_factor_hole), int(180//self.scale_factor_hole))
@@ -566,6 +573,8 @@ class InspectionThread(QThread):
                 transform_list = yaml.load(file, Loader=yaml.FullLoader)
                 self.planarizeTransform_temp_scaled = np.array(transform_list)     
 
+        self.cache_perspective_maps()
+
 
         while self.running:
 
@@ -573,1224 +582,1181 @@ class InspectionThread(QThread):
                 self.inspection_config.cameraID = -1
 
             if self.inspection_config.widget == 8:
-
-                if self.inspection_config.furyou_plus or self.inspection_config.furyou_minus or self.inspection_config.kansei_plus or self.inspection_config.kansei_minus or self.inspection_config.furyou_plus_10 or self.inspection_config.furyou_minus_10 or self.inspection_config.kansei_plus_10 or self.inspection_config.kansei_minus_10:
-                    self.inspection_config.current_numofPart[self.inspection_config.widget], self.inspection_config.today_numofPart[self.inspection_config.widget] = self.manual_adjustment(
-                        self.inspection_config.current_numofPart[self.inspection_config.widget], self.inspection_config.today_numofPart[self.inspection_config.widget],
-                        self.inspection_config.furyou_plus, 
-                        self.inspection_config.furyou_minus, 
-                        self.inspection_config.furyou_plus_10, 
-                        self.inspection_config.furyou_minus_10, 
-                        self.inspection_config.kansei_plus, 
-                        self.inspection_config.kansei_minus,
-                        self.inspection_config.kansei_plus_10,
-                        self.inspection_config.kansei_minus_10)
-                    print("Manual Adjustment Done")
-                    print(f"Furyou Plus: {self.inspection_config.furyou_plus}")
-                    print(f"Furyou Minus: {self.inspection_config.furyou_minus}")
-                    print(f"Kansei Plus: {self.inspection_config.kansei_plus}")
-                    print(f"Kansei Minus: {self.inspection_config.kansei_minus}")
-                    print(f"Furyou Plus 10: {self.inspection_config.furyou_plus_10}")
-                    print(f"Furyou Minus 10: {self.inspection_config.furyou_minus_10}")
-                    print(f"Kansei Plus 10: {self.inspection_config.kansei_plus_10}")
-                    print(f"Kansei Minus 10: {self.inspection_config.kansei_minus_10}")
-
-                if self.inspection_config.counterReset is True:
-                    self.inspection_config.current_numofPart[self.inspection_config.widget] = [0, 0]
-                    self.inspection_config.counterReset = False
-                    self.save_result_database(partname = self.widget_dir_map[self.inspection_config.widget],
-                            numofPart = self.inspection_config.today_numofPart[self.inspection_config.widget],
-                            currentnumofPart = [0, 0], 
-                            deltaTime = 0.0,
-                            kensainName = self.inspection_config.kensainNumber, 
-                            detected_pitch_str = "COUNTERRESET", 
-                            delta_pitch_str = "COUNTERRESET", 
-                            total_length=0,
-                            resultPitch = "COUNTERRESET",
-                            status = "COUNTERRESET",
-                            NGreason = "COUNTERRESET")
-                #check kouden sensor and tenmetsu status
-
-                for i in range (len(self.inspection_config.kouden_sensor)):
-                    self.ethernet_status_red_tenmetsu_status[i] = self.inspection_config.kouden_sensor[i]
-                    self.ethernet_status_green_hold_status[i] = 0 #Reset at every loop
-                    self.ethernet_status_red_hold_status[i] = 0 #Reset at every loop
-
-                for i in range(len(self.ethernet_status_red_tenmetsu_status)):
-                    if self.ethernet_status_red_tenmetsu_status[i] == 1:
-                        self.InspectionStatus[i] = "製品検出済み"
-                    else:
-                        self.InspectionStatus[i] = "製品未検出"
-                    
-                if self.multiCam_stream is False:
-                    self.multiCam_stream = True
-                    self.initialize_all_camera()
-
-                _, self.bottomframe = self.cap_cam0.read()
-                _, self.mergeframe1 = self.cap_cam1.read()
-                _, self.mergeframe2 = self.cap_cam2.read()
-                _, self.mergeframe3 = self.cap_cam3.read()
-                _, self.mergeframe4 = self.cap_cam4.read()
-                _, self.mergeframe5 = self.cap_cam5.read()
-
-                self.mergeframe1 = cv2.rotate(self.mergeframe1, cv2.ROTATE_180)
-                self.mergeframe2 = cv2.rotate(self.mergeframe2, cv2.ROTATE_180)
-                self.mergeframe3 = cv2.rotate(self.mergeframe3, cv2.ROTATE_180)
-                self.mergeframe4 = cv2.rotate(self.mergeframe4, cv2.ROTATE_180)
-                self.mergeframe5 = cv2.rotate(self.mergeframe5, cv2.ROTATE_180)
-
-                #Downsampled the image
-                self.mergeframe1_scaled = self.downSampling(self.mergeframe1, self.scaled_width, self.scaled_height)
-                self.mergeframe2_scaled = self.downSampling(self.mergeframe2, self.scaled_width, self.scaled_height)
-                self.mergeframe3_scaled = self.downSampling(self.mergeframe3, self.scaled_width, self.scaled_height)
-                self.mergeframe4_scaled = self.downSampling(self.mergeframe4, self.scaled_width, self.scaled_height)
-                self.mergeframe5_scaled = self.downSampling(self.mergeframe5, self.scaled_width, self.scaled_height)
-
-                if self.inspection_config.mapCalculated[1] is False: #Just checking the first camera to reduce loop time
-                    for i in range(1, 6):
-                        if os.path.exists(self._save_dir + f"Calibration_camera_{i}.yaml"):
-                            camera_matrix, dist_coeffs = self.load_matrix_from_yaml(self._save_dir + f"Calibration_camera_{i}.yaml")
-                            # Precompute the undistort and rectify map for faster processing
-                            h, w = self.mergeframe1.shape[:2] #use mergeframe1 as reference
-                            self.inspection_config.map1[i], self.inspection_config.map2[i] = cv2.initUndistortRectifyMap(camera_matrix, dist_coeffs, None, camera_matrix, (w, h), cv2.CV_16SC2)
-                            print(f"map1 and map2 value is calculated")
-                            self.inspection_config.mapCalculated[i] = True
-                            print(f"Calibration map is calculated for Camera {i}")
-
-                            #Also do the map for the scaled image
-                            camera_matrix, dist_coeffs = self.load_matrix_from_yaml(self._save_dir + f"Calibration_camera_scaled_{i}.yaml")
-                            h, w = self.mergeframe1_scaled.shape[:2] #use mergeframe1 as reference
-                            self.inspection_config.map1_downscaled[i], self.inspection_config.map2_downscaled[i] = cv2.initUndistortRectifyMap(camera_matrix, dist_coeffs, None, camera_matrix, (w, h), cv2.CV_16SC2)
-                            print(f"map1 and map2 value is calculated for scaled image")
-                            print(f"Calibration map is calculated for Camera {i} for scaled image")
-
-                            #Not idea but the condition use the bigger image
-
-                if self.inspection_config.mapCalculated[1] is True: #Just checking the first camera to reduce loop time
-
-                    #rotate the bottom frame 90deg CCW
-                    self.bottomframe = self.downScaledImage(self.bottomframe, self.scale_factor_hole)
-                    self.bottomframe = cv2.flip(cv2.rotate(self.bottomframe, cv2.ROTATE_90_COUNTERCLOCKWISE), 1)
-
-                    self.holeFrame1 = self.bottomframe[self.hole1Crop_XYpos_scaled[0]:self.hole1Crop_XYpos_scaled[0] + self.height_hole_offset, self.hole1Crop_XYpos_scaled[1]:self.hole1Crop_XYpos_scaled[1] + self.width_hole_offset]
-                    self.holeFrame2 = self.bottomframe[self.hole2Crop_XYpos_scaled[0]:self.hole2Crop_XYpos_scaled[0] + self.height_hole_offset, self.hole2Crop_XYpos_scaled[1]:self.hole2Crop_XYpos_scaled[1] + self.width_hole_offset]
-                    self.holeFrame3 = self.bottomframe[self.hole3Crop_XYpos_scaled[0]:self.hole3Crop_XYpos_scaled[0] + self.height_hole_offset, self.hole3Crop_XYpos_scaled[1]:self.hole3Crop_XYpos_scaled[1] + self.width_hole_offset]
-                    self.holeFrame4 = self.bottomframe[self.hole4Crop_XYpos_scaled[0]:self.hole4Crop_XYpos_scaled[0] + self.height_hole_offset, self.hole4Crop_XYpos_scaled[1]:self.hole4Crop_XYpos_scaled[1] + self.width_hole_offset]
-                    self.holeFrame5 = self.bottomframe[self.hole5Crop_XYpos_scaled[0]:self.hole5Crop_XYpos_scaled[0] + self.height_hole_offset, self.hole5Crop_XYpos_scaled[1]:self.hole5Crop_XYpos_scaled[1] + self.width_hole_offset]
-                
-                    if self.inspection_config.doInspection is False:
-
-                        self.mergeframe1_scaled = cv2.remap(self.mergeframe1_scaled, self.inspection_config.map1_downscaled[1], self.inspection_config.map2_downscaled[1], interpolation=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT)
-                        self.mergeframe2_scaled = cv2.remap(self.mergeframe2_scaled, self.inspection_config.map1_downscaled[2], self.inspection_config.map2_downscaled[2], interpolation=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT)
-                        self.mergeframe3_scaled = cv2.remap(self.mergeframe3_scaled, self.inspection_config.map1_downscaled[3], self.inspection_config.map2_downscaled[3], interpolation=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT)
-                        self.mergeframe4_scaled = cv2.remap(self.mergeframe4_scaled, self.inspection_config.map1_downscaled[4], self.inspection_config.map2_downscaled[4], interpolation=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT)
-                        self.mergeframe5_scaled = cv2.remap(self.mergeframe5_scaled, self.inspection_config.map1_downscaled[5], self.inspection_config.map2_downscaled[5], interpolation=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT)
-
-                        self.combinedImage_scaled = warpTwoImages_template(self.homography_blank_canvas_scaled, self.mergeframe1_scaled, self.H1_scaled)
-                        self.combinedImage_scaled = warpTwoImages_template(self.combinedImage_scaled, self.mergeframe2_scaled, self.H2_scaled)
-                        self.combinedImage_scaled = warpTwoImages_template(self.combinedImage_scaled, self.mergeframe3_scaled, self.H3_scaled)
-                        self.combinedImage_scaled = warpTwoImages_template(self.combinedImage_scaled, self.mergeframe4_scaled, self.H4_scaled)
-                        self.combinedImage_scaled = warpTwoImages_template(self.combinedImage_scaled, self.mergeframe5_scaled, self.H5_scaled)
-
-                        self.combinedImage_scaled = cv2.warpPerspective(self.combinedImage_scaled, self.planarizeTransform_scaled, (int(self.homography_size[1]/self.scale_factor), int(self.homography_size[0]/self.scale_factor)))
-                        self.combinedImage_scaled = cv2.resize(self.combinedImage_scaled, (int(self.homography_size[1]/(self.scale_factor*1.48)), int(self.homography_size[0]/(self.scale_factor*1.26*1.48))))#1.48 for the qt, 1.26 for the aspect ratio
-
-                        # cv2.imwrite("combinedImage_scaled_inference.png", self.combinedImage_scaled)
-
-                        #Crop the image scaled for each part
-                        self.part1Crop_scaled = self.combinedImage_scaled[self.part1Crop_YPos_scaled : self.part1Crop_YPos_scaled + self.part_height_offset_scaled, 0 : self.homography_size_scaled[1]]
-                        self.part2Crop_scaled = self.combinedImage_scaled[self.part2Crop_YPos_scaled : self.part2Crop_YPos_scaled + self.part_height_offset_scaled, 0 : self.homography_size_scaled[1]]
-                        self.part3Crop_scaled = self.combinedImage_scaled[self.part3Crop_YPos_scaled : self.part3Crop_YPos_scaled + self.part_height_offset_scaled, 0 : self.homography_size_scaled[1]]
-                        self.part4Crop_scaled = self.combinedImage_scaled[self.part4Crop_YPos_scaled : self.part4Crop_YPos_scaled + self.part_height_offset_scaled, 0 : self.homography_size_scaled[1]]
-                        self.part5Crop_scaled = self.combinedImage_scaled[self.part5Crop_YPos_scaled : self.part5Crop_YPos_scaled + self.part_height_offset_scaled, 0 : self.homography_size_scaled[1]]
-
-                        self.part1Crop_scaled = self.downSampling(self.part1Crop_scaled, width=1771, height=24)
-                        self.part2Crop_scaled = self.downSampling(self.part2Crop_scaled, width=1771, height=24)
-                        self.part3Crop_scaled = self.downSampling(self.part3Crop_scaled, width=1771, height=24)
-                        self.part4Crop_scaled = self.downSampling(self.part4Crop_scaled, width=1771, height=24)
-                        self.part5Crop_scaled = self.downSampling(self.part5Crop_scaled, width=1771, height=24)
-
-                        self.holeImageMerge[0] = self.holeFrame1.copy()
-                        self.holeImageMerge[1] = self.holeFrame2.copy()
-                        self.holeImageMerge[2] = self.holeFrame3.copy()
-                        self.holeImageMerge[3] = self.holeFrame4.copy()
-                        self.holeImageMerge[4] = self.holeFrame5.copy()
-
-                        self.holeFrame1 = self.downScaledImage(self.holeFrame1, 1.5)
-                        self.holeFrame2 = self.downScaledImage(self.holeFrame2, 1.5)
-                        self.holeFrame3 = self.downScaledImage(self.holeFrame3, 1.5)
-                        self.holeFrame4 = self.downScaledImage(self.holeFrame4, 1.5)
-                        self.holeFrame5 = self.downScaledImage(self.holeFrame5, 1.5)
-
-                        for i in range(len(self.holeImageMerge)):
-                            self.InspectionResult_HoleDetection[i] = self.hoodFR_holeDetectionModel(
-                                cv2.cvtColor(self.holeImageMerge[i], cv2.COLOR_BGR2RGB),
-                                stream=True, verbose=False, conf=0.3, imgsz=256
-                            )
-                            detectedid = []
-                            
-                            for j, r in enumerate(self.InspectionResult_HoleDetection[i]):
-                                for k, box in enumerate(r.boxes):
-                                    detectedid.append(box.cls.item())
-                            # print(f"Detected ID[i]: {detectedid}")
-                            if 0.0 in detectedid:
-                                self.DetectionResult_HoleDetection[i] = 1
-                            else:
-                                self.DetectionResult_HoleDetection[i] = 0
-
-                        # print(self.DetectionResult_HoleDetection)
-
-                        self.InspectionResult_PitchMeasured = [None]*5
-                        self.InspectionResult_PitchResult = [None]*5
-
-                        if self.InspectionImages_prev[0] is not None and any(sensor != 0 for sensor in self.inspection_config.kouden_sensor):
-                            #convert to bgr
-                            self.part1Crop_scaled = cv2.cvtColor(self.InspectionImages_prev[0], cv2.COLOR_RGB2BGR)
-                            self.part2Crop_scaled = cv2.cvtColor(self.InspectionImages_prev[1], cv2.COLOR_RGB2BGR)
-                            self.part3Crop_scaled = cv2.cvtColor(self.InspectionImages_prev[2], cv2.COLOR_RGB2BGR)
-                            self.part4Crop_scaled = cv2.cvtColor(self.InspectionImages_prev[3], cv2.COLOR_RGB2BGR)
-                            self.part5Crop_scaled = cv2.cvtColor(self.InspectionImages_prev[4], cv2.COLOR_RGB2BGR)
-
-                            self.ethernet_status_red_tenmetsu_status = self.ethernet_status_red_tenmetsu_status_prev.copy()
-                            self.ethernet_status_green_hold_status = self.ethernet_status_green_hold_status_prev.copy()
-                            self.ethernet_status_red_hold_status = self.ethernet_status_red_hold_status_prev.copy()
-
-                            self.InspectionResult_PitchMeasured = self.InspectionResult_PitchMeasured_prev.copy()
-                            self.InspectionResult_PitchResult = self.InspectionResult_PitchResult_prev.copy()
-                            self.InspectionStatus = self.InspectionStatus_prev.copy()
-
-                            ng_exists = False
-                            for status in self.InspectionResult_Status:
-                                if status == "NG":
-                                    ng_exists = True
-                                    break
-
-                            if ng_exists:
-                                for i, sensor_value in enumerate(self.inspection_config.kouden_sensor):
-                                    if sensor_value == 0:  # 0 indicates the part has been removed
-                                        if self.InspectionResult_Status[i] == "OK":
-                                            play_alarm_sound()  # Alarm if a good part is being removed
-                                        elif self.InspectionResult_Status[i] == "NG":
-                                            self.InspectionResult_Status[i] = "None"
-                                            play_picking_sound()  # Confirm removal of the NG part
-            
-
-                        if all(sensor == 0 for sensor in self.inspection_config.kouden_sensor):
-                            self.InspectionImages_prev[0] = None
-
-                        if self.part1Crop_scaled is not None:
-                            self.part1Cam.emit(self.convertQImage(self.part1Crop_scaled))
-                        if self.part2Crop_scaled is not None:
-                            self.part2Cam.emit(self.convertQImage(self.part2Crop_scaled))
-                        if self.part3Crop_scaled is not None:
-                            self.part3Cam.emit(self.convertQImage(self.part3Crop_scaled))
-                        if self.part4Crop_scaled is not None:
-                            self.part4Cam.emit(self.convertQImage(self.part4Crop_scaled))
-                        if self.part5Crop_scaled is not None:
-                            self.part5Cam.emit(self.convertQImage(self.part5Crop_scaled))
-
-                        if self.holeFrame1 is not None:
-                            self.hole1Cam.emit(self.convertQImage(self.holeFrame1))
-                        if self.holeFrame2 is not None:
-                            self.hole2Cam.emit(self.convertQImage(self.holeFrame2))
-                        if self.holeFrame3 is not None:
-                            self.hole3Cam.emit(self.convertQImage(self.holeFrame3))
-                        if self.holeFrame4 is not None:
-                            self.hole4Cam.emit(self.convertQImage(self.holeFrame4))
-                        if self.holeFrame5 is not None:
-                            self.hole5Cam.emit(self.convertQImage(self.holeFrame5))
-
-                        #Empty the Inspection Result
-                        
-                        self.hoodFR_InspectionResult_PitchMeasured.emit(self.InspectionResult_PitchMeasured)
-                        self.hoodFR_InspectionResult_PitchResult.emit(self.InspectionResult_PitchResult)
-
-                    if self.InspectionTimeStart is None:
-                        self.InspectionTimeStart = time.time()
-
-                    # print(time.time() - self.InspectionTimeStart)
-
-                    if self.firstTimeInspection is False:
-                        if time.time() - self.InspectionTimeStart < self.InspectionWaitTime:
-                            self.inspection_config.doInspection = False
-
-                    # print(f"InspectionConfig: {self.inspection_config.doInspection}")
-
-                    if self.inspection_config.doInspection is True:
-                        self.inspection_config.doInspection = False
-
-                        if self.inspection_config.kensainNumber is None or self.inspection_config.kensainNumber == "":
-                            #Break the bottom if 
-                            print("No Kensain Number Input")
-                            for i in range (len(self.InspectionStatus)):
-                                self.InspectionStatus[i] = "社員番号未入力"
-                            self.hoodFR_InspectionStatus.emit(self.InspectionStatus)
-                            continue
-                        
-                        if self.InspectionTimeStart is not None:
-
-                            if time.time() - self.InspectionTimeStart > self.InspectionWaitTime or self.firstTimeInspection is True:
-                                self.firstTimeInspection is False
-                                print("Inspection Started") 
-                                self.InspectionTimeStart = time.time()
-                                
-                                for i in range (len(self.InspectionStatus)):
-                                    self.InspectionStatus[i] = "検査中"
-                                self.hoodFR_InspectionStatus.emit(self.InspectionStatus)
-
-                                self.mergeframe1 = cv2.remap(self.mergeframe1, self.inspection_config.map1[1], self.inspection_config.map2[1], interpolation=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT)
-                                self.mergeframe2 = cv2.remap(self.mergeframe2, self.inspection_config.map1[2], self.inspection_config.map2[2], interpolation=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT)
-                                self.mergeframe3 = cv2.remap(self.mergeframe3, self.inspection_config.map1[3], self.inspection_config.map2[3], interpolation=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT)
-                                self.mergeframe4 = cv2.remap(self.mergeframe4, self.inspection_config.map1[4], self.inspection_config.map2[4], interpolation=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT)
-                                self.mergeframe5 = cv2.remap(self.mergeframe5, self.inspection_config.map1[5], self.inspection_config.map2[5], interpolation=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT)
-
-                                self.combinedImage = warpTwoImages_template(self.homography_blank_canvas, self.mergeframe1, self.H1)
-                                self.combinedImage = warpTwoImages_template(self.combinedImage, self.mergeframe2, self.H2)
-                                self.combinedImage = warpTwoImages_template(self.combinedImage, self.mergeframe3, self.H3)
-                                self.combinedImage = warpTwoImages_template(self.combinedImage, self.mergeframe4, self.H4)
-                                self.combinedImage = warpTwoImages_template(self.combinedImage, self.mergeframe5, self.H5)
-                                                                            
-                                self.combinedImage = cv2.warpPerspective(self.combinedImage, self.planarizeTransform, (int(self.homography_size[1]), int(self.homography_size[0])))
-                                self.combinedImage = cv2.resize(self.combinedImage, (self.homography_size[1], int(self.homography_size[0]/(1.26))))#1.48 for the qt, 1.26 for the aspect ratio
-
-                                # Crop the image scaled for each part
-                                self.part1Crop = self.combinedImage[int(self.part1Crop_YPos*1.48) : int((self.part1Crop_YPos + self.part_height_offset)*1.48), 0 : int(self.homography_size[1]*1.48)]
-                                self.part2Crop = self.combinedImage[int(self.part2Crop_YPos*1.48) : int((self.part2Crop_YPos + self.part_height_offset)*1.48), 0 : int(self.homography_size[1]*1.48)]
-                                self.part3Crop = self.combinedImage[int(self.part3Crop_YPos*1.48) : int((self.part3Crop_YPos + self.part_height_offset)*1.48), 0 : int(self.homography_size[1]*1.48)]
-                                self.part4Crop = self.combinedImage[int(self.part4Crop_YPos*1.48) : int((self.part4Crop_YPos + self.part_height_offset)*1.48), 0 : int(self.homography_size[1]*1.48)]
-                                self.part5Crop = self.combinedImage[int(self.part5Crop_YPos*1.48) : int((self.part5Crop_YPos + self.part_height_offset)*1.48), 0 : int(self.homography_size[1]*1.48)]
-
-                                #Need to convert to BGR for SAHI Inspection
-                                self.part1Crop = cv2.cvtColor(self.part1Crop, cv2.COLOR_RGB2BGR)
-                                self.part2Crop = cv2.cvtColor(self.part2Crop, cv2.COLOR_RGB2BGR)
-                                self.part3Crop = cv2.cvtColor(self.part3Crop, cv2.COLOR_RGB2BGR)
-                                self.part4Crop = cv2.cvtColor(self.part4Crop, cv2.COLOR_RGB2BGR)
-                                self.part5Crop = cv2.cvtColor(self.part5Crop, cv2.COLOR_RGB2BGR)
-
-                                #Put the All the image into a list
-                                self.InspectionImages[0] = self.part1Crop.copy()
-                                self.InspectionImages[1] = self.part2Crop.copy()
-                                self.InspectionImages[2] = self.part3Crop.copy()
-                                self.InspectionImages[3] = self.part4Crop.copy()
-                                self.InspectionImages[4] = self.part5Crop.copy()
-
-                                print(f"Length of Inspection Images : {len(self.InspectionImages)}") 
-
-                                #Emit　検査中 to the status signal
-
-                                # # Do the inspection
-                                for i in range(len(self.InspectionImages)):
-                                    #Only do inspectino on the one with kouden sensor on
-                                    if self.inspection_config.kouden_sensor[i] == 1:
-                                        self.InspectionResult_ClipDetection[i] = get_sliced_prediction(
-                                            self.InspectionImages[i], 
-                                            self.hoodFR_clipDetectionModel, 
-                                            slice_height=180, slice_width=1280, 
-                                            overlap_height_ratio=0.0, overlap_width_ratio=0.3,
-                                            postprocess_match_metric="IOS",
-                                            postprocess_match_threshold=0.005,
-                                            postprocess_class_agnostic=True,
-                                            postprocess_type="GREEDYNMM",
-                                            verbose=0,
-                                            perform_standard_pred=True
-                                        )
-
-                                        #Crop image from 0 to 1024 width for the left and width-1024 to 1024 for the right
-                                        self.InspectionImages_endSegmentation_Left[i] = self.InspectionImages[i][:, :1024, :]
-                                        self.InspectionImages_endSegmentation_Right[i] = self.InspectionImages[i][:, -1024:, :]
-
-                                        self.InspectionImages_endSegmentation_Left[i] = add_imageborder(img = self.InspectionImages_endSegmentation_Left[i], width = 480)
-                                        self.InspectionImages_endSegmentation_Right[i] = add_imageborder(img = self.InspectionImages_endSegmentation_Right[i], width = 480)
-
-                                        #bgr to rgb
-                                        self.InspectionImages_endSegmentation_Left[i] = cv2.cvtColor(self.InspectionImages_endSegmentation_Left[i], cv2.COLOR_BGR2RGB)
-                                        self.InspectionImages_endSegmentation_Right[i] = cv2.cvtColor(self.InspectionImages_endSegmentation_Right[i], cv2.COLOR_BGR2RGB)
-
-                                        # cv2.imwrite(f"InspectionImages_endSegmentation_Left_{i}.png", self.InspectionImages_endSegmentation_Left[i])
-                                        # cv2.imwrite(f"InspectionImages_endSegmentation_Right_{i}.png", self.InspectionImages_endSegmentation_Right[i])
-
-                                        self.InspectionResult_EndSegmentation_Left[i] = self.hoodFR_endSegmentationModel(source=self.InspectionImages_endSegmentation_Left[i], conf=0.5, imgsz=1680, verbose=False, retina_masks=True)
-                                        self.InspectionResult_EndSegmentation_Right[i] = self.hoodFR_endSegmentationModel(source=self.InspectionImages_endSegmentation_Right[i], conf=0.5, imgsz=1680, verbose=False, retina_masks=True)
-
-                                        self.InspectionImages[i], self.InspectionResult_PitchMeasured[i], self.InspectionResult_PitchResult[i], self.InspectionResult_DetectionID[i], self.InspectionResult_Status[i], self.InspectionResult_NGReason[i] = partcheck(self.InspectionImages[i], 
-                                                                                                                                                                                                                                  self.InspectionResult_ClipDetection[i].object_prediction_list,
-                                                                                                                                                                                                                                  self.InspectionResult_EndSegmentation_Left[i],
-                                                                                                                                                                                                                                  self.InspectionResult_EndSegmentation_Right[i])
-                                    else:
-                                        #Make pure black image
-                                        self.InspectionImages[i] = np.full((24, 1771, 3), (10, 10, 20), dtype=np.uint8)
-                                        self.InspectionResult_PitchMeasured[i] = None
-                                        self.InspectionResult_PitchResult[i] = None
-                                        self.InspectionResult_DetectionID[i] = None
-                                        self.InspectionResult_Status[i] = None
-                                    
-                                    # print(self.InspectionResult_Status[i])
-                                    # print(self.InspectionResult_DetectionID[i])
-
-                                    if self.InspectionResult_Status[i] == "OK":
-                                        self.ethernet_status_green_hold_status[i] = 1
-                                        self.ethernet_status_red_tenmetsu_status[i] = 0
-                                        self.ethernet_status_red_hold_status[i] = 0
-
-                                        self.inspection_config.current_numofPart[self.inspection_config.widget][0] += 1
-                                        self.inspection_config.today_numofPart[self.inspection_config.widget][0] += 1
-
-                                        #Play konpou sound if the current_numofPart is dividable by 25
-                                        if self.inspection_config.current_numofPart[self.inspection_config.widget][0] % 25 == 0 and self.inspection_config.current_numofPart[self.inspection_config.widget][0] != 0:
-                                            play_konpou_sound()
-
-                                        self.InspectionStatus[i] = "OK"
-
-                                    elif self.InspectionResult_Status[i] == "NG":
-                                        self.ethernet_status_green_hold_status[i] = 0
-                                        self.ethernet_status_red_tenmetsu_status[i] = 0
-                                        self.ethernet_status_red_hold_status[i] = 1
-                                        self.inspection_config.current_numofPart[self.inspection_config.widget][1] += 1
-                                        self.inspection_config.today_numofPart[self.inspection_config.widget][1] += 1
-
-                                        self.InspectionStatus[i] = "NG"
-
-                                    else:
-                                        self.ethernet_status_green_hold_status[i] = 0
-                                        self.ethernet_status_red_tenmetsu_status[i] = 0
-                                        self.ethernet_status_red_hold_status[i] = 0
-
-                                    self.save_result_database(partname = self.widget_dir_map[self.inspection_config.widget],
-                                        numofPart = self.inspection_config.today_numofPart[self.inspection_config.widget], 
-                                        currentnumofPart = self.inspection_config.current_numofPart[self.inspection_config.widget],
-                                        deltaTime = 0.0,
-                                        kensainName = self.inspection_config.kensainNumber, 
-                                        detected_pitch_str = self.InspectionResult_PitchMeasured[i], 
-                                        delta_pitch_str = self.InspectionResult_DeltaPitch[i], 
-                                        total_length=0,
-                                        resultPitch = self.InspectionResult_PitchResult[i], 
-                                        status = self.InspectionResult_Status[i], 
-                                        NGreason = self.InspectionResult_NGReason[i])
-                                    
-                                    
-                                    #save hole image
-                                    self.save_image_hole(self.holeFrame1, False, "P1")
-                                    self.save_image_hole(self.holeFrame2, False, "P2")
-                                    self.save_image_hole(self.holeFrame3, False, "P3")
-                                    self.save_image_hole(self.holeFrame4, False, "P4")
-                                    self.save_image_hole(self.holeFrame5, False, "P5")
-                                    
-                                    self.hoodFR_InspectionStatus.emit(self.InspectionStatus)
-
-                                self.save_image_result(self.part1Crop, self.InspectionImages[0], self.InspectionResult_Status[0], True, "P1")
-                                self.save_image_result(self.part2Crop, self.InspectionImages[1], self.InspectionResult_Status[1], True, "P2")
-                                self.save_image_result(self.part3Crop, self.InspectionImages[2], self.InspectionResult_Status[2], True, "P3")
-                                self.save_image_result(self.part4Crop, self.InspectionImages[3], self.InspectionResult_Status[3], True, "P4")
-                                self.save_image_result(self.part5Crop, self.InspectionImages[4], self.InspectionResult_Status[4], True, "P5")
-
-                                self.InspectionImages[0] = self.downSampling(self.InspectionImages[0], width=1771, height=24)
-                                self.InspectionImages[1] = self.downSampling(self.InspectionImages[1], width=1771, height=24)
-                                self.InspectionImages[2] = self.downSampling(self.InspectionImages[2], width=1771, height=24)
-                                self.InspectionImages[3] = self.downSampling(self.InspectionImages[3], width=1771, height=24)
-                                self.InspectionImages[4] = self.downSampling(self.InspectionImages[4], width=1771, height=24)
-
-                                self.hoodFR_InspectionResult_PitchMeasured.emit(self.InspectionResult_PitchMeasured)
-                                self.hoodFR_InspectionResult_PitchResult.emit(self.InspectionResult_PitchResult)
-                                print("Inspection Finished")
-                                #Remember that list is mutable
-                                self.ethernet_status_red_tenmetsu_status_prev = self.ethernet_status_red_tenmetsu_status_prev.copy()
-                                self.ethernet_status_green_hold_status_prev = self.ethernet_status_green_hold_status.copy()
-                                self.ethernet_status_red_hold_status_prev = self.ethernet_status_red_hold_status.copy()
-
-                                self.InspectionImages_prev[0] = self.InspectionImages[0]
-                                self.InspectionImages_prev[1] = self.InspectionImages[1]
-                                self.InspectionImages_prev[2] = self.InspectionImages[2]
-                                self.InspectionImages_prev[3] = self.InspectionImages[3]
-                                self.InspectionImages_prev[4] = self.InspectionImages[4]
-
-                                self.InspectionResult_PitchMeasured_prev = self.InspectionResult_PitchMeasured.copy()
-                                self.InspectionResult_PitchResult_prev = self.InspectionResult_PitchResult.copy()
-                                self.InspectionStatus_prev = self.InspectionStatus.copy()
-
-                                self.ethernet_status_red_tenmetsu.emit(self.ethernet_status_red_tenmetsu_status)
-                                self.ethernet_status_green_hold.emit(self.ethernet_status_green_hold_status)
-                                self.ethernet_status_red_hold.emit(self.ethernet_status_red_hold_status)
-
-                                self.part1Cam.emit(self.converQImageRGB(self.InspectionImages[0]))
-                                self.part2Cam.emit(self.converQImageRGB(self.InspectionImages[1]))
-                                self.part3Cam.emit(self.converQImageRGB(self.InspectionImages[2]))
-                                self.part4Cam.emit(self.converQImageRGB(self.InspectionImages[3]))
-                                self.part5Cam.emit(self.converQImageRGB(self.InspectionImages[4]))
-
-                                # self.hoodFR_InspectionStatus.emit(self.InspectionStatus)
-
-                #emit the ethernet 
-                self.today_numofPart_signal.emit(self.inspection_config.today_numofPart)
-                self.current_numofPart_signal.emit(self.inspection_config.current_numofPart)
-            
-                self.ethernet_status_red_tenmetsu.emit(self.ethernet_status_red_tenmetsu_status)
-                self.ethernet_status_green_hold.emit(self.ethernet_status_green_hold_status)
-                self.ethernet_status_red_hold.emit(self.ethernet_status_red_hold_status)
-
-                # Emit status based on the red tenmetsu status
-
-                
-                self.hoodFR_InspectionStatus.emit(self.InspectionStatus)
-
-                # Emit the hole detection
-                self.hoodFR_HoleStatus.emit(self.DetectionResult_HoleDetection)
+                if self._handle_widget_8():
+                    continue
 
             if self.inspection_config.widget == 9:
-
-                if self.inspection_config.furyou_plus or self.inspection_config.furyou_minus or self.inspection_config.kansei_plus or self.inspection_config.kansei_minus or self.inspection_config.furyou_plus_10 or self.inspection_config.furyou_minus_10 or self.inspection_config.kansei_plus_10 or self.inspection_config.kansei_minus_10:
-                    self.inspection_config.current_numofPart[self.inspection_config.widget], self.inspection_config.today_numofPart[self.inspection_config.widget] = self.manual_adjustment(
-                        self.inspection_config.current_numofPart[self.inspection_config.widget], self.inspection_config.today_numofPart[self.inspection_config.widget],
-                        self.inspection_config.furyou_plus, 
-                        self.inspection_config.furyou_minus, 
-                        self.inspection_config.furyou_plus_10, 
-                        self.inspection_config.furyou_minus_10, 
-                        self.inspection_config.kansei_plus, 
-                        self.inspection_config.kansei_minus,
-                        self.inspection_config.kansei_plus_10,
-                        self.inspection_config.kansei_minus_10)
-                    print("Manual Adjustment Done")
-                    print(f"Furyou Plus: {self.inspection_config.furyou_plus}")
-                    print(f"Furyou Minus: {self.inspection_config.furyou_minus}")
-                    print(f"Kansei Plus: {self.inspection_config.kansei_plus}")
-                    print(f"Kansei Minus: {self.inspection_config.kansei_minus}")
-                    print(f"Furyou Plus 10: {self.inspection_config.furyou_plus_10}")
-                    print(f"Furyou Minus 10: {self.inspection_config.furyou_minus_10}")
-                    print(f"Kansei Plus 10: {self.inspection_config.kansei_plus_10}")
-                    print(f"Kansei Minus 10: {self.inspection_config.kansei_minus_10}")
-
-                if self.inspection_config.counterReset is True:
-                    self.inspection_config.current_numofPart[self.inspection_config.widget] = [0, 0]
-                    self.inspection_config.counterReset = False
-                    self.save_result_database(partname = self.widget_dir_map[self.inspection_config.widget],
-                            numofPart = self.inspection_config.today_numofPart[self.inspection_config.widget],
-                            currentnumofPart = [0, 0], 
-                            deltaTime = 0.0,
-                            kensainName = self.inspection_config.kensainNumber, 
-                            detected_pitch_str = "COUNTERRESET", 
-                            delta_pitch_str = "COUNTERRESET", 
-                            total_length=0,
-                            resultPitch = "COUNTERRESET",
-                            status = "COUNTERRESET",
-                            NGreason = "COUNTERRESET")
-                #check kouden sensor and tenmetsu status
-
-                for i in range (len(self.inspection_config.kouden_sensor)):
-                    self.ethernet_status_red_tenmetsu_status[i] = self.inspection_config.kouden_sensor[i]
-                    self.ethernet_status_green_hold_status[i] = 0 #Reset at every loop
-                    self.ethernet_status_red_hold_status[i] = 0 #Reset at every loop
-
-                # for i in range(len(self.ethernet_status_red_tenmetsu_status)):
-                #     if self.ethernet_status_red_tenmetsu_status[i] == 1:
-                #         self.InspectionStatus[i] = "製品検出済み"
-                #     else:
-                #         self.InspectionStatus[i] = "製品未検出"
-
-                    self.InspectionStatus[i] = "検査準備完了"
-                    self.InspectionStatus[i] = "検査準備完了"
-                    
-                if self.multiCam_stream is False:
-                    self.multiCam_stream = True
-                    self.initialize_all_camera()
-
-                # _, self.bottomframe = self.cap_cam0.read()
-                _, self.mergeframe1 = self.cap_cam1.read()
-                _, self.mergeframe2 = self.cap_cam2.read()
-                _, self.mergeframe3 = self.cap_cam3.read()
-                _, self.mergeframe4 = self.cap_cam4.read()
-                _, self.mergeframe5 = self.cap_cam5.read()
-
-                self.mergeframe1 = cv2.rotate(self.mergeframe1, cv2.ROTATE_180)
-                self.mergeframe2 = cv2.rotate(self.mergeframe2, cv2.ROTATE_180)
-                self.mergeframe3 = cv2.rotate(self.mergeframe3, cv2.ROTATE_180)
-                self.mergeframe4 = cv2.rotate(self.mergeframe4, cv2.ROTATE_180)
-                self.mergeframe5 = cv2.rotate(self.mergeframe5, cv2.ROTATE_180)
-
-                #Downsampled the image
-                self.mergeframe1_scaled = self.downSampling(self.mergeframe1, self.scaled_width, self.scaled_height)
-                self.mergeframe2_scaled = self.downSampling(self.mergeframe2, self.scaled_width, self.scaled_height)
-                self.mergeframe3_scaled = self.downSampling(self.mergeframe3, self.scaled_width, self.scaled_height)
-                self.mergeframe4_scaled = self.downSampling(self.mergeframe4, self.scaled_width, self.scaled_height)
-                self.mergeframe5_scaled = self.downSampling(self.mergeframe5, self.scaled_width, self.scaled_height)
-
-                if self.inspection_config.mapCalculated[1] is False: #Just checking the first camera to reduce loop time
-                    for i in range(1, 6):
-                        if os.path.exists(self._save_dir + f"Calibration_camera_{i}.yaml"):
-                            camera_matrix, dist_coeffs = self.load_matrix_from_yaml(self._save_dir + f"Calibration_camera_{i}.yaml")
-                            # Precompute the undistort and rectify map for faster processing
-                            h, w = self.mergeframe1.shape[:2] #use mergeframe1 as reference
-                            self.inspection_config.map1[i], self.inspection_config.map2[i] = cv2.initUndistortRectifyMap(camera_matrix, dist_coeffs, None, camera_matrix, (w, h), cv2.CV_16SC2)
-                            print(f"map1 and map2 value is calculated")
-                            self.inspection_config.mapCalculated[i] = True
-                            print(f"Calibration map is calculated for Camera {i}")
-
-                            #Also do the map for the scaled image
-                            camera_matrix, dist_coeffs = self.load_matrix_from_yaml(self._save_dir + f"Calibration_camera_scaled_{i}.yaml")
-                            h, w = self.mergeframe1_scaled.shape[:2] #use mergeframe1 as reference
-                            self.inspection_config.map1_downscaled[i], self.inspection_config.map2_downscaled[i] = cv2.initUndistortRectifyMap(camera_matrix, dist_coeffs, None, camera_matrix, (w, h), cv2.CV_16SC2)
-                            print(f"map1 and map2 value is calculated for scaled image")
-                            print(f"Calibration map is calculated for Camera {i} for scaled image")
-
-                            #Not idea but the condition use the bigger image
-
-                if self.inspection_config.mapCalculated[1] is True: #Just checking the first camera to reduce loop time
-
-                    # #rotate the bottom frame 90deg CCW
-                    # self.bottomframe = self.downScaledImage(self.bottomframe, self.scale_factor_hole)
-                    # self.bottomframe = cv2.flip(cv2.rotate(self.bottomframe, cv2.ROTATE_90_COUNTERCLOCKWISE), 1)
-
-                    # self.holeFrame1 = self.bottomframe[self.hole1Crop_XYpos_scaled[0]:self.hole1Crop_XYpos_scaled[0] + self.height_hole_offset, self.hole1Crop_XYpos_scaled[1]:self.hole1Crop_XYpos_scaled[1] + self.width_hole_offset]
-                    # self.holeFrame2 = self.bottomframe[self.hole2Crop_XYpos_scaled[0]:self.hole2Crop_XYpos_scaled[0] + self.height_hole_offset, self.hole2Crop_XYpos_scaled[1]:self.hole2Crop_XYpos_scaled[1] + self.width_hole_offset]
-                    # self.holeFrame3 = self.bottomframe[self.hole3Crop_XYpos_scaled[0]:self.hole3Crop_XYpos_scaled[0] + self.height_hole_offset, self.hole3Crop_XYpos_scaled[1]:self.hole3Crop_XYpos_scaled[1] + self.width_hole_offset]
-                    # self.holeFrame4 = self.bottomframe[self.hole4Crop_XYpos_scaled[0]:self.hole4Crop_XYpos_scaled[0] + self.height_hole_offset, self.hole4Crop_XYpos_scaled[1]:self.hole4Crop_XYpos_scaled[1] + self.width_hole_offset]
-                    # self.holeFrame5 = self.bottomframe[self.hole5Crop_XYpos_scaled[0]:self.hole5Crop_XYpos_scaled[0] + self.height_hole_offset, self.hole5Crop_XYpos_scaled[1]:self.hole5Crop_XYpos_scaled[1] + self.width_hole_offset]
-                
-                    if self.inspection_config.doInspection is False:
-
-                        self.mergeframe1_scaled = cv2.remap(self.mergeframe1_scaled, self.inspection_config.map1_downscaled[1], self.inspection_config.map2_downscaled[1], interpolation=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT)
-                        self.mergeframe2_scaled = cv2.remap(self.mergeframe2_scaled, self.inspection_config.map1_downscaled[2], self.inspection_config.map2_downscaled[2], interpolation=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT)
-                        self.mergeframe3_scaled = cv2.remap(self.mergeframe3_scaled, self.inspection_config.map1_downscaled[3], self.inspection_config.map2_downscaled[3], interpolation=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT)
-                        self.mergeframe4_scaled = cv2.remap(self.mergeframe4_scaled, self.inspection_config.map1_downscaled[4], self.inspection_config.map2_downscaled[4], interpolation=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT)
-                        self.mergeframe5_scaled = cv2.remap(self.mergeframe5_scaled, self.inspection_config.map1_downscaled[5], self.inspection_config.map2_downscaled[5], interpolation=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT)
-
-                        self.combinedImage_scaled = warpTwoImages_template(self.homography_blank_canvas_scaled, self.mergeframe1_scaled, self.H1_scaled_FR)
-                        self.combinedImage_scaled = warpTwoImages_template(self.combinedImage_scaled, self.mergeframe2_scaled, self.H2_scaled_FR)
-                        self.combinedImage_scaled = warpTwoImages_template(self.combinedImage_scaled, self.mergeframe3_scaled, self.H3_scaled_FR)
-                        self.combinedImage_scaled = warpTwoImages_template(self.combinedImage_scaled, self.mergeframe4_scaled, self.H4_scaled_FR)
-                        self.combinedImage_scaled = warpTwoImages_template(self.combinedImage_scaled, self.mergeframe5_scaled, self.H5_scaled_FR)
-
-                        self.combinedImage_scaled = cv2.warpPerspective(self.combinedImage_scaled, self.planarizeTransform_temp_scaled, (int(self.homography_size[1]/self.scale_factor), int(self.homography_size[0]/self.scale_factor)))
-                        self.combinedImage_scaled = cv2.resize(self.combinedImage_scaled, (int(self.homography_size[1]/(self.scale_factor*1.48)), int(self.homography_size[0]/(self.scale_factor*1.26*1.48))))#1.48 for the qt, 1.26 for the aspect ratio
-
-                        cv2.imwrite("combinedImage_scaled_inference.png", self.combinedImage_scaled)
-
-                        #Crop the image scaled for each part
-                        self.part1Crop_scaled = self.combinedImage_scaled[self.part1Crop_Ypos_hoodFR_scaled : self.part1Crop_Ypos_hoodFR_scaled + self.part_height_offset_nissanhoodFR_scaled, 0 : self.homography_size_scaled[1]]
-                        self.part2Crop_scaled = self.combinedImage_scaled[self.part2Crop_Ypos_hoodFR_scaled : self.part2Crop_Ypos_hoodFR_scaled + self.part_height_offset_nissanhoodFR_scaled, 0 : self.homography_size_scaled[1]]
-                        self.part3Crop_scaled = self.combinedImage_scaled[self.part3Crop_Ypos_hoodFR_scaled : self.part3Crop_Ypos_hoodFR_scaled + self.part_height_offset_nissanhoodFR_scaled, 0 : self.homography_size_scaled[1]]
-                        self.part4Crop_scaled = self.combinedImage_scaled[self.part4Crop_Ypos_hoodFR_scaled : self.part4Crop_Ypos_hoodFR_scaled + self.part_height_offset_nissanhoodFR_scaled, 0 : self.homography_size_scaled[1]]
-                        self.part5Crop_scaled = self.combinedImage_scaled[self.part5Crop_Ypos_hoodFR_scaled : self.part5Crop_Ypos_hoodFR_scaled + self.part_height_offset_nissanhoodFR_scaled, 0 : self.homography_size_scaled[1]]
-
-                        # cv2.imwrite("part1Crop_scaled_inference.png", self.part1Crop_scaled)
-
-                        self.part1Crop_scaled = self.downSampling(self.part1Crop_scaled, width=1771, height=24)
-                        self.part2Crop_scaled = self.downSampling(self.part2Crop_scaled, width=1771, height=24)
-                        self.part3Crop_scaled = self.downSampling(self.part3Crop_scaled, width=1771, height=24)
-                        self.part4Crop_scaled = self.downSampling(self.part4Crop_scaled, width=1771, height=24)
-                        self.part5Crop_scaled = self.downSampling(self.part5Crop_scaled, width=1771, height=24)
-
-                        # self.save_image_hole(self.holeFrame1, False, "P1")
-                        # self.save_image_hole(self.holeFrame2, False, "P2")
-                        # self.save_image_hole(self.holeFrame3, False, "P3")
-                        # self.save_image_hole(self.holeFrame4, False, "P4")
-                        # self.save_image_hole(self.holeFrame5, False, "P5")
-
-                        # self.holeImageMerge[0] = self.holeFrame1.copy()
-                        # self.holeImageMerge[1] = self.holeFrame2.copy()
-                        # self.holeImageMerge[2] = self.holeFrame3.copy()
-                        # self.holeImageMerge[3] = self.holeFrame4.copy()
-                        # self.holeImageMerge[4] = self.holeFrame5.copy()
-
-                        # self.holeFrame1 = self.downScaledImage(self.holeFrame1, 1.5)
-                        # self.holeFrame2 = self.downScaledImage(self.holeFrame2, 1.5)
-                        # self.holeFrame3 = self.downScaledImage(self.holeFrame3, 1.5)
-                        # self.holeFrame4 = self.downScaledImage(self.holeFrame4, 1.5)
-                        # self.holeFrame5 = self.downScaledImage(self.holeFrame5, 1.5)
-
-                        # for i in range(len(self.holeImageMerge)):
-                        #     self.InspectionResult_HoleDetection[i] = self.hoodFR_holeDetectionModel(
-                        #         cv2.cvtColor(self.holeImageMerge[i], cv2.COLOR_BGR2RGB),
-                        #         stream=True, verbose=False, conf=0.3, imgsz=256
-                        #     )
-                        #     detectedid = []
-                            
-                        #     for j, r in enumerate(self.InspectionResult_HoleDetection[i]):
-                        #         for k, box in enumerate(r.boxes):
-                        #             detectedid.append(box.cls.item())
-                        #     # print(f"Detected ID[i]: {detectedid}")
-                        #     if 0.0 in detectedid:
-                        #         self.DetectionResult_HoleDetection[i] = 1
-                        #     else:
-                        #         self.DetectionResult_HoleDetection[i] = 0
-
-                        # # print(self.DetectionResult_HoleDetection)
-
-                        self.InspectionResult_PitchMeasured = [None]*5
-                        self.InspectionResult_PitchResult = [None]*5
-
-                        # if self.InspectionImages_prev[0] is not None and any(sensor != 0 for sensor in self.inspection_config.kouden_sensor):
-                        #     #convert to bgr
-                        #     self.part1Crop_scaled = cv2.cvtColor(self.InspectionImages_prev[0], cv2.COLOR_RGB2BGR)
-                        #     self.part2Crop_scaled = cv2.cvtColor(self.InspectionImages_prev[1], cv2.COLOR_RGB2BGR)
-                        #     self.part3Crop_scaled = cv2.cvtColor(self.InspectionImages_prev[2], cv2.COLOR_RGB2BGR)
-                        #     self.part4Crop_scaled = cv2.cvtColor(self.InspectionImages_prev[3], cv2.COLOR_RGB2BGR)
-                        #     self.part5Crop_scaled = cv2.cvtColor(self.InspectionImages_prev[4], cv2.COLOR_RGB2BGR)
-
-                        #     self.ethernet_status_red_tenmetsu_status = self.ethernet_status_red_tenmetsu_status_prev.copy()
-                        #     self.ethernet_status_green_hold_status = self.ethernet_status_green_hold_status_prev.copy()
-                        #     self.ethernet_status_red_hold_status = self.ethernet_status_red_hold_status_prev.copy()
-
-                        #     self.InspectionResult_PitchMeasured = self.InspectionResult_PitchMeasured_prev.copy()
-                        #     self.InspectionResult_PitchResult = self.InspectionResult_PitchResult_prev.copy()
-                        #     self.InspectionStatus = self.InspectionStatus_prev.copy()
-
-                        #     ng_exists = False
-                        #     for status in self.InspectionResult_Status:
-                        #         if status == "NG":
-                        #             ng_exists = True
-                        #             break
-
-                        #     if ng_exists:
-                        #         for i, sensor_value in enumerate(self.inspection_config.kouden_sensor):
-                        #             if sensor_value == 0:  # 0 indicates the part has been removed
-                        #                 if self.InspectionResult_Status[i] == "OK":
-                        #                     play_alarm_sound()  # Alarm if a good part is being removed
-                        #                 elif self.InspectionResult_Status[i] == "NG":
-                        #                     self.InspectionResult_Status[i] = "None"
-                        #                     play_picking_sound()  # Confirm removal of the NG part
-            
-
-                        # if all(sensor == 0 for sensor in self.inspection_config.kouden_sensor):
-                        #     self.InspectionImages_prev[0] = None
-
-                        if self.part1Crop_scaled is not None:
-                            self.part1Cam.emit(self.convertQImage(self.part1Crop_scaled))
-                        if self.part2Crop_scaled is not None:
-                            self.part2Cam.emit(self.convertQImage(self.part2Crop_scaled))
-                        if self.part3Crop_scaled is not None:
-                            self.part3Cam.emit(self.convertQImage(self.part3Crop_scaled))
-                        if self.part4Crop_scaled is not None:
-                            self.part4Cam.emit(self.convertQImage(self.part4Crop_scaled))
-                        if self.part5Crop_scaled is not None:
-                            self.part5Cam.emit(self.convertQImage(self.part5Crop_scaled))
-
-                        # if self.holeFrame1 is not None:
-                        #     self.hole1Cam.emit(self.convertQImage(self.holeFrame1))
-                        # if self.holeFrame2 is not None:
-                        #     self.hole2Cam.emit(self.convertQImage(self.holeFrame2))
-                        # if self.holeFrame3 is not None:
-                        #     self.hole3Cam.emit(self.convertQImage(self.holeFrame3))
-                        # if self.holeFrame4 is not None:
-                        #     self.hole4Cam.emit(self.convertQImage(self.holeFrame4))
-                        # if self.holeFrame5 is not None:
-                        #     self.hole5Cam.emit(self.convertQImage(self.holeFrame5))
-
-                        #Empty the Inspection Result
-                        
-                        self.P8462284S00_InspectionResult_PitchMeasured.emit(self.InspectionResult_PitchMeasured)
-                        # self.hoodFR_InspectionResult_PitchResult.emit(self.InspectionResult_PitchResult)
-
-                    if self.InspectionTimeStart is None:
-                        self.InspectionTimeStart = time.time()
-
-                    # print(time.time() - self.InspectionTimeStart)
-
-                    if self.firstTimeInspection is False:
-                        if time.time() - self.InspectionTimeStart < self.InspectionWaitTime:
-                            self.inspection_config.doInspection = False
-
-                    # print(f"InspectionConfig: {self.inspection_config.doInspection}")
-
-                    if self.inspection_config.doInspection is True:
-                        self.inspection_config.doInspection = False
-
-                        # if self.inspection_config.kensainNumber is None or self.inspection_config.kensainNumber == "":
-                        #     #Break the bottom if 
-                        #     print("No Kensain Number Input")
-                        #     for i in range (len(self.InspectionStatus)):
-                        #         self.InspectionStatus[i] = "社員番号未入力"
-                        #     self.hoodFR_InspectionStatus.emit(self.InspectionStatus)
-                        #     continue
-                        
-                        if self.InspectionTimeStart is not None:
-
-                            if time.time() - self.InspectionTimeStart > self.InspectionWaitTime or self.firstTimeInspection is True:
-                                self.firstTimeInspection is False
-                                print("Inspection Started") 
-                                self.InspectionTimeStart = time.time()
-                                
-                                for i in range (len(self.InspectionStatus)):
-                                    self.InspectionStatus[i] = "検査中"
-                                self.P8462284S00_InspectionStatus.emit(self.InspectionStatus)
-
-                                self.mergeframe1 = cv2.remap(self.mergeframe1, self.inspection_config.map1[1], self.inspection_config.map2[1], interpolation=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT)
-                                self.mergeframe2 = cv2.remap(self.mergeframe2, self.inspection_config.map1[2], self.inspection_config.map2[2], interpolation=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT)
-                                self.mergeframe3 = cv2.remap(self.mergeframe3, self.inspection_config.map1[3], self.inspection_config.map2[3], interpolation=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT)
-                                self.mergeframe4 = cv2.remap(self.mergeframe4, self.inspection_config.map1[4], self.inspection_config.map2[4], interpolation=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT)
-                                self.mergeframe5 = cv2.remap(self.mergeframe5, self.inspection_config.map1[5], self.inspection_config.map2[5], interpolation=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT)
-
-                                self.combinedImage = warpTwoImages_template(self.homography_blank_canvas, self.mergeframe1, self.H1_FR)
-                                self.combinedImage = warpTwoImages_template(self.combinedImage, self.mergeframe2, self.H2_FR)
-                                self.combinedImage = warpTwoImages_template(self.combinedImage, self.mergeframe3, self.H3_FR)
-                                self.combinedImage = warpTwoImages_template(self.combinedImage, self.mergeframe4, self.H4_FR)
-                                self.combinedImage = warpTwoImages_template(self.combinedImage, self.mergeframe5, self.H5_FR)
-                                                                            
-                                self.combinedImage = cv2.warpPerspective(self.combinedImage, self.planarizeTransform_temp, (int(self.homography_size[1]), int(self.homography_size[0])))
-                                self.combinedImage = cv2.resize(self.combinedImage, (self.homography_size[1], int(self.homography_size[0]/(1.26))))#1.48 for the qt, 1.26 for the aspect ratio
-
-                                # Crop the image scaled for each part
-                                self.part1Crop = self.combinedImage[int(self.part1Crop_YPos_hoodFR*1.48) : int((self.part1Crop_YPos_hoodFR + self.part_height_offset_nissanhoodFR)*1.48), 0 : int(self.homography_size[1]*1.48)]
-                                self.part2Crop = self.combinedImage[int(self.part2Crop_YPos_hoodFR*1.48) : int((self.part2Crop_YPos_hoodFR + self.part_height_offset_nissanhoodFR)*1.48), 0 : int(self.homography_size[1]*1.48)]
-                                self.part3Crop = self.combinedImage[int(self.part3Crop_YPos_hoodFR*1.48) : int((self.part3Crop_YPos_hoodFR + self.part_height_offset_nissanhoodFR)*1.48), 0 : int(self.homography_size[1]*1.48)]
-                                self.part4Crop = self.combinedImage[int(self.part4Crop_YPos_hoodFR*1.48) : int((self.part4Crop_YPos_hoodFR + self.part_height_offset_nissanhoodFR)*1.48), 0 : int(self.homography_size[1]*1.48)]
-                                self.part5Crop = self.combinedImage[int(self.part5Crop_YPos_hoodFR*1.48) : int((self.part5Crop_YPos_hoodFR + self.part_height_offset_nissanhoodFR)*1.48), 0 : int(self.homography_size[1]*1.48)]
-
-                                # self.save_image(self.part1Crop)
-                                # time.sleep(1.5)
-                                # self.save_image(self.part2Crop)
-                                # time.sleep(1.5)
-                                # self.save_image(self.part3Crop)
-                                # time.sleep(1.5)
-                                # self.save_image(self.part4Crop)
-                                # time.sleep(1.5)
-                                # self.save_image(self.part5Crop)
-                                # time.sleep(1.5)
-
-                                #Need to convert to BGR for SAHI Inspection
-                                self.part1Crop = cv2.cvtColor(self.part1Crop, cv2.COLOR_RGB2BGR)
-                                self.part2Crop = cv2.cvtColor(self.part2Crop, cv2.COLOR_RGB2BGR)
-                                self.part3Crop = cv2.cvtColor(self.part3Crop, cv2.COLOR_RGB2BGR)
-                                self.part4Crop = cv2.cvtColor(self.part4Crop, cv2.COLOR_RGB2BGR)
-                                self.part5Crop = cv2.cvtColor(self.part5Crop, cv2.COLOR_RGB2BGR)
-
-                                #Put the All the image into a list
-                                self.InspectionImages[0] = self.part1Crop.copy()
-                                self.InspectionImages[1] = self.part2Crop.copy()
-                                self.InspectionImages[2] = self.part3Crop.copy()
-                                self.InspectionImages[3] = self.part4Crop.copy()
-                                self.InspectionImages[4] = self.part5Crop.copy()
-
-                                print(f"Length of Inspection Images : {len(self.InspectionImages)}") 
-
-
-                                #Emit　検査中 to the status signal
-
-                                # # Do the inspection
-                                for i in range(len(self.InspectionImages)):
-                                    #Only do inspectino on the one with kouden sensor ons
-                                    self.inspection_config.kouden_sensor[i] = 1 #forcefully make it 1
-                                    if self.inspection_config.kouden_sensor[i] == 1:
-                                        self.InspectionResult_ClipDetection[i] = get_sliced_prediction(
-                                            self.InspectionImages[i], 
-                                            self.P658207YA0A_clipDetectionModel, 
-                                            slice_height=497, slice_width=1960, 
-                                            overlap_height_ratio=0.0, overlap_width_ratio=0.2,
-                                            postprocess_match_metric="IOS",
-                                            postprocess_match_threshold=0.005,
-                                            postprocess_class_agnostic=True,
-                                            postprocess_type="GREEDYNMM",
-                                            verbose=0,
-                                            perform_standard_pred=False
-                                        )
-
-                                        #Crop image from 0 to 1024 width for the left and width-1024 to 1024 for the right
-                                        # self.InspectionImages_endSegmentation_Left[i] = self.InspectionImages[i][:, :1024, :]
-                                        # self.InspectionImages_endSegmentation_Right[i] = self.InspectionImages[i][:, -1024:, :]
-
-                                        # self.InspectionResult_EndSegmentation_Left[i] = self.hoodFR_endSegmentationModel(source=self.InspectionImages_endSegmentation_Left[i], conf=0.5, imgsz=960, verbose=False)
-                                        # self.InspectionResult_EndSegmentation_Right[i] = self.hoodFR_endSegmentationModel(source=self.InspectionImages_endSegmentation_Right[i], conf=0.5, imgsz=960, verbose=False)
-
-                                        self.InspectionImages[i], self.InspectionResult_PitchMeasured[i], self.InspectionResult_PitchResult[i], self.InspectionResult_DetectionID[i], self.InspectionResult_Status[i], self.InspectionResult_NGReason[i] = P658207YA0A_partcheck(self.InspectionImages[i], self.InspectionResult_ClipDetection[i].object_prediction_list)
-                                    else:
-                                        #Make pure black image
-                                        self.InspectionImages[i] = np.full((24, 1771, 3), (10, 10, 20), dtype=np.uint8)
-                                        self.InspectionResult_PitchMeasured[i] = None
-                                        self.InspectionResult_PitchResult[i] = None
-                                        self.InspectionResult_DetectionID[i] = None
-                                        self.InspectionResult_Status[i] = None
-                                    
-                                    # print(self.InspectionResult_Status[i])
-                                    # print(self.InspectionResult_DetectionID[i])
-
-                                    if self.InspectionResult_Status[i] == "OK":
-                                        self.ethernet_status_green_hold_status[i] = 1
-                                        self.ethernet_status_red_tenmetsu_status[i] = 0
-                                        self.ethernet_status_red_hold_status[i] = 0
-
-                                        self.inspection_config.current_numofPart[self.inspection_config.widget][0] += 1
-                                        self.inspection_config.today_numofPart[self.inspection_config.widget][0] += 1
-
-                                        #Play konpou sound if the current_numofPart is dividable by 25
-                                        if self.inspection_config.current_numofPart[self.inspection_config.widget][0] % 25 == 0 and self.inspection_config.current_numofPart[self.inspection_config.widget][0] != 0:
-                                            play_konpou_sound()
-
-                                        self.InspectionStatus[i] = "OK"
-
-                                    elif self.InspectionResult_Status[i] == "NG":
-                                        self.ethernet_status_green_hold_status[i] = 0
-                                        self.ethernet_status_red_tenmetsu_status[i] = 0
-                                        self.ethernet_status_red_hold_status[i] = 1
-                                        self.inspection_config.current_numofPart[self.inspection_config.widget][1] += 1
-                                        self.inspection_config.today_numofPart[self.inspection_config.widget][1] += 1
-
-                                        self.InspectionStatus[i] = "NG"
-
-                                    else:
-                                        self.ethernet_status_green_hold_status[i] = 0
-                                        self.ethernet_status_red_tenmetsu_status[i] = 0
-                                        self.ethernet_status_red_hold_status[i] = 0
-
-                                    self.save_result_database(partname = self.widget_dir_map[self.inspection_config.widget],
-                                        numofPart = self.inspection_config.today_numofPart[self.inspection_config.widget], 
-                                        currentnumofPart = self.inspection_config.current_numofPart[self.inspection_config.widget],
-                                        deltaTime = 0.0,
-                                        kensainName = self.inspection_config.kensainNumber, 
-                                        detected_pitch_str = self.InspectionResult_PitchMeasured[i], 
-                                        delta_pitch_str = self.InspectionResult_DeltaPitch[i], 
-                                        total_length=0,
-                                        resultPitch = self.InspectionResult_PitchResult[i],
-                                        status = self.InspectionStatus[i],
-                                        NGreason = self.InspectionResult_NGReason[i])
-                                    
-                                    
-                                    # #save hole image
-                                    # self.save_image_hole(self.holeFrame1, False, "P1")
-                                    # self.save_image_hole(self.holeFrame2, False, "P2")
-                                    # self.save_image_hole(self.holeFrame3, False, "P3")
-                                    # self.save_image_hole(self.holeFrame4, False, "P4")
-                                    # self.save_image_hole(self.holeFrame5, False, "P5")
-                                    
-                                    self.P8462284S00_InspectionStatus.emit(self.InspectionStatus)
-
-                                self.save_image_result(self.part1Crop, self.InspectionImages[0], self.InspectionResult_Status[0], True, "P1")
-                                self.save_image_result(self.part2Crop, self.InspectionImages[1], self.InspectionResult_Status[1], True, "P2")
-                                self.save_image_result(self.part3Crop, self.InspectionImages[2], self.InspectionResult_Status[2], True, "P3")
-                                self.save_image_result(self.part4Crop, self.InspectionImages[3], self.InspectionResult_Status[3], True, "P4")
-                                self.save_image_result(self.part5Crop, self.InspectionImages[4], self.InspectionResult_Status[4], True, "P5")
-
-                                self.InspectionImages[0] = self.downSampling(self.InspectionImages[0], width=1771, height=24)
-                                self.InspectionImages[1] = self.downSampling(self.InspectionImages[1], width=1771, height=24)
-                                self.InspectionImages[2] = self.downSampling(self.InspectionImages[2], width=1771, height=24)
-                                self.InspectionImages[3] = self.downSampling(self.InspectionImages[3], width=1771, height=24)
-                                self.InspectionImages[4] = self.downSampling(self.InspectionImages[4], width=1771, height=24)
-
-                                self.P8462284S00_InspectionResult_PitchMeasured.emit(self.InspectionResult_PitchMeasured)
-                                self.P8462284S00_InspectionResult_PitchResult.emit(self.InspectionResult_PitchResult)
-
-                                print("Inspection Finished")
-                                #Remember that list is mutable
-                                self.ethernet_status_red_tenmetsu_status_prev = self.ethernet_status_red_tenmetsu_status_prev.copy()
-                                self.ethernet_status_green_hold_status_prev = self.ethernet_status_green_hold_status.copy()
-                                self.ethernet_status_red_hold_status_prev = self.ethernet_status_red_hold_status.copy()
-
-                                self.InspectionImages_prev[0] = self.InspectionImages[0]
-                                self.InspectionImages_prev[1] = self.InspectionImages[1]
-                                self.InspectionImages_prev[2] = self.InspectionImages[2]
-                                self.InspectionImages_prev[3] = self.InspectionImages[3]
-                                self.InspectionImages_prev[4] = self.InspectionImages[4]
-
-                                self.InspectionResult_PitchMeasured_prev = self.InspectionResult_PitchMeasured.copy()
-                                self.InspectionResult_PitchResult_prev = self.InspectionResult_PitchResult.copy()
-                                self.InspectionStatus_prev = self.InspectionStatus.copy()
-
-                                self.ethernet_status_red_tenmetsu.emit(self.ethernet_status_red_tenmetsu_status)
-                                self.ethernet_status_green_hold.emit(self.ethernet_status_green_hold_status)
-                                self.ethernet_status_red_hold.emit(self.ethernet_status_red_hold_status)
-
-                                self.part1Cam.emit(self.converQImageRGB(self.InspectionImages[0]))
-                                self.part2Cam.emit(self.converQImageRGB(self.InspectionImages[1]))
-                                self.part3Cam.emit(self.converQImageRGB(self.InspectionImages[2]))
-                                self.part4Cam.emit(self.converQImageRGB(self.InspectionImages[3]))
-                                self.part5Cam.emit(self.converQImageRGB(self.InspectionImages[4]))
-
-                                time.sleep(10)
-
-                                # self.hoodFR_InspectionStatus.emit(self.InspectionStatus)
-
-                #emit the ethernet 
-                self.today_numofPart_signal.emit(self.inspection_config.today_numofPart)
-                self.current_numofPart_signal.emit(self.inspection_config.current_numofPart)
-            
-                self.ethernet_status_red_tenmetsu.emit(self.ethernet_status_red_tenmetsu_status)
-                self.ethernet_status_green_hold.emit(self.ethernet_status_green_hold_status)
-                self.ethernet_status_red_hold.emit(self.ethernet_status_red_hold_status)
-
-                # Emit status based on the red tenmetsu status
-
-                
-                self.P8462284S00_InspectionStatus.emit(self.InspectionStatus)
+                if self._handle_widget_9():
+                    continue
 
 
 
             if self.inspection_config.widget == 21:
-              
-                if self.multiCam_stream is False:
-                    self.multiCam_stream = True
-                    self.initialize_all_camera()
-
-                _, self.bottomframe = self.cap_cam0.read()
-                _, self.mergeframe1 = self.cap_cam1.read()
-                _, self.mergeframe2 = self.cap_cam2.read()
-                _, self.mergeframe3 = self.cap_cam3.read()
-                _, self.mergeframe4 = self.cap_cam4.read()
-                _, self.mergeframe5 = self.cap_cam5.read()
-
-                self.mergeframe1 = cv2.rotate(self.mergeframe1, cv2.ROTATE_180)
-                self.mergeframe2 = cv2.rotate(self.mergeframe2, cv2.ROTATE_180)
-                self.mergeframe3 = cv2.rotate(self.mergeframe3, cv2.ROTATE_180)
-                self.mergeframe4 = cv2.rotate(self.mergeframe4, cv2.ROTATE_180)
-                self.mergeframe5 = cv2.rotate(self.mergeframe5, cv2.ROTATE_180)
-
-                #Downsampled the image
-                self.mergeframe1_scaled = self.downSampling(self.mergeframe1, self.scaled_width, self.scaled_height)
-                self.mergeframe2_scaled = self.downSampling(self.mergeframe2, self.scaled_width, self.scaled_height)
-                self.mergeframe3_scaled = self.downSampling(self.mergeframe3, self.scaled_width, self.scaled_height)
-                self.mergeframe4_scaled = self.downSampling(self.mergeframe4, self.scaled_width, self.scaled_height)
-                self.mergeframe5_scaled = self.downSampling(self.mergeframe5, self.scaled_width, self.scaled_height)
-
-                if self.inspection_config.mapCalculated[1] is False: #Just checking the first camera to reduce loop time
-                    for i in range(1, 6):
-                        if os.path.exists(self._save_dir + f"Calibration_camera_{i}.yaml"):
-                            camera_matrix, dist_coeffs = self.load_matrix_from_yaml(self._save_dir + f"Calibration_camera_{i}.yaml")
-                            # Precompute the undistort and rectify map for faster processing
-                            h, w = self.mergeframe1.shape[:2] #use mergeframe1 as reference
-                            self.inspection_config.map1[i], self.inspection_config.map2[i] = cv2.initUndistortRectifyMap(camera_matrix, dist_coeffs, None, camera_matrix, (w, h), cv2.CV_16SC2)
-                            print(f"map1 and map2 value is calculated")
-                            self.inspection_config.mapCalculated[i] = True
-                            print(f"Calibration map is calculated for Camera {i}")
-
-                            #Also do the map for the scaled image
-                            camera_matrix, dist_coeffs = self.load_matrix_from_yaml(self._save_dir + f"Calibration_camera_scaled_{i}.yaml")
-                            h, w = self.mergeframe1_scaled.shape[:2] #use mergeframe1 as reference
-                            self.inspection_config.map1_downscaled[i], self.inspection_config.map2_downscaled[i] = cv2.initUndistortRectifyMap(camera_matrix, dist_coeffs, None, camera_matrix, (w, h), cv2.CV_16SC2)
-                            print(f"map1 and map2 value is calculated for scaled image")
-                            print(f"Calibration map is calculated for Camera {i} for scaled image")
-
-                            #Not idea but the condition use the bigger image
-
-                if self.inspection_config.mapCalculated[1] is True: #Just checking the first camera to reduce loop time
-                
-                    if self.inspection_config.doInspection is False:
-
-                        self.mergeframe3_scaled = cv2.remap(self.mergeframe3_scaled, self.inspection_config.map1_downscaled[3], self.inspection_config.map2_downscaled[3], interpolation=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT)
-
-                        self.combinedImage_scaled = warpTwoImages_template(self.homography_blank_canvas_scaled, self.mergeframe3_scaled, self.H3_scaled)
-
-                        self.combinedImage_scaled = cv2.warpPerspective(self.combinedImage_scaled, self.planarizeTransform_scaled, (int(self.homography_size[1]/self.scale_factor), int(self.homography_size[0]/self.scale_factor)))
-                        self.combinedImage_scaled = cv2.resize(self.combinedImage_scaled, (int(self.homography_size[1]/(self.scale_factor*1.48)), int(self.homography_size[0]/(self.scale_factor*1.26*1.48))))#1.48 for the qt, 1.26 for the aspect ratio
-
-                        #Crop the image scaled for each part
-                        self.part3Crop_scaled = self.combinedImage_scaled[self.part3Crop_YPos_scaled : self.part3Crop_YPos_scaled + self.part_height_offset_scaled, 0 : self.homography_size_scaled[1]]
-                        #crop the image again, taking the center area with the width of self.dailyTenken_cropWidth only
-                        cv2.imwrite("part3Crop_scaled.png", self.part3Crop_scaled)
-
-                        self.part3Crop_scaled = self.part3Crop_scaled[:, int((self.part3Crop_scaled.shape[1] - self.dailyTenken_cropWidth_scaled)/2) : int((self.part3Crop_scaled.shape[1] + self.dailyTenken_cropWidth_scaled)/2)]
-                        cv2.imwrite("part3Crop2_scaled.png", self.part3Crop_scaled)
-
-
-                        self.part3Crop_scaled = self.downSampling(self.part3Crop_scaled, width=1710, height=198)
-
-                        self.InspectionResult_PitchMeasured = [None]*5
-                        self.InspectionResult_PitchResult = [None]*5
-
-                        if self.part3Crop_scaled is not None:
-                            self.dailytenkenCam.emit(self.convertQImage(self.part3Crop_scaled))
-
-                    if self.InspectionTimeStart is None:
-                        self.InspectionTimeStart = time.time()
-
-                    # print(time.time() - self.InspectionTimeStart)
-
-                    if self.firstTimeInspection is False:
-                        if time.time() - self.InspectionTimeStart < self.InspectionWaitTime:
-                            self.inspection_config.doInspection = False
-
-                    # print(f"InspectionConfig: {self.inspection_config.doInspection}")
-
-                    if self.inspection_config.doInspection is True:
-                        self.inspection_config.doInspection = False
-
-                        # if self.inspection_config.kensainNumber is None or self.inspection_config.kensainNumber == "":
-                        #     #Break the bottom if 
-                        #     print("No Kensain Number Input")
-                        #     for i in range (len(self.InspectionStatus)):
-                        #         self.InspectionStatus[i] = "社員番号未入力"
-                        #     self.hoodFR_InspectionStatus.emit(self.InspectionStatus)
-                        #     continue
-                        
-                        if self.InspectionTimeStart is not None:
-
-                            if time.time() - self.InspectionTimeStart > self.InspectionWaitTime or self.firstTimeInspection is True:
-                                self.firstTimeInspection is False
-                                print("Inspection Started") 
-                                self.InspectionTimeStart = time.time()
-
-                                self.mergeframe3 = cv2.remap(self.mergeframe3, self.inspection_config.map1[3], self.inspection_config.map2[3], interpolation=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT)
-
-                                self.combinedImage = warpTwoImages_template(self.homography_blank_canvas, self.mergeframe3, self.H3)
-                                                                            
-                                self.combinedImage = cv2.warpPerspective(self.combinedImage, self.planarizeTransform, (int(self.homography_size[1]), int(self.homography_size[0])))
-                                self.combinedImage = cv2.resize(self.combinedImage, (self.homography_size[1], int(self.homography_size[0]/(1.26))))#1.48 for the qt, 1.26 for the aspect ratio
-
-                                # Crop the image scaled for each part
-                                
-                                self.part3Crop = self.combinedImage_scaled[self.part3Crop_YPos : self.part3Crop_YPos + self.part_height_offset, 0 : self.homography_size[1]]
-                                
-
-                                #Need to convert to BGR for SAHI Inspection
-                                self.part1Crop = cv2.cvtColor(self.part1Crop, cv2.COLOR_RGB2BGR)
-                                self.part2Crop = cv2.cvtColor(self.part2Crop, cv2.COLOR_RGB2BGR)
-                                self.part3Crop = cv2.cvtColor(self.part3Crop, cv2.COLOR_RGB2BGR)
-                                self.part4Crop = cv2.cvtColor(self.part4Crop, cv2.COLOR_RGB2BGR)
-                                self.part5Crop = cv2.cvtColor(self.part5Crop, cv2.COLOR_RGB2BGR)
-
-                                #Put the All the image into a list
-                                self.InspectionImages[0] = self.part1Crop.copy()
-                                self.InspectionImages[1] = self.part2Crop.copy()
-                                self.InspectionImages[2] = self.part3Crop.copy()
-                                self.InspectionImages[3] = self.part4Crop.copy()
-                                self.InspectionImages[4] = self.part5Crop.copy()
-
-                                print(f"Length of Inspection Images : {len(self.InspectionImages)}") 
-
-                                #Emit　検査中 to the status signal
-
-                                # # Do the inspection
-                                for i in range(len(self.InspectionImages)):
-                                    #Only do inspectino on the one with kouden sensor on
-                                    if self.inspection_config.kouden_sensor[i] == 1:
-                                        self.InspectionResult_ClipDetection[i] = get_sliced_prediction(
-                                            self.InspectionImages[i], 
-                                            self.hoodFR_clipDetectionModel, 
-                                            slice_height=180, slice_width=1280, 
-                                            overlap_height_ratio=0.0, overlap_width_ratio=0.3,
-                                            postprocess_match_metric="IOS",
-                                            postprocess_match_threshold=0.005,
-                                            postprocess_class_agnostic=True,
-                                            postprocess_type="GREEDYNMM",
-                                            verbose=0,
-                                            perform_standard_pred=True
-                                        )
-
-                                        #Crop image from 0 to 1024 width for the left and width-1024 to 1024 for the right
-                                        self.InspectionImages_endSegmentation_Left[i] = self.InspectionImages[i][:, :1024, :]
-                                        self.InspectionImages_endSegmentation_Right[i] = self.InspectionImages[i][:, -1024:, :]
-
-                                        self.InspectionResult_EndSegmentation_Left[i] = self.hoodFR_endSegmentationModel(source=self.InspectionImages_endSegmentation_Left[i], conf=0.5, imgsz=960, verbose=False)
-                                        self.InspectionResult_EndSegmentation_Right[i] = self.hoodFR_endSegmentationModel(source=self.InspectionImages_endSegmentation_Right[i], conf=0.5, imgsz=960, verbose=False)
-
-                                        self.InspectionImages[i], self.InspectionResult_PitchMeasured[i], self.InspectionResult_PitchResult[i], self.InspectionResult_DetectionID[i], self.InspectionResult_Status[i], self.InspectionResult_NGReason[i] = partcheck(self.InspectionImages[i], 
-                                                                                                                                                                                                                                  self.InspectionResult_ClipDetection[i].object_prediction_list,
-                                                                                                                                                                                                                                  self.InspectionResult_EndSegmentation_Left[i],
-                                                                                                                                                                                                                                  self.InspectionResult_EndSegmentation_Right[i])
-                                    else:
-                                        #Make pure black image
-                                        self.InspectionImages[i] = np.full((24, 1771, 3), (10, 10, 20), dtype=np.uint8)
-                                        self.InspectionResult_PitchMeasured[i] = None
-                                        self.InspectionResult_PitchResult[i] = None
-                                        self.InspectionResult_DetectionID[i] = None
-                                        self.InspectionResult_Status[i] = None
-                                    
-                                    # print(self.InspectionResult_Status[i])
-                                    # print(self.InspectionResult_DetectionID[i])
-
-                                    if self.InspectionResult_Status[i] == "OK":
-                                        self.ethernet_status_green_hold_status[i] = 1
-                                        self.ethernet_status_red_tenmetsu_status[i] = 0
-                                        self.ethernet_status_red_hold_status[i] = 0
-
-                                        self.inspection_config.current_numofPart[self.inspection_config.widget][0] += 1
-                                        self.inspection_config.today_numofPart[self.inspection_config.widget][0] += 1
-
-                                        #Play konpou sound if the current_numofPart is dividable by 25
-                                        if self.inspection_config.current_numofPart[self.inspection_config.widget][0] % 25 == 0 and self.inspection_config.current_numofPart[self.inspection_config.widget][0] != 0:
-                                            play_konpou_sound()
-
-                                        self.InspectionStatus[i] = "OK"
-
-                                    elif self.InspectionResult_Status[i] == "NG":
-                                        self.ethernet_status_green_hold_status[i] = 0
-                                        self.ethernet_status_red_tenmetsu_status[i] = 0
-                                        self.ethernet_status_red_hold_status[i] = 1
-                                        self.inspection_config.current_numofPart[self.inspection_config.widget][1] += 1
-                                        self.inspection_config.today_numofPart[self.inspection_config.widget][1] += 1
-
-                                        self.InspectionStatus[i] = "NG"
-
-                                    else:
-                                        self.ethernet_status_green_hold_status[i] = 0
-                                        self.ethernet_status_red_tenmetsu_status[i] = 0
-                                        self.ethernet_status_red_hold_status[i] = 0
-
-                                    self.save_result_database(partname = self.widget_dir_map[self.inspection_config.widget],
-                                        numofPart = self.inspection_config.today_numofPart[self.inspection_config.widget], 
-                                        currentnumofPart = self.inspection_config.current_numofPart[self.inspection_config.widget],
-                                        deltaTime = 0.0,
-                                        kensainName = self.inspection_config.kensainNumber, 
-                                        detected_pitch_str = self.InspectionResult_PitchMeasured[i], 
-                                        delta_pitch_str = self.InspectionResult_DeltaPitch[i], 
-                                        total_length=0,
-                                        resultPitch = self.InspectionResult_PitchResult[i],
-                                        status = self.InspectionStatus[i],
-                                        NGreason = self.InspectionResult_NGReason[i])
-                                    
-                                    #save hole image
-                                    self.save_image_hole(self.holeFrame1, False, "P1")
-                                    self.save_image_hole(self.holeFrame2, False, "P2")
-                                    self.save_image_hole(self.holeFrame3, False, "P3")
-                                    self.save_image_hole(self.holeFrame4, False, "P4")
-                                    self.save_image_hole(self.holeFrame5, False, "P5")
-                                    
-                                    self.hoodFR_InspectionStatus.emit(self.InspectionStatus)
-
-                                self.save_image_result(self.part1Crop, self.InspectionImages[0], self.InspectionResult_Status[0], True, "P1")
-                                self.save_image_result(self.part2Crop, self.InspectionImages[1], self.InspectionResult_Status[1], True, "P2")
-                                self.save_image_result(self.part3Crop, self.InspectionImages[2], self.InspectionResult_Status[2], True, "P3")
-                                self.save_image_result(self.part4Crop, self.InspectionImages[3], self.InspectionResult_Status[3], True, "P4")
-                                self.save_image_result(self.part5Crop, self.InspectionImages[4], self.InspectionResult_Status[4], True, "P5")
-
-                                self.InspectionImages[0] = self.downSampling(self.InspectionImages[0], width=1771, height=24)
-                                self.InspectionImages[1] = self.downSampling(self.InspectionImages[1], width=1771, height=24)
-                                self.InspectionImages[2] = self.downSampling(self.InspectionImages[2], width=1771, height=24)
-                                self.InspectionImages[3] = self.downSampling(self.InspectionImages[3], width=1771, height=24)
-                                self.InspectionImages[4] = self.downSampling(self.InspectionImages[4], width=1771, height=24)
-
-                                self.hoodFR_InspectionResult_PitchMeasured.emit(self.InspectionResult_PitchMeasured)
-                                self.hoodFR_InspectionResult_PitchResult.emit(self.InspectionResult_PitchResult)
-                                print("Inspection Finished")
-                                #Remember that list is mutable
-                                self.ethernet_status_red_tenmetsu_status_prev = self.ethernet_status_red_tenmetsu_status_prev.copy()
-                                self.ethernet_status_green_hold_status_prev = self.ethernet_status_green_hold_status.copy()
-                                self.ethernet_status_red_hold_status_prev = self.ethernet_status_red_hold_status.copy()
-
-                                self.InspectionImages_prev[0] = self.InspectionImages[0]
-                                self.InspectionImages_prev[1] = self.InspectionImages[1]
-                                self.InspectionImages_prev[2] = self.InspectionImages[2]
-                                self.InspectionImages_prev[3] = self.InspectionImages[3]
-                                self.InspectionImages_prev[4] = self.InspectionImages[4]
-
-                                self.InspectionResult_PitchMeasured_prev = self.InspectionResult_PitchMeasured.copy()
-                                self.InspectionResult_PitchResult_prev = self.InspectionResult_PitchResult.copy()
-                                self.InspectionStatus_prev = self.InspectionStatus.copy()
-
-                                self.ethernet_status_red_tenmetsu.emit(self.ethernet_status_red_tenmetsu_status)
-                                self.ethernet_status_green_hold.emit(self.ethernet_status_green_hold_status)
-                                self.ethernet_status_red_hold.emit(self.ethernet_status_red_hold_status)
-
-                                self.part1Cam.emit(self.converQImageRGB(self.InspectionImages[0]))
-                                self.part2Cam.emit(self.converQImageRGB(self.InspectionImages[1]))
-                                self.part3Cam.emit(self.converQImageRGB(self.InspectionImages[2]))
-                                self.part4Cam.emit(self.converQImageRGB(self.InspectionImages[3]))
-                                self.part5Cam.emit(self.converQImageRGB(self.InspectionImages[4]))
-
-                                # self.hoodFR_InspectionStatus.emit(self.InspectionStatus)
-
-                #emit the ethernet 
-                self.today_numofPart_signal.emit(self.inspection_config.today_numofPart)
-                self.current_numofPart_signal.emit(self.inspection_config.current_numofPart)
-            
-                self.ethernet_status_red_tenmetsu.emit(self.ethernet_status_red_tenmetsu_status)
-                self.ethernet_status_green_hold.emit(self.ethernet_status_green_hold_status)
-                self.ethernet_status_red_hold.emit(self.ethernet_status_red_hold_status)
-
-                # Emit status based on the red tenmetsu status
-
-                
-                self.hoodFR_InspectionStatus.emit(self.InspectionStatus)
-
-                # Emit the hole detection
-                self.hoodFR_HoleStatus.emit(self.DetectionResult_HoleDetection)
+                if self._handle_widget_21():
+                    continue
 
         self.msleep(1)
+
+    def _handle_widget_21(self):
+
+        if self.multiCam_stream is False:
+            self.multiCam_stream = True
+            self.initialize_all_camera()
+
+        if not self.has_required_cameras([3]):
+            self.emit_blank_dailytenken_frame()
+            self.msleep(100)
+            return True
+
+        self.mergeframe3 = self.read_camera_frame(self.cap_cam3)
+        if self.mergeframe3 is None:
+            self.emit_blank_dailytenken_frame()
+            self.msleep(100)
+            return True
+
+        self.mergeframe3 = cv2.rotate(self.mergeframe3, cv2.ROTATE_180)
+
+        #Downsampled the image
+        self.mergeframe3_scaled = self.downSampling(self.mergeframe3, self.scaled_width, self.scaled_height)
+
+        if self.inspection_config.mapCalculated[1] is False: #Just checking the first camera to reduce loop time
+            for i in range(1, 6):
+                if os.path.exists(self._save_dir + f"Calibration_camera_{i}.yaml"):
+                    camera_matrix, dist_coeffs = self.load_matrix_from_yaml(self._save_dir + f"Calibration_camera_{i}.yaml")
+                    # Precompute the undistort and rectify map for faster processing
+                    h, w = self.mergeframe1.shape[:2] #use mergeframe1 as reference
+                    self.inspection_config.map1[i], self.inspection_config.map2[i] = cv2.initUndistortRectifyMap(camera_matrix, dist_coeffs, None, camera_matrix, (w, h), cv2.CV_16SC2)
+                    print(f"map1 and map2 value is calculated")
+                    self.inspection_config.mapCalculated[i] = True
+                    print(f"Calibration map is calculated for Camera {i}")
+
+                    #Also do the map for the scaled image
+                    camera_matrix, dist_coeffs = self.load_matrix_from_yaml(self._save_dir + f"Calibration_camera_scaled_{i}.yaml")
+                    h, w = self.mergeframe1_scaled.shape[:2] #use mergeframe1 as reference
+                    self.inspection_config.map1_downscaled[i], self.inspection_config.map2_downscaled[i] = cv2.initUndistortRectifyMap(camera_matrix, dist_coeffs, None, camera_matrix, (w, h), cv2.CV_16SC2)
+                    print(f"map1 and map2 value is calculated for scaled image")
+                    print(f"Calibration map is calculated for Camera {i} for scaled image")
+
+                    #Not idea but the condition use the bigger image
+
+        if self.inspection_config.mapCalculated[1] is True: #Just checking the first camera to reduce loop time
+
+            if self.inspection_config.doInspection is False:
+
+                self.mergeframe3_scaled = cv2.remap(self.mergeframe3_scaled, self.inspection_config.map1_downscaled[3], self.inspection_config.map2_downscaled[3], interpolation=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT)
+
+                self.combinedImage_scaled = self.homography_blank_canvas_scaled.copy()
+                self.combinedImage_scaled = self.merge_frame_with_cache(self.combinedImage_scaled, self.mergeframe3_scaled, "H3_scaled")
+
+                self.combinedImage_scaled = self.apply_planarize_with_cache(self.combinedImage_scaled, "planarizeTransform_scaled", (int(self.homography_size[1]/self.scale_factor), int(self.homography_size[0]/self.scale_factor)))
+                self.combinedImage_scaled = cv2.resize(self.combinedImage_scaled, (int(self.homography_size[1]/(self.scale_factor*1.48)), int(self.homography_size[0]/(self.scale_factor*1.26*1.48))))#1.48 for the qt, 1.26 for the aspect ratio
+
+                #Crop the image scaled for each part
+                self.part3Crop_scaled = self.combinedImage_scaled[self.part3Crop_YPos_scaled : self.part3Crop_YPos_scaled + self.part_height_offset_scaled, 0 : self.homography_size_scaled[1]]
+                #crop the image again, taking the center area with the width of self.dailyTenken_cropWidth only
+                cv2.imwrite("part3Crop_scaled.png", self.part3Crop_scaled)
+
+                self.part3Crop_scaled = self.part3Crop_scaled[:, int((self.part3Crop_scaled.shape[1] - self.dailyTenken_cropWidth_scaled)/2) : int((self.part3Crop_scaled.shape[1] + self.dailyTenken_cropWidth_scaled)/2)]
+                cv2.imwrite("part3Crop2_scaled.png", self.part3Crop_scaled)
+
+
+                self.part3Crop_scaled = self.downSampling(self.part3Crop_scaled, width=1710, height=198)
+
+                self.InspectionResult_PitchMeasured = [None]*5
+                self.InspectionResult_PitchResult = [None]*5
+
+                if self.part3Crop_scaled is not None:
+                    self.dailytenkenCam.emit(self.convertQImage(self.part3Crop_scaled))
+
+            if self.InspectionTimeStart is None:
+                self.InspectionTimeStart = time.time()
+
+            # print(time.time() - self.InspectionTimeStart)
+
+            if self.firstTimeInspection is False:
+                if time.time() - self.InspectionTimeStart < self.InspectionWaitTime:
+                    self.inspection_config.doInspection = False
+
+            # print(f"InspectionConfig: {self.inspection_config.doInspection}")
+
+            if self.inspection_config.doInspection is True:
+                if not self.has_required_models(21):
+                    self.inspection_config.doInspection = False
+                    self.emit_blank_dailytenken_frame()
+                    print("Skipping widget 21 inspection because required model weights are missing.")
+                    return True
+
+                self.inspection_config.doInspection = False
+
+                # if self.inspection_config.kensainNumber is None or self.inspection_config.kensainNumber == "":
+                #     #Break the bottom if
+                #     print("No Kensain Number Input")
+                #     for i in range (len(self.InspectionStatus)):
+                #         self.InspectionStatus[i] = "社員番号未入力"
+                #     self.hoodFR_InspectionStatus.emit(self.InspectionStatus)
+                #     continue
+
+                if self.InspectionTimeStart is not None:
+
+                    if time.time() - self.InspectionTimeStart > self.InspectionWaitTime or self.firstTimeInspection is True:
+                        self.firstTimeInspection is False
+                        print("Inspection Started")
+                        self.InspectionTimeStart = time.time()
+
+                        self.mergeframe3 = cv2.remap(self.mergeframe3, self.inspection_config.map1[3], self.inspection_config.map2[3], interpolation=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT)
+
+                        self.combinedImage = self.homography_blank_canvas.copy()
+                        self.combinedImage = self.merge_frame_with_cache(self.combinedImage, self.mergeframe3, "H3")
+
+                        self.combinedImage = self.apply_planarize_with_cache(self.combinedImage, "planarizeTransform", (int(self.homography_size[1]), int(self.homography_size[0])))
+                        self.combinedImage = cv2.resize(self.combinedImage, (self.homography_size[1], int(self.homography_size[0]/(1.26))))#1.48 for the qt, 1.26 for the aspect ratio
+
+                        # Crop the image scaled for each part
+
+                        self.part3Crop = self.combinedImage_scaled[self.part3Crop_YPos : self.part3Crop_YPos + self.part_height_offset, 0 : self.homography_size[1]]
+
+
+                        #Need to convert to BGR for SAHI Inspection
+                        self.part1Crop = cv2.cvtColor(self.part1Crop, cv2.COLOR_RGB2BGR)
+                        self.part2Crop = cv2.cvtColor(self.part2Crop, cv2.COLOR_RGB2BGR)
+                        self.part3Crop = cv2.cvtColor(self.part3Crop, cv2.COLOR_RGB2BGR)
+                        self.part4Crop = cv2.cvtColor(self.part4Crop, cv2.COLOR_RGB2BGR)
+                        self.part5Crop = cv2.cvtColor(self.part5Crop, cv2.COLOR_RGB2BGR)
+
+                        #Put the All the image into a list
+                        self.InspectionImages[0] = self.part1Crop.copy()
+                        self.InspectionImages[1] = self.part2Crop.copy()
+                        self.InspectionImages[2] = self.part3Crop.copy()
+                        self.InspectionImages[3] = self.part4Crop.copy()
+                        self.InspectionImages[4] = self.part5Crop.copy()
+
+                        print(f"Length of Inspection Images : {len(self.InspectionImages)}")
+
+                        #Emit　検査中 to the status signal
+
+                        # # Do the inspection
+                        for i in range(len(self.InspectionImages)):
+                            #Only do inspectino on the one with kouden sensor on
+                            if self.inspection_config.kouden_sensor[i] == 1:
+                                self.InspectionResult_ClipDetection[i] = get_sliced_prediction(
+                                    self.InspectionImages[i],
+                                    self.hoodFR_clipDetectionModel,
+                                    slice_height=180, slice_width=1280,
+                                    overlap_height_ratio=0.0, overlap_width_ratio=0.3,
+                                    postprocess_match_metric="IOS",
+                                    postprocess_match_threshold=0.005,
+                                    postprocess_class_agnostic=True,
+                                    postprocess_type="GREEDYNMM",
+                                    verbose=0,
+                                    perform_standard_pred=True
+                                )
+
+                                #Crop image from 0 to 1024 width for the left and width-1024 to 1024 for the right
+                                self.InspectionImages_endSegmentation_Left[i] = self.InspectionImages[i][:, :1024, :]
+                                self.InspectionImages_endSegmentation_Right[i] = self.InspectionImages[i][:, -1024:, :]
+
+                                self.InspectionResult_EndSegmentation_Left[i] = self.hoodFR_endSegmentationModel(source=self.InspectionImages_endSegmentation_Left[i], conf=0.5, imgsz=960, verbose=False)
+                                self.InspectionResult_EndSegmentation_Right[i] = self.hoodFR_endSegmentationModel(source=self.InspectionImages_endSegmentation_Right[i], conf=0.5, imgsz=960, verbose=False)
+
+                                self.InspectionImages[i], self.InspectionResult_PitchMeasured[i], self.InspectionResult_PitchResult[i], self.InspectionResult_DetectionID[i], self.InspectionResult_Status[i], self.InspectionResult_NGReason[i] = partcheck(self.InspectionImages[i],
+                                                                                                                                                                          self.InspectionResult_ClipDetection[i].object_prediction_list,
+                                                                                                                                                                          self.InspectionResult_EndSegmentation_Left[i],
+                                                                                                                                                                          self.InspectionResult_EndSegmentation_Right[i])
+                            else:
+                                #Make pure black image
+                                self.InspectionImages[i] = np.full((24, 1771, 3), (10, 10, 20), dtype=np.uint8)
+                                self.InspectionResult_PitchMeasured[i] = None
+                                self.InspectionResult_PitchResult[i] = None
+                                self.InspectionResult_DetectionID[i] = None
+                                self.InspectionResult_Status[i] = None
+
+                            # print(self.InspectionResult_Status[i])
+                            # print(self.InspectionResult_DetectionID[i])
+
+                            if self.InspectionResult_Status[i] == "OK":
+                                self.ethernet_status_green_hold_status[i] = 1
+                                self.ethernet_status_red_tenmetsu_status[i] = 0
+                                self.ethernet_status_red_hold_status[i] = 0
+
+                                self.inspection_config.current_numofPart[self.inspection_config.widget][0] += 1
+                                self.inspection_config.today_numofPart[self.inspection_config.widget][0] += 1
+
+                                #Play konpou sound if the current_numofPart is dividable by 25
+                                if self.inspection_config.current_numofPart[self.inspection_config.widget][0] % 25 == 0 and self.inspection_config.current_numofPart[self.inspection_config.widget][0] != 0:
+                                    play_konpou_sound()
+
+                                self.InspectionStatus[i] = "OK"
+
+                            elif self.InspectionResult_Status[i] == "NG":
+                                self.ethernet_status_green_hold_status[i] = 0
+                                self.ethernet_status_red_tenmetsu_status[i] = 0
+                                self.ethernet_status_red_hold_status[i] = 1
+                                self.inspection_config.current_numofPart[self.inspection_config.widget][1] += 1
+                                self.inspection_config.today_numofPart[self.inspection_config.widget][1] += 1
+
+                                self.InspectionStatus[i] = "NG"
+
+                            else:
+                                self.ethernet_status_green_hold_status[i] = 0
+                                self.ethernet_status_red_tenmetsu_status[i] = 0
+                                self.ethernet_status_red_hold_status[i] = 0
+
+                            self.save_result_database(partname = self.widget_dir_map[self.inspection_config.widget],
+                                numofPart = self.inspection_config.today_numofPart[self.inspection_config.widget],
+                                currentnumofPart = self.inspection_config.current_numofPart[self.inspection_config.widget],
+                                deltaTime = 0.0,
+                                kensainName = self.inspection_config.kensainNumber,
+                                detected_pitch_str = self.InspectionResult_PitchMeasured[i],
+                                delta_pitch_str = self.InspectionResult_DeltaPitch[i],
+                                total_length=0,
+                                resultPitch = self.InspectionResult_PitchResult[i],
+                                status = self.InspectionStatus[i],
+                                NGreason = self.InspectionResult_NGReason[i])
+
+                            #save hole image
+                            self.save_image_hole(self.holeFrame1, False, "P1")
+                            self.save_image_hole(self.holeFrame2, False, "P2")
+                            self.save_image_hole(self.holeFrame3, False, "P3")
+                            self.save_image_hole(self.holeFrame4, False, "P4")
+                            self.save_image_hole(self.holeFrame5, False, "P5")
+
+                            self.hoodFR_InspectionStatus.emit(self.InspectionStatus)
+
+                        self.save_image_result(self.part1Crop, self.InspectionImages[0], self.InspectionResult_Status[0], True, "P1")
+                        self.save_image_result(self.part2Crop, self.InspectionImages[1], self.InspectionResult_Status[1], True, "P2")
+                        self.save_image_result(self.part3Crop, self.InspectionImages[2], self.InspectionResult_Status[2], True, "P3")
+                        self.save_image_result(self.part4Crop, self.InspectionImages[3], self.InspectionResult_Status[3], True, "P4")
+                        self.save_image_result(self.part5Crop, self.InspectionImages[4], self.InspectionResult_Status[4], True, "P5")
+
+                        self.InspectionImages[0] = self.downSampling(self.InspectionImages[0], width=1771, height=24)
+                        self.InspectionImages[1] = self.downSampling(self.InspectionImages[1], width=1771, height=24)
+                        self.InspectionImages[2] = self.downSampling(self.InspectionImages[2], width=1771, height=24)
+                        self.InspectionImages[3] = self.downSampling(self.InspectionImages[3], width=1771, height=24)
+                        self.InspectionImages[4] = self.downSampling(self.InspectionImages[4], width=1771, height=24)
+
+                        self.hoodFR_InspectionResult_PitchMeasured.emit(self.InspectionResult_PitchMeasured)
+                        self.hoodFR_InspectionResult_PitchResult.emit(self.InspectionResult_PitchResult)
+                        print("Inspection Finished")
+                        #Remember that list is mutable
+                        self.ethernet_status_red_tenmetsu_status_prev = self.ethernet_status_red_tenmetsu_status_prev.copy()
+                        self.ethernet_status_green_hold_status_prev = self.ethernet_status_green_hold_status.copy()
+                        self.ethernet_status_red_hold_status_prev = self.ethernet_status_red_hold_status.copy()
+
+                        self.InspectionImages_prev[0] = self.InspectionImages[0]
+                        self.InspectionImages_prev[1] = self.InspectionImages[1]
+                        self.InspectionImages_prev[2] = self.InspectionImages[2]
+                        self.InspectionImages_prev[3] = self.InspectionImages[3]
+                        self.InspectionImages_prev[4] = self.InspectionImages[4]
+
+                        self.InspectionResult_PitchMeasured_prev = self.InspectionResult_PitchMeasured.copy()
+                        self.InspectionResult_PitchResult_prev = self.InspectionResult_PitchResult.copy()
+                        self.InspectionStatus_prev = self.InspectionStatus.copy()
+
+                        self.ethernet_status_red_tenmetsu.emit(self.ethernet_status_red_tenmetsu_status)
+                        self.ethernet_status_green_hold.emit(self.ethernet_status_green_hold_status)
+                        self.ethernet_status_red_hold.emit(self.ethernet_status_red_hold_status)
+
+                        self.part1Cam.emit(self.converQImageRGB(self.InspectionImages[0]))
+                        self.part2Cam.emit(self.converQImageRGB(self.InspectionImages[1]))
+                        self.part3Cam.emit(self.converQImageRGB(self.InspectionImages[2]))
+                        self.part4Cam.emit(self.converQImageRGB(self.InspectionImages[3]))
+                        self.part5Cam.emit(self.converQImageRGB(self.InspectionImages[4]))
+
+                        # self.hoodFR_InspectionStatus.emit(self.InspectionStatus)
+
+        #emit the ethernet
+        self.today_numofPart_signal.emit(self.inspection_config.today_numofPart)
+        self.current_numofPart_signal.emit(self.inspection_config.current_numofPart)
+
+        self.ethernet_status_red_tenmetsu.emit(self.ethernet_status_red_tenmetsu_status)
+        self.ethernet_status_green_hold.emit(self.ethernet_status_green_hold_status)
+        self.ethernet_status_red_hold.emit(self.ethernet_status_red_hold_status)
+
+        # Emit status based on the red tenmetsu status
+
+        self.hoodFR_InspectionStatus.emit(self.InspectionStatus)
+
+        # Emit the hole detection
+        self.hoodFR_HoleStatus.emit(self.DetectionResult_HoleDetection)
+        return False
+
+    def _handle_widget_9(self):
+
+        if self.inspection_config.furyou_plus or self.inspection_config.furyou_minus or self.inspection_config.kansei_plus or self.inspection_config.kansei_minus or self.inspection_config.furyou_plus_10 or self.inspection_config.furyou_minus_10 or self.inspection_config.kansei_plus_10 or self.inspection_config.kansei_minus_10:
+            self.inspection_config.current_numofPart[self.inspection_config.widget], self.inspection_config.today_numofPart[self.inspection_config.widget] = self.manual_adjustment(
+                self.inspection_config.current_numofPart[self.inspection_config.widget], self.inspection_config.today_numofPart[self.inspection_config.widget],
+                self.inspection_config.furyou_plus,
+                self.inspection_config.furyou_minus,
+                self.inspection_config.furyou_plus_10,
+                self.inspection_config.furyou_minus_10,
+                self.inspection_config.kansei_plus,
+                self.inspection_config.kansei_minus,
+                self.inspection_config.kansei_plus_10,
+                self.inspection_config.kansei_minus_10)
+            print("Manual Adjustment Done")
+            print(f"Furyou Plus: {self.inspection_config.furyou_plus}")
+            print(f"Furyou Minus: {self.inspection_config.furyou_minus}")
+            print(f"Kansei Plus: {self.inspection_config.kansei_plus}")
+            print(f"Kansei Minus: {self.inspection_config.kansei_minus}")
+            print(f"Furyou Plus 10: {self.inspection_config.furyou_plus_10}")
+            print(f"Furyou Minus 10: {self.inspection_config.furyou_minus_10}")
+            print(f"Kansei Plus 10: {self.inspection_config.kansei_plus_10}")
+            print(f"Kansei Minus 10: {self.inspection_config.kansei_minus_10}")
+
+        if self.inspection_config.counterReset is True:
+            self.inspection_config.current_numofPart[self.inspection_config.widget] = [0, 0]
+            self.inspection_config.counterReset = False
+            self.save_result_database(partname = self.widget_dir_map[self.inspection_config.widget],
+                    numofPart = self.inspection_config.today_numofPart[self.inspection_config.widget],
+                    currentnumofPart = [0, 0],
+                    deltaTime = 0.0,
+                    kensainName = self.inspection_config.kensainNumber,
+                    detected_pitch_str = "COUNTERRESET",
+                    delta_pitch_str = "COUNTERRESET",
+                    total_length=0,
+                    resultPitch = "COUNTERRESET",
+                    status = "COUNTERRESET",
+                    NGreason = "COUNTERRESET")
+        #check kouden sensor and tenmetsu status
+
+        for i in range (len(self.inspection_config.kouden_sensor)):
+            self.ethernet_status_red_tenmetsu_status[i] = self.inspection_config.kouden_sensor[i]
+            self.ethernet_status_green_hold_status[i] = 0 #Reset at every loop
+            self.ethernet_status_red_hold_status[i] = 0 #Reset at every loop
+
+            self.InspectionStatus[i] = "検査準備完了"
+            self.InspectionStatus[i] = "検査準備完了"
+
+        if self.multiCam_stream is False:
+            self.multiCam_stream = True
+            self.initialize_all_camera()
+
+        if not self.has_required_cameras([1, 2, 3, 4, 5]):
+            self.emit_blank_part_frames()
+            self.msleep(100)
+            return True
+
+        # _, self.bottomframe = self.cap_cam0.read()
+        self.mergeframe1 = self.read_camera_frame(self.cap_cam1)
+        self.mergeframe2 = self.read_camera_frame(self.cap_cam2)
+        self.mergeframe3 = self.read_camera_frame(self.cap_cam3)
+        self.mergeframe4 = self.read_camera_frame(self.cap_cam4)
+        self.mergeframe5 = self.read_camera_frame(self.cap_cam5)
+
+        if any(frame is None for frame in (self.mergeframe1, self.mergeframe2, self.mergeframe3, self.mergeframe4, self.mergeframe5)):
+            self.emit_blank_part_frames()
+            self.msleep(100)
+            return True
+
+        self.mergeframe1 = cv2.rotate(self.mergeframe1, cv2.ROTATE_180)
+        self.mergeframe2 = cv2.rotate(self.mergeframe2, cv2.ROTATE_180)
+        self.mergeframe3 = cv2.rotate(self.mergeframe3, cv2.ROTATE_180)
+        self.mergeframe4 = cv2.rotate(self.mergeframe4, cv2.ROTATE_180)
+        self.mergeframe5 = cv2.rotate(self.mergeframe5, cv2.ROTATE_180)
+
+        #Downsampled the image
+        self.mergeframe1_scaled = self.downSampling(self.mergeframe1, self.scaled_width, self.scaled_height)
+        self.mergeframe2_scaled = self.downSampling(self.mergeframe2, self.scaled_width, self.scaled_height)
+        self.mergeframe3_scaled = self.downSampling(self.mergeframe3, self.scaled_width, self.scaled_height)
+        self.mergeframe4_scaled = self.downSampling(self.mergeframe4, self.scaled_width, self.scaled_height)
+        self.mergeframe5_scaled = self.downSampling(self.mergeframe5, self.scaled_width, self.scaled_height)
+
+        if self.inspection_config.mapCalculated[1] is False: #Just checking the first camera to reduce loop time
+            for i in range(1, 6):
+                if os.path.exists(self._save_dir + f"Calibration_camera_{i}.yaml"):
+                    camera_matrix, dist_coeffs = self.load_matrix_from_yaml(self._save_dir + f"Calibration_camera_{i}.yaml")
+                    # Precompute the undistort and rectify map for faster processing
+                    h, w = self.mergeframe1.shape[:2] #use mergeframe1 as reference
+                    self.inspection_config.map1[i], self.inspection_config.map2[i] = cv2.initUndistortRectifyMap(camera_matrix, dist_coeffs, None, camera_matrix, (w, h), cv2.CV_16SC2)
+                    print(f"map1 and map2 value is calculated")
+                    self.inspection_config.mapCalculated[i] = True
+                    print(f"Calibration map is calculated for Camera {i}")
+
+                    #Also do the map for the scaled image
+                    camera_matrix, dist_coeffs = self.load_matrix_from_yaml(self._save_dir + f"Calibration_camera_scaled_{i}.yaml")
+                    h, w = self.mergeframe1_scaled.shape[:2] #use mergeframe1 as reference
+                    self.inspection_config.map1_downscaled[i], self.inspection_config.map2_downscaled[i] = cv2.initUndistortRectifyMap(camera_matrix, dist_coeffs, None, camera_matrix, (w, h), cv2.CV_16SC2)
+                    print(f"map1 and map2 value is calculated for scaled image")
+                    print(f"Calibration map is calculated for Camera {i} for scaled image")
+
+                    #Not idea but the condition use the bigger image
+
+        if self.inspection_config.mapCalculated[1] is True: #Just checking the first camera to reduce loop time
+
+            # #rotate the bottom frame 90deg CCW
+            # self.bottomframe = self.downScaledImage(self.bottomframe, self.scale_factor_hole)
+            # self.bottomframe = cv2.flip(cv2.rotate(self.bottomframe, cv2.ROTATE_90_COUNTERCLOCKWISE), 1)
+
+            # self.holeFrame1 = self.bottomframe[self.hole1Crop_XYpos_scaled[0]:self.hole1Crop_XYpos_scaled[0] + self.height_hole_offset, self.hole1Crop_XYpos_scaled[1]:self.hole1Crop_XYpos_scaled[1] + self.width_hole_offset]
+            # self.holeFrame2 = self.bottomframe[self.hole2Crop_XYpos_scaled[0]:self.hole2Crop_XYpos_scaled[0] + self.height_hole_offset, self.hole2Crop_XYpos_scaled[1]:self.hole2Crop_XYpos_scaled[1] + self.width_hole_offset]
+            # self.holeFrame3 = self.bottomframe[self.hole3Crop_XYpos_scaled[0]:self.hole3Crop_XYpos_scaled[0] + self.height_hole_offset, self.hole3Crop_XYpos_scaled[1]:self.hole3Crop_XYpos_scaled[1] + self.width_hole_offset]
+            # self.holeFrame4 = self.bottomframe[self.hole4Crop_XYpos_scaled[0]:self.hole4Crop_XYpos_scaled[0] + self.height_hole_offset, self.hole4Crop_XYpos_scaled[1]:self.hole4Crop_XYpos_scaled[1] + self.width_hole_offset]
+            # self.holeFrame5 = self.bottomframe[self.hole5Crop_XYpos_scaled[0]:self.hole5Crop_XYpos_scaled[0] + self.height_hole_offset, self.hole5Crop_XYpos_scaled[1]:self.hole5Crop_XYpos_scaled[1] + self.width_hole_offset]
+
+            if self.inspection_config.doInspection is False:
+
+                self.mergeframe1_scaled = cv2.remap(self.mergeframe1_scaled, self.inspection_config.map1_downscaled[1], self.inspection_config.map2_downscaled[1], interpolation=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT)
+                self.mergeframe2_scaled = cv2.remap(self.mergeframe2_scaled, self.inspection_config.map1_downscaled[2], self.inspection_config.map2_downscaled[2], interpolation=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT)
+                self.mergeframe3_scaled = cv2.remap(self.mergeframe3_scaled, self.inspection_config.map1_downscaled[3], self.inspection_config.map2_downscaled[3], interpolation=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT)
+                self.mergeframe4_scaled = cv2.remap(self.mergeframe4_scaled, self.inspection_config.map1_downscaled[4], self.inspection_config.map2_downscaled[4], interpolation=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT)
+                self.mergeframe5_scaled = cv2.remap(self.mergeframe5_scaled, self.inspection_config.map1_downscaled[5], self.inspection_config.map2_downscaled[5], interpolation=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT)
+
+                self.combinedImage_scaled = self.homography_blank_canvas_scaled.copy()
+                self.combinedImage_scaled = self.merge_frame_with_cache(self.combinedImage_scaled, self.mergeframe1_scaled, "H1_scaled_FR")
+                self.combinedImage_scaled = self.merge_frame_with_cache(self.combinedImage_scaled, self.mergeframe2_scaled, "H2_scaled_FR")
+                self.combinedImage_scaled = self.merge_frame_with_cache(self.combinedImage_scaled, self.mergeframe3_scaled, "H3_scaled_FR")
+                self.combinedImage_scaled = self.merge_frame_with_cache(self.combinedImage_scaled, self.mergeframe4_scaled, "H4_scaled_FR")
+                self.combinedImage_scaled = self.merge_frame_with_cache(self.combinedImage_scaled, self.mergeframe5_scaled, "H5_scaled_FR")
+
+                self.combinedImage_scaled = self.apply_planarize_with_cache(self.combinedImage_scaled, "planarizeTransform_temp_scaled", (int(self.homography_size[1]/self.scale_factor), int(self.homography_size[0]/self.scale_factor)))
+                self.combinedImage_scaled = cv2.resize(self.combinedImage_scaled, (int(self.homography_size[1]/(self.scale_factor*1.48)), int(self.homography_size[0]/(self.scale_factor*1.26*1.48))))#1.48 for the qt, 1.26 for the aspect ratio
+
+                #Crop the image scaled for each part
+                self.part1Crop_scaled = self.combinedImage_scaled[self.part1Crop_Ypos_hoodFR_scaled : self.part1Crop_Ypos_hoodFR_scaled + self.part_height_offset_nissanhoodFR_scaled, 0 : self.homography_size_scaled[1]]
+                self.part2Crop_scaled = self.combinedImage_scaled[self.part2Crop_Ypos_hoodFR_scaled : self.part2Crop_Ypos_hoodFR_scaled + self.part_height_offset_nissanhoodFR_scaled, 0 : self.homography_size_scaled[1]]
+                self.part3Crop_scaled = self.combinedImage_scaled[self.part3Crop_Ypos_hoodFR_scaled : self.part3Crop_Ypos_hoodFR_scaled + self.part_height_offset_nissanhoodFR_scaled, 0 : self.homography_size_scaled[1]]
+                self.part4Crop_scaled = self.combinedImage_scaled[self.part4Crop_Ypos_hoodFR_scaled : self.part4Crop_Ypos_hoodFR_scaled + self.part_height_offset_nissanhoodFR_scaled, 0 : self.homography_size_scaled[1]]
+                self.part5Crop_scaled = self.combinedImage_scaled[self.part5Crop_Ypos_hoodFR_scaled : self.part5Crop_Ypos_hoodFR_scaled + self.part_height_offset_nissanhoodFR_scaled, 0 : self.homography_size_scaled[1]]
+
+                # cv2.imwrite("part1Crop_scaled_inference.png", self.part1Crop_scaled)
+
+                self.part1Crop_scaled = self.downSampling(self.part1Crop_scaled, width=1771, height=24)
+                self.part2Crop_scaled = self.downSampling(self.part2Crop_scaled, width=1771, height=24)
+                self.part3Crop_scaled = self.downSampling(self.part3Crop_scaled, width=1771, height=24)
+                self.part4Crop_scaled = self.downSampling(self.part4Crop_scaled, width=1771, height=24)
+                self.part5Crop_scaled = self.downSampling(self.part5Crop_scaled, width=1771, height=24)
+
+                self.InspectionResult_PitchMeasured = [None]*5
+                self.InspectionResult_PitchResult = [None]*5
+
+                if self.part1Crop_scaled is not None:
+                    self.part1Cam.emit(self.convertQImage(self.part1Crop_scaled))
+                if self.part2Crop_scaled is not None:
+                    self.part2Cam.emit(self.convertQImage(self.part2Crop_scaled))
+                if self.part3Crop_scaled is not None:
+                    self.part3Cam.emit(self.convertQImage(self.part3Crop_scaled))
+                if self.part4Crop_scaled is not None:
+                    self.part4Cam.emit(self.convertQImage(self.part4Crop_scaled))
+                if self.part5Crop_scaled is not None:
+                    self.part5Cam.emit(self.convertQImage(self.part5Crop_scaled))
+
+                #Empty the Inspection Result
+
+                self.P658207YA0A_InspectionResult_PitchMeasured.emit(self.InspectionResult_PitchMeasured)
+                # self.hoodFR_InspectionResult_PitchResult.emit(self.InspectionResult_PitchResult)
+
+            if self.InspectionTimeStart is None:
+                self.InspectionTimeStart = time.time()
+
+            # print(time.time() - self.InspectionTimeStart)
+
+            if self.firstTimeInspection is False:
+                if time.time() - self.InspectionTimeStart < self.InspectionWaitTime:
+                    self.inspection_config.doInspection = False
+
+            # print(f"InspectionConfig: {self.inspection_config.doInspection}")
+
+            if self.inspection_config.doInspection is True:
+                if not self.has_required_models(9):
+                    self.inspection_config.doInspection = False
+                    self.emit_blank_part_frames()
+                    print("Skipping widget 9 inspection because required model weights are missing.")
+                    return True
+
+                self.inspection_config.doInspection = False
+
+                # if self.inspection_config.kensainNumber is None or self.inspection_config.kensainNumber == "":
+                #     #Break the bottom if
+                #     print("No Kensain Number Input")
+                #     for i in range (len(self.InspectionStatus)):
+                #         self.InspectionStatus[i] = "社員番号未入力"
+                #     self.hoodFR_InspectionStatus.emit(self.InspectionStatus)
+                #     continue
+
+                if self.InspectionTimeStart is not None:
+
+                    if time.time() - self.InspectionTimeStart > self.InspectionWaitTime or self.firstTimeInspection is True:
+                        self.firstTimeInspection is False
+                        print("Inspection Started")
+                        self.InspectionTimeStart = time.time()
+
+                        for i in range (len(self.InspectionStatus)):
+                            self.InspectionStatus[i] = "検査中"
+                        self.P658207YA0A_InspectionStatus.emit(self.InspectionStatus)
+
+                        self.mergeframe1 = cv2.remap(self.mergeframe1, self.inspection_config.map1[1], self.inspection_config.map2[1], interpolation=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT)
+                        self.mergeframe2 = cv2.remap(self.mergeframe2, self.inspection_config.map1[2], self.inspection_config.map2[2], interpolation=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT)
+                        self.mergeframe3 = cv2.remap(self.mergeframe3, self.inspection_config.map1[3], self.inspection_config.map2[3], interpolation=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT)
+                        self.mergeframe4 = cv2.remap(self.mergeframe4, self.inspection_config.map1[4], self.inspection_config.map2[4], interpolation=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT)
+                        self.mergeframe5 = cv2.remap(self.mergeframe5, self.inspection_config.map1[5], self.inspection_config.map2[5], interpolation=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT)
+
+                        self.combinedImage = self.homography_blank_canvas.copy()
+                        self.combinedImage = self.merge_frame_with_cache(self.combinedImage, self.mergeframe1, "H1_FR")
+                        self.combinedImage = self.merge_frame_with_cache(self.combinedImage, self.mergeframe2, "H2_FR")
+                        self.combinedImage = self.merge_frame_with_cache(self.combinedImage, self.mergeframe3, "H3_FR")
+                        self.combinedImage = self.merge_frame_with_cache(self.combinedImage, self.mergeframe4, "H4_FR")
+                        self.combinedImage = self.merge_frame_with_cache(self.combinedImage, self.mergeframe5, "H5_FR")
+
+                        self.combinedImage = self.apply_planarize_with_cache(self.combinedImage, "planarizeTransform_temp", (int(self.homography_size[1]), int(self.homography_size[0])))
+                        self.combinedImage = cv2.resize(self.combinedImage, (self.homography_size[1], int(self.homography_size[0]/(1.26))))#1.48 for the qt, 1.26 for the aspect ratio
+
+                        # Crop the image scaled for each part
+                        self.part1Crop = self.combinedImage[int(self.part1Crop_YPos_hoodFR*1.48) : int((self.part1Crop_YPos_hoodFR + self.part_height_offset_nissanhoodFR)*1.48), 0 : int(self.homography_size[1]*1.48)]
+                        self.part2Crop = self.combinedImage[int(self.part2Crop_YPos_hoodFR*1.48) : int((self.part2Crop_YPos_hoodFR + self.part_height_offset_nissanhoodFR)*1.48), 0 : int(self.homography_size[1]*1.48)]
+                        self.part3Crop = self.combinedImage[int(self.part3Crop_YPos_hoodFR*1.48) : int((self.part3Crop_YPos_hoodFR + self.part_height_offset_nissanhoodFR)*1.48), 0 : int(self.homography_size[1]*1.48)]
+                        self.part4Crop = self.combinedImage[int(self.part4Crop_YPos_hoodFR*1.48) : int((self.part4Crop_YPos_hoodFR + self.part_height_offset_nissanhoodFR)*1.48), 0 : int(self.homography_size[1]*1.48)]
+                        self.part5Crop = self.combinedImage[int(self.part5Crop_YPos_hoodFR*1.48) : int((self.part5Crop_YPos_hoodFR + self.part_height_offset_nissanhoodFR)*1.48), 0 : int(self.homography_size[1]*1.48)]
+
+                        # self.save_image(self.part1Crop)
+                        # time.sleep(1.5)
+                        # self.save_image(self.part2Crop)
+                        # time.sleep(1.5)
+                        # self.save_image(self.part3Crop)
+                        # time.sleep(1.5)
+                        # self.save_image(self.part4Crop)
+                        # time.sleep(1.5)
+                        # self.save_image(self.part5Crop)
+                        # time.sleep(1.5)
+
+                        #Need to convert to BGR for SAHI Inspection
+                        self.part1Crop = cv2.cvtColor(self.part1Crop, cv2.COLOR_RGB2BGR)
+                        self.part2Crop = cv2.cvtColor(self.part2Crop, cv2.COLOR_RGB2BGR)
+                        self.part3Crop = cv2.cvtColor(self.part3Crop, cv2.COLOR_RGB2BGR)
+                        self.part4Crop = cv2.cvtColor(self.part4Crop, cv2.COLOR_RGB2BGR)
+                        self.part5Crop = cv2.cvtColor(self.part5Crop, cv2.COLOR_RGB2BGR)
+
+                        #Put the All the image into a list
+                        self.InspectionImages[0] = self.part1Crop.copy()
+                        self.InspectionImages[1] = self.part2Crop.copy()
+                        self.InspectionImages[2] = self.part3Crop.copy()
+                        self.InspectionImages[3] = self.part4Crop.copy()
+                        self.InspectionImages[4] = self.part5Crop.copy()
+
+                        print(f"Length of Inspection Images : {len(self.InspectionImages)}")
+
+
+                        #Emit　検査中 to the status signal
+
+                        # # Do the inspection
+                        for i in range(len(self.InspectionImages)):
+                            #Only do inspectino on the one with kouden sensor ons
+                            self.inspection_config.kouden_sensor[i] = 1 #forcefully make it 1
+                            if self.inspection_config.kouden_sensor[i] == 1:
+                                self.InspectionResult_ClipDetection[i] = get_sliced_prediction(
+                                    self.InspectionImages[i],
+                                    self.P658207YA0A_clipDetectionModel,
+                                    slice_height=497, slice_width=1960,
+                                    overlap_height_ratio=0.0, overlap_width_ratio=0.2,
+                                    postprocess_match_metric="IOS",
+                                    postprocess_match_threshold=0.005,
+                                    postprocess_class_agnostic=True,
+                                    postprocess_type="GREEDYNMM",
+                                    verbose=0,
+                                    perform_standard_pred=False
+                                )
+
+                                #Crop image from 0 to 1024 width for the left and width-1024 to 1024 for the right
+                                # self.InspectionImages_endSegmentation_Left[i] = self.InspectionImages[i][:, :1024, :]
+                                # self.InspectionImages_endSegmentation_Right[i] = self.InspectionImages[i][:, -1024:, :]
+
+                                # self.InspectionResult_EndSegmentation_Left[i] = self.hoodFR_endSegmentationModel(source=self.InspectionImages_endSegmentation_Left[i], conf=0.5, imgsz=960, verbose=False)
+                                # self.InspectionResult_EndSegmentation_Right[i] = self.hoodFR_endSegmentationModel(source=self.InspectionImages_endSegmentation_Right[i], conf=0.5, imgsz=960, verbose=False)
+
+                                self.InspectionImages[i], self.InspectionResult_PitchMeasured[i], self.InspectionResult_PitchResult[i], self.InspectionResult_DetectionID[i], self.InspectionResult_Status[i], self.InspectionResult_NGReason[i] = P658207YA0A_partcheck(self.InspectionImages[i], self.InspectionResult_ClipDetection[i].object_prediction_list)
+                            else:
+                                #Make pure black image
+                                self.InspectionImages[i] = np.full((24, 1771, 3), (10, 10, 20), dtype=np.uint8)
+                                self.InspectionResult_PitchMeasured[i] = None
+                                self.InspectionResult_PitchResult[i] = None
+                                self.InspectionResult_DetectionID[i] = None
+                                self.InspectionResult_Status[i] = None
+
+                            # print(self.InspectionResult_Status[i])
+                            # print(self.InspectionResult_DetectionID[i])
+
+                            if self.InspectionResult_Status[i] == "OK":
+                                self.ethernet_status_green_hold_status[i] = 1
+                                self.ethernet_status_red_tenmetsu_status[i] = 0
+                                self.ethernet_status_red_hold_status[i] = 0
+
+                                self.inspection_config.current_numofPart[self.inspection_config.widget][0] += 1
+                                self.inspection_config.today_numofPart[self.inspection_config.widget][0] += 1
+
+                                #Play konpou sound if the current_numofPart is dividable by 25
+                                if self.inspection_config.current_numofPart[self.inspection_config.widget][0] % 25 == 0 and self.inspection_config.current_numofPart[self.inspection_config.widget][0] != 0:
+                                    play_konpou_sound()
+
+                                self.InspectionStatus[i] = "OK"
+
+                            elif self.InspectionResult_Status[i] == "NG":
+                                self.ethernet_status_green_hold_status[i] = 0
+                                self.ethernet_status_red_tenmetsu_status[i] = 0
+                                self.ethernet_status_red_hold_status[i] = 1
+                                self.inspection_config.current_numofPart[self.inspection_config.widget][1] += 1
+                                self.inspection_config.today_numofPart[self.inspection_config.widget][1] += 1
+
+                                self.InspectionStatus[i] = "NG"
+
+                            else:
+                                self.ethernet_status_green_hold_status[i] = 0
+                                self.ethernet_status_red_tenmetsu_status[i] = 0
+                                self.ethernet_status_red_hold_status[i] = 0
+
+                            self.save_result_database(partname = self.widget_dir_map[self.inspection_config.widget],
+                                numofPart = self.inspection_config.today_numofPart[self.inspection_config.widget],
+                                currentnumofPart = self.inspection_config.current_numofPart[self.inspection_config.widget],
+                                deltaTime = 0.0,
+                                kensainName = self.inspection_config.kensainNumber,
+                                detected_pitch_str = self.InspectionResult_PitchMeasured[i],
+                                delta_pitch_str = self.InspectionResult_DeltaPitch[i],
+                                total_length=0,
+                                resultPitch = self.InspectionResult_PitchResult[i],
+                                status = self.InspectionStatus[i],
+                                NGreason = self.InspectionResult_NGReason[i])
+
+
+                            # #save hole image
+                            # self.save_image_hole(self.holeFrame1, False, "P1")
+                            # self.save_image_hole(self.holeFrame2, False, "P2")
+                            # self.save_image_hole(self.holeFrame3, False, "P3")
+                            # self.save_image_hole(self.holeFrame4, False, "P4")
+                            # self.save_image_hole(self.holeFrame5, False, "P5")
+
+                            self.P658207YA0A_InspectionStatus.emit(self.InspectionStatus)
+
+                        self.save_image_result(self.part1Crop, self.InspectionImages[0], self.InspectionResult_Status[0], True, "P1")
+                        self.save_image_result(self.part2Crop, self.InspectionImages[1], self.InspectionResult_Status[1], True, "P2")
+                        self.save_image_result(self.part3Crop, self.InspectionImages[2], self.InspectionResult_Status[2], True, "P3")
+                        self.save_image_result(self.part4Crop, self.InspectionImages[3], self.InspectionResult_Status[3], True, "P4")
+                        self.save_image_result(self.part5Crop, self.InspectionImages[4], self.InspectionResult_Status[4], True, "P5")
+
+                        self.InspectionImages[0] = self.downSampling(self.InspectionImages[0], width=1771, height=24)
+                        self.InspectionImages[1] = self.downSampling(self.InspectionImages[1], width=1771, height=24)
+                        self.InspectionImages[2] = self.downSampling(self.InspectionImages[2], width=1771, height=24)
+                        self.InspectionImages[3] = self.downSampling(self.InspectionImages[3], width=1771, height=24)
+                        self.InspectionImages[4] = self.downSampling(self.InspectionImages[4], width=1771, height=24)
+
+                        self.P658207YA0A_InspectionResult_PitchMeasured.emit(self.InspectionResult_PitchMeasured)
+                        self.P658207YA0A_InspectionResult_PitchResult.emit(self.InspectionResult_PitchResult)
+
+                        print("Inspection Finished")
+                        #Remember that list is mutable
+                        self.ethernet_status_red_tenmetsu_status_prev = self.ethernet_status_red_tenmetsu_status_prev.copy()
+                        self.ethernet_status_green_hold_status_prev = self.ethernet_status_green_hold_status.copy()
+                        self.ethernet_status_red_hold_status_prev = self.ethernet_status_red_hold_status.copy()
+
+                        self.InspectionImages_prev[0] = self.InspectionImages[0]
+                        self.InspectionImages_prev[1] = self.InspectionImages[1]
+                        self.InspectionImages_prev[2] = self.InspectionImages[2]
+                        self.InspectionImages_prev[3] = self.InspectionImages[3]
+                        self.InspectionImages_prev[4] = self.InspectionImages[4]
+
+                        self.InspectionResult_PitchMeasured_prev = self.InspectionResult_PitchMeasured.copy()
+                        self.InspectionResult_PitchResult_prev = self.InspectionResult_PitchResult.copy()
+                        self.InspectionStatus_prev = self.InspectionStatus.copy()
+
+                        self.ethernet_status_red_tenmetsu.emit(self.ethernet_status_red_tenmetsu_status)
+                        self.ethernet_status_green_hold.emit(self.ethernet_status_green_hold_status)
+                        self.ethernet_status_red_hold.emit(self.ethernet_status_red_hold_status)
+
+                        self.part1Cam.emit(self.converQImageRGB(self.InspectionImages[0]))
+                        self.part2Cam.emit(self.converQImageRGB(self.InspectionImages[1]))
+                        self.part3Cam.emit(self.converQImageRGB(self.InspectionImages[2]))
+                        self.part4Cam.emit(self.converQImageRGB(self.InspectionImages[3]))
+                        self.part5Cam.emit(self.converQImageRGB(self.InspectionImages[4]))
+
+                        time.sleep(10)
+
+                        # self.hoodFR_InspectionStatus.emit(self.InspectionStatus)
+
+        #emit the ethernet
+        self.today_numofPart_signal.emit(self.inspection_config.today_numofPart)
+        self.current_numofPart_signal.emit(self.inspection_config.current_numofPart)
+
+        self.ethernet_status_red_tenmetsu.emit(self.ethernet_status_red_tenmetsu_status)
+        self.ethernet_status_green_hold.emit(self.ethernet_status_green_hold_status)
+        self.ethernet_status_red_hold.emit(self.ethernet_status_red_hold_status)
+
+        # Emit status based on the red tenmetsu status
+
+        self.P658207YA0A_InspectionStatus.emit(self.InspectionStatus)
+        return False
+
+    def _handle_widget_8(self):
+
+        if self.inspection_config.furyou_plus or self.inspection_config.furyou_minus or self.inspection_config.kansei_plus or self.inspection_config.kansei_minus or self.inspection_config.furyou_plus_10 or self.inspection_config.furyou_minus_10 or self.inspection_config.kansei_plus_10 or self.inspection_config.kansei_minus_10:
+            self.inspection_config.current_numofPart[self.inspection_config.widget], self.inspection_config.today_numofPart[self.inspection_config.widget] = self.manual_adjustment(
+                self.inspection_config.current_numofPart[self.inspection_config.widget], self.inspection_config.today_numofPart[self.inspection_config.widget],
+                self.inspection_config.furyou_plus,
+                self.inspection_config.furyou_minus,
+                self.inspection_config.furyou_plus_10,
+                self.inspection_config.furyou_minus_10,
+                self.inspection_config.kansei_plus,
+                self.inspection_config.kansei_minus,
+                self.inspection_config.kansei_plus_10,
+                self.inspection_config.kansei_minus_10)
+            print("Manual Adjustment Done")
+            print(f"Furyou Plus: {self.inspection_config.furyou_plus}")
+            print(f"Furyou Minus: {self.inspection_config.furyou_minus}")
+            print(f"Kansei Plus: {self.inspection_config.kansei_plus}")
+            print(f"Kansei Minus: {self.inspection_config.kansei_minus}")
+            print(f"Furyou Plus 10: {self.inspection_config.furyou_plus_10}")
+            print(f"Furyou Minus 10: {self.inspection_config.furyou_minus_10}")
+            print(f"Kansei Plus 10: {self.inspection_config.kansei_plus_10}")
+            print(f"Kansei Minus 10: {self.inspection_config.kansei_minus_10}")
+
+        if self.inspection_config.counterReset is True:
+            self.inspection_config.current_numofPart[self.inspection_config.widget] = [0, 0]
+            self.inspection_config.counterReset = False
+            self.save_result_database(partname = self.widget_dir_map[self.inspection_config.widget],
+                    numofPart = self.inspection_config.today_numofPart[self.inspection_config.widget],
+                    currentnumofPart = [0, 0],
+                    deltaTime = 0.0,
+                    kensainName = self.inspection_config.kensainNumber,
+                    detected_pitch_str = "COUNTERRESET",
+                    delta_pitch_str = "COUNTERRESET",
+                    total_length=0,
+                    resultPitch = "COUNTERRESET",
+                    status = "COUNTERRESET",
+                    NGreason = "COUNTERRESET")
+        #check kouden sensor and tenmetsu status
+
+        for i in range (len(self.inspection_config.kouden_sensor)):
+            self.ethernet_status_red_tenmetsu_status[i] = self.inspection_config.kouden_sensor[i]
+            self.ethernet_status_green_hold_status[i] = 0 #Reset at every loop
+            self.ethernet_status_red_hold_status[i] = 0 #Reset at every loop
+
+        for i in range(len(self.ethernet_status_red_tenmetsu_status)):
+            if self.ethernet_status_red_tenmetsu_status[i] == 1:
+                self.InspectionStatus[i] = "製品検出済み"
+            else:
+                self.InspectionStatus[i] = "製品未検出"
+
+        if self.multiCam_stream is False:
+            self.multiCam_stream = True
+            self.initialize_all_camera()
+
+        if not self.has_required_cameras([0, 1, 2, 3, 4, 5]):
+            self.emit_blank_part_frames()
+            self.emit_blank_hole_frames()
+            self.msleep(100)
+            return True
+
+        self.bottomframe = self.read_camera_frame(self.cap_cam0)
+        self.mergeframe1 = self.read_camera_frame(self.cap_cam1)
+        self.mergeframe2 = self.read_camera_frame(self.cap_cam2)
+        self.mergeframe3 = self.read_camera_frame(self.cap_cam3)
+        self.mergeframe4 = self.read_camera_frame(self.cap_cam4)
+        self.mergeframe5 = self.read_camera_frame(self.cap_cam5)
+
+        if any(frame is None for frame in (self.bottomframe, self.mergeframe1, self.mergeframe2, self.mergeframe3, self.mergeframe4, self.mergeframe5)):
+            self.emit_blank_part_frames()
+            self.emit_blank_hole_frames()
+            self.msleep(100)
+            return True
+
+        self.mergeframe1 = cv2.rotate(self.mergeframe1, cv2.ROTATE_180)
+        self.mergeframe2 = cv2.rotate(self.mergeframe2, cv2.ROTATE_180)
+        self.mergeframe3 = cv2.rotate(self.mergeframe3, cv2.ROTATE_180)
+        self.mergeframe4 = cv2.rotate(self.mergeframe4, cv2.ROTATE_180)
+        self.mergeframe5 = cv2.rotate(self.mergeframe5, cv2.ROTATE_180)
+
+        #Downsampled the image
+        self.mergeframe1_scaled = self.downSampling(self.mergeframe1, self.scaled_width, self.scaled_height)
+        self.mergeframe2_scaled = self.downSampling(self.mergeframe2, self.scaled_width, self.scaled_height)
+        self.mergeframe3_scaled = self.downSampling(self.mergeframe3, self.scaled_width, self.scaled_height)
+        self.mergeframe4_scaled = self.downSampling(self.mergeframe4, self.scaled_width, self.scaled_height)
+        self.mergeframe5_scaled = self.downSampling(self.mergeframe5, self.scaled_width, self.scaled_height)
+
+        if self.inspection_config.mapCalculated[3] is False:
+            if os.path.exists(self._save_dir + "Calibration_camera_3.yaml"):
+                camera_matrix, dist_coeffs = self.load_matrix_from_yaml(self._save_dir + "Calibration_camera_3.yaml")
+                h, w = self.mergeframe3.shape[:2]
+                self.inspection_config.map1[3], self.inspection_config.map2[3] = cv2.initUndistortRectifyMap(camera_matrix, dist_coeffs, None, camera_matrix, (w, h), cv2.CV_16SC2)
+                self.inspection_config.mapCalculated[3] = True
+                print("Calibration map is calculated for Camera 3")
+
+                camera_matrix, dist_coeffs = self.load_matrix_from_yaml(self._save_dir + "Calibration_camera_scaled_3.yaml")
+                h, w = self.mergeframe3_scaled.shape[:2]
+                self.inspection_config.map1_downscaled[3], self.inspection_config.map2_downscaled[3] = cv2.initUndistortRectifyMap(camera_matrix, dist_coeffs, None, camera_matrix, (w, h), cv2.CV_16SC2)
+                print("Calibration map is calculated for Camera 3 for scaled image")
+
+        if self.inspection_config.mapCalculated[3] is True:
+
+            #rotate the bottom frame 90deg CCW
+            self.bottomframe = self.downScaledImage(self.bottomframe, self.scale_factor_hole)
+            self.bottomframe = cv2.flip(cv2.rotate(self.bottomframe, cv2.ROTATE_90_COUNTERCLOCKWISE), 1)
+
+            self.holeFrame1 = self.bottomframe[self.hole1Crop_XYpos_scaled[0]:self.hole1Crop_XYpos_scaled[0] + self.height_hole_offset, self.hole1Crop_XYpos_scaled[1]:self.hole1Crop_XYpos_scaled[1] + self.width_hole_offset]
+            self.holeFrame2 = self.bottomframe[self.hole2Crop_XYpos_scaled[0]:self.hole2Crop_XYpos_scaled[0] + self.height_hole_offset, self.hole2Crop_XYpos_scaled[1]:self.hole2Crop_XYpos_scaled[1] + self.width_hole_offset]
+            self.holeFrame3 = self.bottomframe[self.hole3Crop_XYpos_scaled[0]:self.hole3Crop_XYpos_scaled[0] + self.height_hole_offset, self.hole3Crop_XYpos_scaled[1]:self.hole3Crop_XYpos_scaled[1] + self.width_hole_offset]
+            self.holeFrame4 = self.bottomframe[self.hole4Crop_XYpos_scaled[0]:self.hole4Crop_XYpos_scaled[0] + self.height_hole_offset, self.hole4Crop_XYpos_scaled[1]:self.hole4Crop_XYpos_scaled[1] + self.width_hole_offset]
+            self.holeFrame5 = self.bottomframe[self.hole5Crop_XYpos_scaled[0]:self.hole5Crop_XYpos_scaled[0] + self.height_hole_offset, self.hole5Crop_XYpos_scaled[1]:self.hole5Crop_XYpos_scaled[1] + self.width_hole_offset]
+
+            if self.inspection_config.doInspection is False:
+
+                self.mergeframe1_scaled = cv2.remap(self.mergeframe1_scaled, self.inspection_config.map1_downscaled[1], self.inspection_config.map2_downscaled[1], interpolation=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT)
+                self.mergeframe2_scaled = cv2.remap(self.mergeframe2_scaled, self.inspection_config.map1_downscaled[2], self.inspection_config.map2_downscaled[2], interpolation=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT)
+                self.mergeframe3_scaled = cv2.remap(self.mergeframe3_scaled, self.inspection_config.map1_downscaled[3], self.inspection_config.map2_downscaled[3], interpolation=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT)
+                self.mergeframe4_scaled = cv2.remap(self.mergeframe4_scaled, self.inspection_config.map1_downscaled[4], self.inspection_config.map2_downscaled[4], interpolation=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT)
+                self.mergeframe5_scaled = cv2.remap(self.mergeframe5_scaled, self.inspection_config.map1_downscaled[5], self.inspection_config.map2_downscaled[5], interpolation=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT)
+
+                self.combinedImage_scaled = self.homography_blank_canvas_scaled.copy()
+                self.combinedImage_scaled = self.merge_frame_with_cache(self.combinedImage_scaled, self.mergeframe1_scaled, "H1_scaled")
+                self.combinedImage_scaled = self.merge_frame_with_cache(self.combinedImage_scaled, self.mergeframe2_scaled, "H2_scaled")
+                self.combinedImage_scaled = self.merge_frame_with_cache(self.combinedImage_scaled, self.mergeframe3_scaled, "H3_scaled")
+                self.combinedImage_scaled = self.merge_frame_with_cache(self.combinedImage_scaled, self.mergeframe4_scaled, "H4_scaled")
+                self.combinedImage_scaled = self.merge_frame_with_cache(self.combinedImage_scaled, self.mergeframe5_scaled, "H5_scaled")
+
+                self.combinedImage_scaled = self.apply_planarize_with_cache(self.combinedImage_scaled, "planarizeTransform_scaled", (int(self.homography_size[1]/self.scale_factor), int(self.homography_size[0]/self.scale_factor)))
+                self.combinedImage_scaled = cv2.resize(self.combinedImage_scaled, (int(self.homography_size[1]/(self.scale_factor*1.48)), int(self.homography_size[0]/(self.scale_factor*1.26*1.48))))#1.48 for the qt, 1.26 for the aspect ratio
+
+                # cv2.imwrite("combinedImage_scaled_inference.png", self.combinedImage_scaled)
+
+                #Crop the image scaled for each part
+                self.part1Crop_scaled = self.combinedImage_scaled[self.part1Crop_YPos_scaled : self.part1Crop_YPos_scaled + self.part_height_offset_scaled, 0 : self.homography_size_scaled[1]]
+                self.part2Crop_scaled = self.combinedImage_scaled[self.part2Crop_YPos_scaled : self.part2Crop_YPos_scaled + self.part_height_offset_scaled, 0 : self.homography_size_scaled[1]]
+                self.part3Crop_scaled = self.combinedImage_scaled[self.part3Crop_YPos_scaled : self.part3Crop_YPos_scaled + self.part_height_offset_scaled, 0 : self.homography_size_scaled[1]]
+                self.part4Crop_scaled = self.combinedImage_scaled[self.part4Crop_YPos_scaled : self.part4Crop_YPos_scaled + self.part_height_offset_scaled, 0 : self.homography_size_scaled[1]]
+                self.part5Crop_scaled = self.combinedImage_scaled[self.part5Crop_YPos_scaled : self.part5Crop_YPos_scaled + self.part_height_offset_scaled, 0 : self.homography_size_scaled[1]]
+
+                self.part1Crop_scaled = self.downSampling(self.part1Crop_scaled, width=1771, height=24)
+                self.part2Crop_scaled = self.downSampling(self.part2Crop_scaled, width=1771, height=24)
+                self.part3Crop_scaled = self.downSampling(self.part3Crop_scaled, width=1771, height=24)
+                self.part4Crop_scaled = self.downSampling(self.part4Crop_scaled, width=1771, height=24)
+                self.part5Crop_scaled = self.downSampling(self.part5Crop_scaled, width=1771, height=24)
+
+                self.holeImageMerge[0] = self.holeFrame1.copy()
+                self.holeImageMerge[1] = self.holeFrame2.copy()
+                self.holeImageMerge[2] = self.holeFrame3.copy()
+                self.holeImageMerge[3] = self.holeFrame4.copy()
+                self.holeImageMerge[4] = self.holeFrame5.copy()
+
+                self.holeFrame1 = self.downScaledImage(self.holeFrame1, 1.5)
+                self.holeFrame2 = self.downScaledImage(self.holeFrame2, 1.5)
+                self.holeFrame3 = self.downScaledImage(self.holeFrame3, 1.5)
+                self.holeFrame4 = self.downScaledImage(self.holeFrame4, 1.5)
+                self.holeFrame5 = self.downScaledImage(self.holeFrame5, 1.5)
+
+                for i in range(len(self.holeImageMerge)):
+                    self.InspectionResult_HoleDetection[i] = self.hoodFR_holeDetectionModel(
+                        cv2.cvtColor(self.holeImageMerge[i], cv2.COLOR_BGR2RGB),
+                        stream=True, verbose=False, conf=0.3, imgsz=256
+                    )
+                    detectedid = []
+
+                    for j, r in enumerate(self.InspectionResult_HoleDetection[i]):
+                        for k, box in enumerate(r.boxes):
+                            detectedid.append(box.cls.item())
+                    # print(f"Detected ID[i]: {detectedid}")
+                    if 0.0 in detectedid:
+                        self.DetectionResult_HoleDetection[i] = 1
+                    else:
+                        self.DetectionResult_HoleDetection[i] = 0
+
+                # print(self.DetectionResult_HoleDetection)
+
+                self.InspectionResult_PitchMeasured = [None]*5
+                self.InspectionResult_PitchResult = [None]*5
+
+                if self.InspectionImages_prev[0] is not None and any(sensor != 0 for sensor in self.inspection_config.kouden_sensor):
+                    #convert to bgr
+                    self.part1Crop_scaled = cv2.cvtColor(self.InspectionImages_prev[0], cv2.COLOR_RGB2BGR)
+                    self.part2Crop_scaled = cv2.cvtColor(self.InspectionImages_prev[1], cv2.COLOR_RGB2BGR)
+                    self.part3Crop_scaled = cv2.cvtColor(self.InspectionImages_prev[2], cv2.COLOR_RGB2BGR)
+                    self.part4Crop_scaled = cv2.cvtColor(self.InspectionImages_prev[3], cv2.COLOR_RGB2BGR)
+                    self.part5Crop_scaled = cv2.cvtColor(self.InspectionImages_prev[4], cv2.COLOR_RGB2BGR)
+
+                    self.ethernet_status_red_tenmetsu_status = self.ethernet_status_red_tenmetsu_status_prev.copy()
+                    self.ethernet_status_green_hold_status = self.ethernet_status_green_hold_status_prev.copy()
+                    self.ethernet_status_red_hold_status = self.ethernet_status_red_hold_status_prev.copy()
+
+                    self.InspectionResult_PitchMeasured = self.InspectionResult_PitchMeasured_prev.copy()
+                    self.InspectionResult_PitchResult = self.InspectionResult_PitchResult_prev.copy()
+                    self.InspectionStatus = self.InspectionStatus_prev.copy()
+
+                    ng_exists = False
+                    for status in self.InspectionResult_Status:
+                        if status == "NG":
+                            ng_exists = True
+                            break
+
+                    if ng_exists:
+                        for i, sensor_value in enumerate(self.inspection_config.kouden_sensor):
+                            if sensor_value == 0:  # 0 indicates the part has been removed
+                                if self.InspectionResult_Status[i] == "OK":
+                                    play_alarm_sound()  # Alarm if a good part is being removed
+                                elif self.InspectionResult_Status[i] == "NG":
+                                    self.InspectionResult_Status[i] = "None"
+                                    play_picking_sound()  # Confirm removal of the NG part
+
+                if all(sensor == 0 for sensor in self.inspection_config.kouden_sensor):
+                    self.InspectionImages_prev[0] = None
+
+                if self.part1Crop_scaled is not None:
+                    self.part1Cam.emit(self.convertQImage(self.part1Crop_scaled))
+                if self.part2Crop_scaled is not None:
+                    self.part2Cam.emit(self.convertQImage(self.part2Crop_scaled))
+                if self.part3Crop_scaled is not None:
+                    self.part3Cam.emit(self.convertQImage(self.part3Crop_scaled))
+                if self.part4Crop_scaled is not None:
+                    self.part4Cam.emit(self.convertQImage(self.part4Crop_scaled))
+                if self.part5Crop_scaled is not None:
+                    self.part5Cam.emit(self.convertQImage(self.part5Crop_scaled))
+
+                if self.holeFrame1 is not None:
+                    self.hole1Cam.emit(self.convertQImage(self.holeFrame1))
+                if self.holeFrame2 is not None:
+                    self.hole2Cam.emit(self.convertQImage(self.holeFrame2))
+                if self.holeFrame3 is not None:
+                    self.hole3Cam.emit(self.convertQImage(self.holeFrame3))
+                if self.holeFrame4 is not None:
+                    self.hole4Cam.emit(self.convertQImage(self.holeFrame4))
+                if self.holeFrame5 is not None:
+                    self.hole5Cam.emit(self.convertQImage(self.holeFrame5))
+
+                #Empty the Inspection Result
+
+                self.hoodFR_InspectionResult_PitchMeasured.emit(self.InspectionResult_PitchMeasured)
+                self.hoodFR_InspectionResult_PitchResult.emit(self.InspectionResult_PitchResult)
+
+            if self.InspectionTimeStart is None:
+                self.InspectionTimeStart = time.time()
+
+            # print(time.time() - self.InspectionTimeStart)
+
+            if self.firstTimeInspection is False:
+                if time.time() - self.InspectionTimeStart < self.InspectionWaitTime:
+                    self.inspection_config.doInspection = False
+
+            # print(f"InspectionConfig: {self.inspection_config.doInspection}")
+
+            if self.inspection_config.doInspection is True:
+                if not self.has_required_models(8):
+                    self.inspection_config.doInspection = False
+                    self.emit_blank_part_frames()
+                    self.emit_blank_hole_frames()
+                    print("Skipping widget 8 inspection because required model weights are missing.")
+                    return True
+
+                self.inspection_config.doInspection = False
+
+                if self.inspection_config.kensainNumber is None or self.inspection_config.kensainNumber == "":
+                    #Break the bottom if
+                    print("No Kensain Number Input")
+                    for i in range (len(self.InspectionStatus)):
+                        self.InspectionStatus[i] = "社員番号未入力"
+                    self.hoodFR_InspectionStatus.emit(self.InspectionStatus)
+                    return True
+
+                if self.InspectionTimeStart is not None:
+
+                    if time.time() - self.InspectionTimeStart > self.InspectionWaitTime or self.firstTimeInspection is True:
+                        self.firstTimeInspection is False
+                        print("Inspection Started")
+                        self.InspectionTimeStart = time.time()
+
+                        for i in range (len(self.InspectionStatus)):
+                            self.InspectionStatus[i] = "検査中"
+                        self.hoodFR_InspectionStatus.emit(self.InspectionStatus)
+
+                        self.mergeframe1 = cv2.remap(self.mergeframe1, self.inspection_config.map1[1], self.inspection_config.map2[1], interpolation=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT)
+                        self.mergeframe2 = cv2.remap(self.mergeframe2, self.inspection_config.map1[2], self.inspection_config.map2[2], interpolation=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT)
+                        self.mergeframe3 = cv2.remap(self.mergeframe3, self.inspection_config.map1[3], self.inspection_config.map2[3], interpolation=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT)
+                        self.mergeframe4 = cv2.remap(self.mergeframe4, self.inspection_config.map1[4], self.inspection_config.map2[4], interpolation=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT)
+                        self.mergeframe5 = cv2.remap(self.mergeframe5, self.inspection_config.map1[5], self.inspection_config.map2[5], interpolation=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT)
+
+                        self.combinedImage = self.homography_blank_canvas.copy()
+                        self.combinedImage = self.merge_frame_with_cache(self.combinedImage, self.mergeframe1, "H1")
+                        self.combinedImage = self.merge_frame_with_cache(self.combinedImage, self.mergeframe2, "H2")
+                        self.combinedImage = self.merge_frame_with_cache(self.combinedImage, self.mergeframe3, "H3")
+                        self.combinedImage = self.merge_frame_with_cache(self.combinedImage, self.mergeframe4, "H4")
+                        self.combinedImage = self.merge_frame_with_cache(self.combinedImage, self.mergeframe5, "H5")
+
+                        self.combinedImage = self.apply_planarize_with_cache(self.combinedImage, "planarizeTransform", (int(self.homography_size[1]), int(self.homography_size[0])))
+                        self.combinedImage = cv2.resize(self.combinedImage, (self.homography_size[1], int(self.homography_size[0]/(1.26))))#1.48 for the qt, 1.26 for the aspect ratio
+
+                        # Crop the image scaled for each part
+                        self.part1Crop = self.combinedImage[int(self.part1Crop_YPos*1.48) : int((self.part1Crop_YPos + self.part_height_offset)*1.48), 0 : int(self.homography_size[1]*1.48)]
+                        self.part2Crop = self.combinedImage[int(self.part2Crop_YPos*1.48) : int((self.part2Crop_YPos + self.part_height_offset)*1.48), 0 : int(self.homography_size[1]*1.48)]
+                        self.part3Crop = self.combinedImage[int(self.part3Crop_YPos*1.48) : int((self.part3Crop_YPos + self.part_height_offset)*1.48), 0 : int(self.homography_size[1]*1.48)]
+                        self.part4Crop = self.combinedImage[int(self.part4Crop_YPos*1.48) : int((self.part4Crop_YPos + self.part_height_offset)*1.48), 0 : int(self.homography_size[1]*1.48)]
+                        self.part5Crop = self.combinedImage[int(self.part5Crop_YPos*1.48) : int((self.part5Crop_YPos + self.part_height_offset)*1.48), 0 : int(self.homography_size[1]*1.48)]
+
+                        #Need to convert to BGR for SAHI Inspection
+                        self.part1Crop = cv2.cvtColor(self.part1Crop, cv2.COLOR_RGB2BGR)
+                        self.part2Crop = cv2.cvtColor(self.part2Crop, cv2.COLOR_RGB2BGR)
+                        self.part3Crop = cv2.cvtColor(self.part3Crop, cv2.COLOR_RGB2BGR)
+                        self.part4Crop = cv2.cvtColor(self.part4Crop, cv2.COLOR_RGB2BGR)
+                        self.part5Crop = cv2.cvtColor(self.part5Crop, cv2.COLOR_RGB2BGR)
+
+                        #Put the All the image into a list
+                        self.InspectionImages[0] = self.part1Crop.copy()
+                        self.InspectionImages[1] = self.part2Crop.copy()
+                        self.InspectionImages[2] = self.part3Crop.copy()
+                        self.InspectionImages[3] = self.part4Crop.copy()
+                        self.InspectionImages[4] = self.part5Crop.copy()
+
+                        print(f"Length of Inspection Images : {len(self.InspectionImages)}")
+
+                        #Emit　検査中 to the status signal
+
+                        # # Do the inspection
+                        for i in range(len(self.InspectionImages)):
+                            #Only do inspectino on the one with kouden sensor on
+                            if self.inspection_config.kouden_sensor[i] == 1:
+                                self.InspectionResult_ClipDetection[i] = get_sliced_prediction(
+                                    self.InspectionImages[i],
+                                    self.hoodFR_clipDetectionModel,
+                                    slice_height=180, slice_width=1280,
+                                    overlap_height_ratio=0.0, overlap_width_ratio=0.3,
+                                    postprocess_match_metric="IOS",
+                                    postprocess_match_threshold=0.005,
+                                    postprocess_class_agnostic=True,
+                                    postprocess_type="GREEDYNMM",
+                                    verbose=0,
+                                    perform_standard_pred=True
+                                )
+
+                                #Crop image from 0 to 1024 width for the left and width-1024 to 1024 for the right
+                                self.InspectionImages_endSegmentation_Left[i] = self.InspectionImages[i][:, :1024, :]
+                                self.InspectionImages_endSegmentation_Right[i] = self.InspectionImages[i][:, -1024:, :]
+
+                                self.InspectionImages_endSegmentation_Left[i] = add_imageborder(img = self.InspectionImages_endSegmentation_Left[i], width = 480)
+                                self.InspectionImages_endSegmentation_Right[i] = add_imageborder(img = self.InspectionImages_endSegmentation_Right[i], width = 480)
+
+                                #bgr to rgb
+                                self.InspectionImages_endSegmentation_Left[i] = cv2.cvtColor(self.InspectionImages_endSegmentation_Left[i], cv2.COLOR_BGR2RGB)
+                                self.InspectionImages_endSegmentation_Right[i] = cv2.cvtColor(self.InspectionImages_endSegmentation_Right[i], cv2.COLOR_BGR2RGB)
+
+                                # cv2.imwrite(f"InspectionImages_endSegmentation_Left_{i}.png", self.InspectionImages_endSegmentation_Left[i])
+                                # cv2.imwrite(f"InspectionImages_endSegmentation_Right_{i}.png", self.InspectionImages_endSegmentation_Right[i])
+
+                                self.InspectionResult_EndSegmentation_Left[i] = self.hoodFR_endSegmentationModel(source=self.InspectionImages_endSegmentation_Left[i], conf=0.5, imgsz=1680, verbose=False, retina_masks=True)
+                                self.InspectionResult_EndSegmentation_Right[i] = self.hoodFR_endSegmentationModel(source=self.InspectionImages_endSegmentation_Right[i], conf=0.5, imgsz=1680, verbose=False, retina_masks=True)
+
+                                self.InspectionImages[i], self.InspectionResult_PitchMeasured[i], self.InspectionResult_PitchResult[i], self.InspectionResult_DetectionID[i], self.InspectionResult_Status[i], self.InspectionResult_NGReason[i] = partcheck(self.InspectionImages[i],
+                                                                                                                                                                                  self.InspectionResult_ClipDetection[i].object_prediction_list,
+                                                                                                                                                                                  self.InspectionResult_EndSegmentation_Left[i],
+                                                                                                                                                                                  self.InspectionResult_EndSegmentation_Right[i])
+                            else:
+                                #Make pure black image
+                                self.InspectionImages[i] = np.full((24, 1771, 3), (10, 10, 20), dtype=np.uint8)
+                                self.InspectionResult_PitchMeasured[i] = None
+                                self.InspectionResult_PitchResult[i] = None
+                                self.InspectionResult_DetectionID[i] = None
+                                self.InspectionResult_Status[i] = None
+
+                            # print(self.InspectionResult_Status[i])
+                            # print(self.InspectionResult_DetectionID[i])
+
+                            if self.InspectionResult_Status[i] == "OK":
+                                self.ethernet_status_green_hold_status[i] = 1
+                                self.ethernet_status_red_tenmetsu_status[i] = 0
+                                self.ethernet_status_red_hold_status[i] = 0
+
+                                self.inspection_config.current_numofPart[self.inspection_config.widget][0] += 1
+                                self.inspection_config.today_numofPart[self.inspection_config.widget][0] += 1
+
+                                #Play konpou sound if the current_numofPart is dividable by 25
+                                if self.inspection_config.current_numofPart[self.inspection_config.widget][0] % 25 == 0 and self.inspection_config.current_numofPart[self.inspection_config.widget][0] != 0:
+                                    play_konpou_sound()
+
+                                self.InspectionStatus[i] = "OK"
+
+                            elif self.InspectionResult_Status[i] == "NG":
+                                self.ethernet_status_green_hold_status[i] = 0
+                                self.ethernet_status_red_tenmetsu_status[i] = 0
+                                self.ethernet_status_red_hold_status[i] = 1
+                                self.inspection_config.current_numofPart[self.inspection_config.widget][1] += 1
+                                self.inspection_config.today_numofPart[self.inspection_config.widget][1] += 1
+
+                                self.InspectionStatus[i] = "NG"
+
+                            else:
+                                self.ethernet_status_green_hold_status[i] = 0
+                                self.ethernet_status_red_tenmetsu_status[i] = 0
+                                self.ethernet_status_red_hold_status[i] = 0
+
+                            self.save_result_database(partname = self.widget_dir_map[self.inspection_config.widget],
+                                numofPart = self.inspection_config.today_numofPart[self.inspection_config.widget],
+                                currentnumofPart = self.inspection_config.current_numofPart[self.inspection_config.widget],
+                                deltaTime = 0.0,
+                                kensainName = self.inspection_config.kensainNumber,
+                                detected_pitch_str = self.InspectionResult_PitchMeasured[i],
+                                delta_pitch_str = self.InspectionResult_DeltaPitch[i],
+                                total_length=0,
+                                resultPitch = self.InspectionResult_PitchResult[i],
+                                status = self.InspectionResult_Status[i],
+                                NGreason = self.InspectionResult_NGReason[i])
+
+
+                            #save hole image
+                            self.save_image_hole(self.holeFrame1, False, "P1")
+                            self.save_image_hole(self.holeFrame2, False, "P2")
+                            self.save_image_hole(self.holeFrame3, False, "P3")
+                            self.save_image_hole(self.holeFrame4, False, "P4")
+                            self.save_image_hole(self.holeFrame5, False, "P5")
+
+                            self.hoodFR_InspectionStatus.emit(self.InspectionStatus)
+
+                        self.save_image_result(self.part1Crop, self.InspectionImages[0], self.InspectionResult_Status[0], True, "P1")
+                        self.save_image_result(self.part2Crop, self.InspectionImages[1], self.InspectionResult_Status[1], True, "P2")
+                        self.save_image_result(self.part3Crop, self.InspectionImages[2], self.InspectionResult_Status[2], True, "P3")
+                        self.save_image_result(self.part4Crop, self.InspectionImages[3], self.InspectionResult_Status[3], True, "P4")
+                        self.save_image_result(self.part5Crop, self.InspectionImages[4], self.InspectionResult_Status[4], True, "P5")
+
+                        self.InspectionImages[0] = self.downSampling(self.InspectionImages[0], width=1771, height=24)
+                        self.InspectionImages[1] = self.downSampling(self.InspectionImages[1], width=1771, height=24)
+                        self.InspectionImages[2] = self.downSampling(self.InspectionImages[2], width=1771, height=24)
+                        self.InspectionImages[3] = self.downSampling(self.InspectionImages[3], width=1771, height=24)
+                        self.InspectionImages[4] = self.downSampling(self.InspectionImages[4], width=1771, height=24)
+
+                        self.hoodFR_InspectionResult_PitchMeasured.emit(self.InspectionResult_PitchMeasured)
+                        self.hoodFR_InspectionResult_PitchResult.emit(self.InspectionResult_PitchResult)
+                        print("Inspection Finished")
+                        #Remember that list is mutable
+                        self.ethernet_status_red_tenmetsu_status_prev = self.ethernet_status_red_tenmetsu_status_prev.copy()
+                        self.ethernet_status_green_hold_status_prev = self.ethernet_status_green_hold_status.copy()
+                        self.ethernet_status_red_hold_status_prev = self.ethernet_status_red_hold_status.copy()
+
+                        self.InspectionImages_prev[0] = self.InspectionImages[0]
+                        self.InspectionImages_prev[1] = self.InspectionImages[1]
+                        self.InspectionImages_prev[2] = self.InspectionImages[2]
+                        self.InspectionImages_prev[3] = self.InspectionImages[3]
+                        self.InspectionImages_prev[4] = self.InspectionImages[4]
+
+                        self.InspectionResult_PitchMeasured_prev = self.InspectionResult_PitchMeasured.copy()
+                        self.InspectionResult_PitchResult_prev = self.InspectionResult_PitchResult.copy()
+                        self.InspectionStatus_prev = self.InspectionStatus.copy()
+
+                        self.ethernet_status_red_tenmetsu.emit(self.ethernet_status_red_tenmetsu_status)
+                        self.ethernet_status_green_hold.emit(self.ethernet_status_green_hold_status)
+                        self.ethernet_status_red_hold.emit(self.ethernet_status_red_hold_status)
+
+                        self.part1Cam.emit(self.converQImageRGB(self.InspectionImages[0]))
+                        self.part2Cam.emit(self.converQImageRGB(self.InspectionImages[1]))
+                        self.part3Cam.emit(self.converQImageRGB(self.InspectionImages[2]))
+                        self.part4Cam.emit(self.converQImageRGB(self.InspectionImages[3]))
+                        self.part5Cam.emit(self.converQImageRGB(self.InspectionImages[4]))
+
+                        # self.hoodFR_InspectionStatus.emit(self.InspectionStatus)
+
+        #emit the ethernet
+        self.today_numofPart_signal.emit(self.inspection_config.today_numofPart)
+        self.current_numofPart_signal.emit(self.inspection_config.current_numofPart)
+
+        self.ethernet_status_red_tenmetsu.emit(self.ethernet_status_red_tenmetsu_status)
+        self.ethernet_status_green_hold.emit(self.ethernet_status_green_hold_status)
+        self.ethernet_status_red_hold.emit(self.ethernet_status_red_hold_status)
+
+        # Emit status based on the red tenmetsu status
+
+        self.hoodFR_InspectionStatus.emit(self.InspectionStatus)
+
+        # Emit the hole detection
+        self.hoodFR_HoleStatus.emit(self.DetectionResult_HoleDetection)
+        return False
 
 
     def setCounterFalse(self):
@@ -2049,7 +2015,7 @@ class InspectionThread(QThread):
             homography_matrix = yaml.load(file, Loader=yaml.FullLoader)
         return np.array(homography_matrix, dtype=np.float64)
 
-    def load_homography_adjustment_config(self):
+    def load_homography_adjustment_config(self, config_path):
         default_camera_adjustment = {
             "x_offset": 0.0,
             "y_offset": 0.0,
@@ -2060,8 +2026,8 @@ class InspectionThread(QThread):
             for camera_index in range(1, 6)
         }
 
-        if os.path.exists(self.homography_adjustment_fr_path):
-            with open(self.homography_adjustment_fr_path, 'r') as file:
+        if os.path.exists(config_path):
+            with open(config_path, 'r') as file:
                 loaded_config = yaml.load(file, Loader=yaml.FullLoader) or {}
             if isinstance(loaded_config, dict):
                 if any(key in loaded_config for key in ("x_offset", "y_offset", "rotation_deg")):
@@ -2121,12 +2087,267 @@ class InspectionThread(QThread):
             return None
         return adjustment_matrix @ homography_matrix
 
+    def refresh_crop_position_cache(self):
+        self.part1Crop_YPos_scaled = int(self.part1Crop_YPos // self.scale_factor)
+        self.part2Crop_YPos_scaled = int(self.part2Crop_YPos // self.scale_factor)
+        self.part3Crop_YPos_scaled = int(self.part3Crop_YPos // self.scale_factor)
+        self.part4Crop_YPos_scaled = int(self.part4Crop_YPos // self.scale_factor)
+        self.part5Crop_YPos_scaled = int(self.part5Crop_YPos // self.scale_factor)
+
+        self.part1Crop_Ypos_hoodFR_scaled = int(self.part1Crop_YPos_hoodFR // self.scale_factor)
+        self.part2Crop_Ypos_hoodFR_scaled = int(self.part2Crop_YPos_hoodFR // self.scale_factor)
+        self.part3Crop_Ypos_hoodFR_scaled = int(self.part3Crop_YPos_hoodFR // self.scale_factor)
+        self.part4Crop_Ypos_hoodFR_scaled = int(self.part4Crop_YPos_hoodFR // self.scale_factor)
+        self.part5Crop_Ypos_hoodFR_scaled = int(self.part5Crop_YPos_hoodFR // self.scale_factor)
+
+    def build_default_crop_settings(self):
+        settings = {}
+        for profile_key, profile_config in self.crop_position_profiles.items():
+            settings[profile_key] = {
+                f"part{index}": int(default_value)
+                for index, default_value in enumerate(profile_config["defaults"], start=1)
+            }
+        return settings
+
+    def get_current_crop_settings(self):
+        settings = {}
+        for profile_key, profile_config in self.crop_position_profiles.items():
+            settings[profile_key] = {
+                f"part{index}": int(getattr(self, attr_name))
+                for index, attr_name in enumerate(profile_config["attrs"], start=1)
+            }
+        return settings
+
+    def apply_crop_profile_settings(self, profile_key, profile_settings):
+        profile_config = self.crop_position_profiles.get(profile_key)
+        if profile_config is None:
+            return
+
+        for index, attr_name in enumerate(profile_config["attrs"], start=1):
+            default_value = profile_config["defaults"][index - 1]
+            setattr(self, attr_name, int(profile_settings.get(f"part{index}", default_value)))
+
+        self.refresh_crop_position_cache()
+
+    def save_crop_settings(self):
+        os.makedirs(os.path.dirname(self.crop_settings_path), exist_ok=True)
+        with open(self.crop_settings_path, "w") as file:
+            yaml.dump(self.get_current_crop_settings(), file, sort_keys=False)
+
+    def load_crop_settings(self):
+        settings = self.build_default_crop_settings()
+
+        if os.path.exists(self.crop_settings_path):
+            with open(self.crop_settings_path, "r") as file:
+                loaded_settings = yaml.load(file, Loader=yaml.FullLoader) or {}
+
+            if isinstance(loaded_settings, dict):
+                for profile_key, profile_settings in loaded_settings.items():
+                    if profile_key in settings and isinstance(profile_settings, dict):
+                        for part_key in settings[profile_key]:
+                            if part_key in profile_settings:
+                                settings[profile_key][part_key] = int(profile_settings[part_key])
+
+        for profile_key, profile_settings in settings.items():
+            self.apply_crop_profile_settings(profile_key, profile_settings)
+
+        self.save_crop_settings()
+
+    def clamp_crop_position(self, widget_index, position):
+        position = max(0, int(position))
+
+        if self.homography_size is None:
+            return position
+
+        crop_height = self.part_height_offset_nissanhoodFR if widget_index == 9 else self.part_height_offset
+        visible_height = int(self.homography_size[0] / (1.26 * 1.48))
+        max_position = max(0, visible_height - crop_height)
+        return min(position, max_position)
+
+    def adjust_crop_position(self, widget_index, part_index, delta):
+        profile_key = self.widget_dir_map.get(widget_index)
+        profile_config = self.crop_position_profiles.get(profile_key)
+
+        if profile_config is None or not 1 <= part_index <= len(profile_config["attrs"]):
+            return
+
+        attr_name = profile_config["attrs"][part_index - 1]
+        current_value = getattr(self, attr_name)
+        new_value = self.clamp_crop_position(widget_index, current_value + int(delta))
+        setattr(self, attr_name, new_value)
+
+        self.refresh_crop_position_cache()
+        self.save_crop_settings()
+        self.emit_crop_values(widget_index)
+        print(f"Updated {profile_key} part{part_index} crop Y to {new_value}")
+
+    def get_crop_values_for_widget(self, widget_index):
+        profile_key = self.widget_dir_map.get(widget_index)
+        profile_config = self.crop_position_profiles.get(profile_key)
+
+        if profile_config is None:
+            return []
+
+        return [int(getattr(self, attr_name)) for attr_name in profile_config["attrs"]]
+
+    def emit_crop_values(self, widget_index=None):
+        target_widgets = [widget_index] if widget_index is not None else list(self.widget_dir_map.keys())
+
+        for current_widget_index in target_widgets:
+            crop_values = self.get_crop_values_for_widget(current_widget_index)
+            if crop_values:
+                self.cropPositionChanged.emit(current_widget_index, crop_values)
+
+    def get_camera_capture(self, camera_id):
+        return getattr(self, f"cap_cam{camera_id}", None)
+
+    def has_required_cameras(self, camera_ids):
+        return all(self.get_camera_capture(camera_id) is not None for camera_id in camera_ids)
+
+    def read_camera_frame(self, capture):
+        if capture is None:
+            return None
+
+        success, frame = capture.read()
+        if not success:
+            return None
+
+        return frame
+
+    def has_required_models(self, widget_index):
+        return self.widget_model_ready.get(widget_index, True)
+
+    def create_blank_qimage(self, width, height):
+        blank_image = np.zeros((max(1, height), max(1, width), 3), dtype=np.uint8)
+        return self.convertQImage(blank_image)
+
+    def emit_blank_part_frames(self):
+        blank_image = self.create_blank_qimage(1771, 24)
+        self.part1Cam.emit(blank_image)
+        self.part2Cam.emit(blank_image)
+        self.part3Cam.emit(blank_image)
+        self.part4Cam.emit(blank_image)
+        self.part5Cam.emit(blank_image)
+
+    def emit_blank_hole_frames(self):
+        blank_image = self.create_blank_qimage(self.width_hole_offset, self.height_hole_offset)
+        self.hole1Cam.emit(blank_image)
+        self.hole2Cam.emit(blank_image)
+        self.hole3Cam.emit(blank_image)
+        self.hole4Cam.emit(blank_image)
+        self.hole5Cam.emit(blank_image)
+
+    def emit_blank_dailytenken_frame(self):
+        self.dailytenkenCam.emit(self.create_blank_qimage(1710, 198))
+
+    def create_perspective_remap(self, transform, output_size):
+        if transform is None:
+            return None
+
+        width, height = output_size
+        grid_x, grid_y = np.meshgrid(
+            np.arange(width, dtype=np.float32),
+            np.arange(height, dtype=np.float32),
+        )
+        ones = np.ones_like(grid_x)
+        destination_points = np.stack((grid_x, grid_y, ones), axis=-1).reshape(-1, 3).T
+
+        try:
+            inverse_transform = np.linalg.inv(transform)
+        except np.linalg.LinAlgError:
+            return None
+
+        source_points = inverse_transform @ destination_points
+        source_w = source_points[2]
+        valid = np.abs(source_w) > 1e-8
+        source_points[0, valid] /= source_w[valid]
+        source_points[1, valid] /= source_w[valid]
+        source_points[0, ~valid] = -1
+        source_points[1, ~valid] = -1
+
+        map_x = source_points[0].reshape(height, width).astype(np.float32)
+        map_y = source_points[1].reshape(height, width).astype(np.float32)
+
+        return map_x, map_y
+
+    def cache_perspective_maps(self):
+        self.homographyWarpCache = {}
+        self.planarizeWarpCache = {}
+
+        homography_output_sizes = {
+            "": (self.homography_size[1], self.homography_size[0]),
+            "_FR": (self.homography_size[1], self.homography_size[0]),
+            "_scaled": (self.homography_size_scaled[1], self.homography_size_scaled[0]),
+            "_scaled_FR": (self.homography_size_scaled[1], self.homography_size_scaled[0]),
+        }
+
+        for camera_index in range(1, 6):
+            for suffix, output_size in homography_output_sizes.items():
+                attribute_name = f"H{camera_index}{suffix}"
+                transform = getattr(self, attribute_name, None)
+                cached_maps = self.create_perspective_remap(transform, output_size)
+                if cached_maps is not None:
+                    self.homographyWarpCache[attribute_name] = cached_maps
+
+        planarize_sizes = {
+            "planarizeTransform": (self.homography_size[1], self.homography_size[0]),
+            "planarizeTransform_temp": (self.homography_size[1], self.homography_size[0]),
+            "planarizeTransform_scaled": (self.homography_size_scaled[1], self.homography_size_scaled[0]),
+            "planarizeTransform_temp_scaled": (self.homography_size_scaled[1], self.homography_size_scaled[0]),
+        }
+
+        for attribute_name, output_size in planarize_sizes.items():
+            transform = getattr(self, attribute_name, None)
+            cached_maps = self.create_perspective_remap(transform, output_size)
+            if cached_maps is not None:
+                self.planarizeWarpCache[attribute_name] = cached_maps
+
+    def warp_frame_with_cache(self, frame, transform_attribute, output_size):
+        cached_maps = self.homographyWarpCache.get(transform_attribute)
+        transform = getattr(self, transform_attribute, None)
+
+        if cached_maps is not None:
+            return cv2.remap(frame, cached_maps[0], cached_maps[1], interpolation=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT)
+
+        if transform is None:
+            return None
+
+        return cv2.warpPerspective(frame, transform, output_size)
+
+    def merge_frame_with_cache(self, canvas, frame, transform_attribute):
+        warped_frame = self.warp_frame_with_cache(frame, transform_attribute, (canvas.shape[1], canvas.shape[0]))
+        if warped_frame is None:
+            return canvas
+
+        if warped_frame.ndim == 3:
+            valid_mask = np.any(warped_frame > 0, axis=2)
+        else:
+            valid_mask = warped_frame > 0
+
+        canvas[valid_mask] = warped_frame[valid_mask]
+        return canvas
+
+    def apply_planarize_with_cache(self, image, transform_attribute, output_size):
+        cached_maps = self.planarizeWarpCache.get(transform_attribute)
+        transform = getattr(self, transform_attribute, None)
+
+        if cached_maps is not None:
+            return cv2.remap(image, cached_maps[0], cached_maps[1], interpolation=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT)
+
+        if transform is None:
+            return image
+
+        return cv2.warpPerspective(image, transform, output_size)
+
     def load_homography_set(self, suffix=""):
         adjustment_config = None
         attribute_suffix = suffix if suffix else ""
 
+        if suffix == "":
+            adjustment_config = self.load_homography_adjustment_config(self.homography_adjustment_path)
+
         if suffix == "_FR":
-            adjustment_config = self.load_homography_adjustment_config()
+            adjustment_config = self.load_homography_adjustment_config(self.homography_adjustment_fr_path)
 
         for camera_index in range(1, 6):
             matrix_path = f"./aikensa/cameracalibration/homography_param_cam{camera_index}{suffix}.yaml"
@@ -2166,6 +2387,7 @@ class InspectionThread(QThread):
         hoodFR_clipDetectionModel = None
         hoodFR_hanireDetectionModel = None
         hoodFR_endSegmentationModel = None
+        P658207YA0A_clipDetectionModel = None
 
         #Classification Model
         path_hoodFR_clipDetectionModel = "./aikensa/models/65820W030P_CLIP.pt"
@@ -2176,21 +2398,34 @@ class InspectionThread(QThread):
 
 
         if os.path.exists(path_hoodFR_holeDetectionModel):
-            hoodFR_holeDetectionModel = YOLO(path_hoodFR_holeDetectionModel)
-        
+            try:
+                hoodFR_holeDetectionModel = YOLO(path_hoodFR_holeDetectionModel)
+            except Exception as error:
+                print(f"Failed to load hole detection model: {error}")
+
         if os.path.exists(path_hoodFR_clipDetectionModel):
-            hoodFR_clipDetectionModel = AutoDetectionModel.from_pretrained(model_type="yolov8",
-                                                                            model_path=path_hoodFR_clipDetectionModel,
-                                                                            confidence_threshold=0.7,
-                                                                            device="cuda:0")
+            try:
+                hoodFR_clipDetectionModel = AutoDetectionModel.from_pretrained(model_type="yolov8",
+                                                                                model_path=path_hoodFR_clipDetectionModel,
+                                                                                confidence_threshold=0.7,
+                                                                                device="cuda:0")
+            except Exception as error:
+                print(f"Failed to load 65820W030P clip model: {error}")
+
         if os.path.exists(path_hoodFR_endSegmentationModel):
-            hoodFR_endSegmentationModel = YOLO(path_hoodFR_endSegmentationModel)
-        
+            try:
+                hoodFR_endSegmentationModel = YOLO(path_hoodFR_endSegmentationModel)
+            except Exception as error:
+                print(f"Failed to load end segmentation model: {error}")
+
         if os.path.exists(path_P658207YA0A_clipDetectionModel):
-            P658207YA0A_clipDetectionModel = AutoDetectionModel.from_pretrained(model_type="yolov8",
-                                                                            model_path=path_P658207YA0A_clipDetectionModel,
-                                                                            confidence_threshold=0.5,
-                                                                            device="cuda:0")
+            try:
+                P658207YA0A_clipDetectionModel = AutoDetectionModel.from_pretrained(model_type="yolov8",
+                                                                                    model_path=path_P658207YA0A_clipDetectionModel,
+                                                                                    confidence_threshold=0.5,
+                                                                                    device="cuda:0")
+            except Exception as error:
+                print(f"Failed to load 658207YA0A clip model: {error}")
 
         self.hoodFR_holeDetectionModel = hoodFR_holeDetectionModel
         self.hoodFR_clipDetectionModel = hoodFR_clipDetectionModel
@@ -2198,6 +2433,18 @@ class InspectionThread(QThread):
         self.hoodFR_endSegmentationModel = hoodFR_endSegmentationModel
 
         self.P658207YA0A_clipDetectionModel = P658207YA0A_clipDetectionModel
+        self.widget_model_ready = {
+            8: all(model is not None for model in (
+                self.hoodFR_holeDetectionModel,
+                self.hoodFR_clipDetectionModel,
+                self.hoodFR_endSegmentationModel,
+            )),
+            9: self.P658207YA0A_clipDetectionModel is not None,
+            21: all(model is not None for model in (
+                self.hoodFR_clipDetectionModel,
+                self.hoodFR_endSegmentationModel,
+            )),
+        }
 
 
     def stop(self):

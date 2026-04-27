@@ -1,0 +1,31 @@
+# These values adjust the merged destination image for each camera's base homography.
+# Order of application: rotation first, then x/y translation.
+# rotation_deg: positive rotates counterclockwise around the homography template center.
+# x_offset: positive moves the warped camera image to the right.
+# y_offset: positive moves the warped camera image downward.
+# Scaled homographies are derived automatically in code. Edit only these unscaled values.
+
+camera_1:
+  rotation_deg: 0.0
+  x_offset: 0.0
+  y_offset: 0.0
+
+camera_2:
+  rotation_deg: 0.0
+  x_offset: 0.0
+  y_offset: 0.0
+
+camera_3:
+  rotation_deg: 0.0
+  x_offset: 0.0
+  y_offset: 0.0
+
+camera_4:
+  rotation_deg: 0.0
+  x_offset: 0.0
+  y_offset: 0.0
+
+camera_5:
+  rotation_deg: 0.0
+  x_offset: 0.0
+  y_offset: 0.0

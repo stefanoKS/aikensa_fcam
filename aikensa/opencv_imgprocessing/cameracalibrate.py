@@ -283,6 +283,7 @@ def calculateHomography_template(img1, img2):
     charucoCorners2 = None
     charucoIds1 = None
     charucoIds2 = None
+    M = None
 
     _, charucoCorners1, charucoIds1 = detectCharucoBoard_aprilTag(img1)
     _, charucoCorners2, charucoIds2 = detectCharucoBoard_aprilTag(img2)
@@ -315,7 +316,7 @@ def calculateHomography_template(img1, img2):
             corners1.append(charucoCorners1[idIndex1])
             corners2.append(charucoCorners2[idIndex2])
         
-        if corners1 and corners2:
+        if len(corners1) >= 4 and len(corners2) >= 4:
             # Convert lists to numpy arrays and reshape for findHomography
             corners1 = np.array(corners1).reshape(-1, 2)
             corners2 = np.array(corners2).reshape(-1, 2)
@@ -323,13 +324,11 @@ def calculateHomography_template(img1, img2):
             # Calculate the homography matrix
             M, mask = cv2.findHomography(corners2, corners1, cv2.RANSAC, 5.0)
             # print(M)
-        
 
-        # results = warpTwoImages(img1, img2, M)
-        results = None
+    # results = warpTwoImages(img1, img2, M)
+    results = None
 
-
-        return results, M
+    return results, M
 
 
 def warpTwoImages(img1, img2, H):
@@ -354,19 +353,18 @@ def warpTwoImages(img1, img2, H):
 
 def warpTwoImages_template(img1, img2, H): #image1 is template
     h1, w1 = img1.shape[:2]
-    h2, w2 = img2.shape[:2]
     
     # Warp img2 to the perspective of img1
     img2_warped = cv2.warpPerspective(img2, H, (w1, h1))
 
-    # Create a mask for img2 to handle alpha blending
-    mask2 = np.ones_like(img2_warped, dtype=np.uint8)
+    # Reuse the warped image itself as the validity mask so we don't overwrite
+    # the stitched output with black borders from remap/warp operations.
+    if img2_warped.ndim == 3:
+        mask2_warped = np.any(img2_warped > 0, axis=2)
+    else:
+        mask2_warped = img2_warped > 0
 
-    # Warp the mask to the perspective of img1
-    mask2_warped = cv2.warpPerspective(mask2, H, (w1, h1))
-
-    # Inserting img2 into img1
     result = img1.copy()
-    np.putmask(result, mask2_warped, img2_warped)
+    result[mask2_warped] = img2_warped[mask2_warped]
 
     return result
