@@ -1368,20 +1368,21 @@ class InspectionThread(QThread):
         self.mergeframe4_scaled = self.downSampling(self.mergeframe4, self.scaled_width, self.scaled_height)
         self.mergeframe5_scaled = self.downSampling(self.mergeframe5, self.scaled_width, self.scaled_height)
 
-        if self.inspection_config.mapCalculated[3] is False:
-            if os.path.exists(self._save_dir + "Calibration_camera_3.yaml"):
-                camera_matrix, dist_coeffs = self.load_matrix_from_yaml(self._save_dir + "Calibration_camera_3.yaml")
-                h, w = self.mergeframe3.shape[:2]
-                self.inspection_config.map1[3], self.inspection_config.map2[3] = cv2.initUndistortRectifyMap(camera_matrix, dist_coeffs, None, camera_matrix, (w, h), cv2.CV_16SC2)
-                self.inspection_config.mapCalculated[3] = True
-                print("Calibration map is calculated for Camera 3")
+        if self.inspection_config.mapCalculated[1] is False:
+            for i in range(1, 6):
+                if os.path.exists(self._save_dir + f"Calibration_camera_{i}.yaml"):
+                    camera_matrix, dist_coeffs = self.load_matrix_from_yaml(self._save_dir + f"Calibration_camera_{i}.yaml")
+                    h, w = self.mergeframe1.shape[:2]
+                    self.inspection_config.map1[i], self.inspection_config.map2[i] = cv2.initUndistortRectifyMap(camera_matrix, dist_coeffs, None, camera_matrix, (w, h), cv2.CV_16SC2)
+                    self.inspection_config.mapCalculated[i] = True
+                    print(f"Calibration map is calculated for Camera {i}")
 
-                camera_matrix, dist_coeffs = self.load_matrix_from_yaml(self._save_dir + "Calibration_camera_scaled_3.yaml")
-                h, w = self.mergeframe3_scaled.shape[:2]
-                self.inspection_config.map1_downscaled[3], self.inspection_config.map2_downscaled[3] = cv2.initUndistortRectifyMap(camera_matrix, dist_coeffs, None, camera_matrix, (w, h), cv2.CV_16SC2)
-                print("Calibration map is calculated for Camera 3 for scaled image")
+                    camera_matrix, dist_coeffs = self.load_matrix_from_yaml(self._save_dir + f"Calibration_camera_scaled_{i}.yaml")
+                    h, w = self.mergeframe1_scaled.shape[:2]
+                    self.inspection_config.map1_downscaled[i], self.inspection_config.map2_downscaled[i] = cv2.initUndistortRectifyMap(camera_matrix, dist_coeffs, None, camera_matrix, (w, h), cv2.CV_16SC2)
+                    print(f"Calibration map is calculated for Camera {i} for scaled image")
 
-        if self.inspection_config.mapCalculated[3] is True:
+        if self.inspection_config.mapCalculated[1] is True:
 
             #rotate the bottom frame 90deg CCW
             self.bottomframe = self.downScaledImage(self.bottomframe, self.scale_factor_hole)
