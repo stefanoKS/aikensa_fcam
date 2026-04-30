@@ -860,6 +860,8 @@ class CalibrationThread(QThread):
             "x_offset": 0.0,
             "y_offset": 0.0,
             "rotation_deg": 0.0,
+            "x_scale": 1.0,
+            "y_scale": 1.0,
         }
         default_config = {
             f"camera_{camera_index}": default_camera_adjustment.copy()
@@ -884,10 +886,45 @@ class CalibrationThread(QThread):
         with open(self.homography_adjustment_path, "w") as file:
             yaml.dump(self.homography_adjustment_config, file, sort_keys=False)
 
-    def build_homography_adjustment_matrix(self, x_offset, y_offset, rotation_deg, image_size):
-        height, width = image_size
-        center_x = width / 2.0
-        center_y = height / 2.0
+    def get_camera_source_size(self, scaled=False):
+        if scaled:
+            scaled_height = self.scaled_height if self.scaled_height is not None else int(self.frame_height / self.scale_factor)
+            scaled_width = self.scaled_width if self.scaled_width is not None else int(self.frame_width / self.scale_factor)
+            return (scaled_height, scaled_width)
+
+        return (self.frame_height, self.frame_width)
+
+    def derive_projected_adjustment_geometry(self, homography_matrix, source_size, output_size):
+        normalized_matrix = normalize_homography_matrix(homography_matrix)
+        if normalized_matrix is None:
+            output_height, output_width = output_size
+            return {
+                "center": (output_width / 2.0, output_height / 2.0),
+                "anchor": (0.0, output_height / 2.0),
+            }
+
+        source_height, source_width = source_size
+        source_corners = np.array([
+            [0.0, 0.0],
+            [float(source_width), 0.0],
+            [0.0, float(source_height)],
+            [float(source_width), float(source_height)],
+        ], dtype=np.float32).reshape(-1, 1, 2)
+        projected_corners = cv2.perspectiveTransform(source_corners, normalized_matrix).reshape(-1, 2)
+
+        center_x = float(np.mean(projected_corners[:, 0]))
+        center_y = float(np.mean(projected_corners[:, 1]))
+        anchor_point = projected_corners[int(np.argmin(projected_corners[:, 0]))]
+
+        return {
+            "center": (center_x, center_y),
+            "anchor": (float(anchor_point[0]), float(anchor_point[1])),
+        }
+
+    def build_homography_adjustment_matrix(self, x_offset, y_offset, rotation_deg, x_scale, y_scale, image_size, homography_matrix, source_size):
+        geometry = self.derive_projected_adjustment_geometry(homography_matrix, source_size, image_size)
+        center_x, center_y = geometry["center"]
+        anchor_x, anchor_y = geometry["anchor"]
         theta = np.deg2rad(rotation_deg)
         cos_theta = np.cos(theta)
         sin_theta = np.sin(theta)
@@ -902,6 +939,21 @@ class CalibrationThread(QThread):
             [sin_theta, cos_theta, 0.0],
             [0.0, 0.0, 1.0],
         ], dtype=np.float64)
+        scale_matrix = np.array([
+            [x_scale, 0.0, 0.0],
+            [0.0, y_scale, 0.0],
+            [0.0, 0.0, 1.0],
+        ], dtype=np.float64)
+        translate_scale_to_anchor = np.array([
+            [1.0, 0.0, -anchor_x],
+            [0.0, 1.0, -anchor_y],
+            [0.0, 0.0, 1.0],
+        ], dtype=np.float64)
+        translate_scale_back = np.array([
+            [1.0, 0.0, anchor_x],
+            [0.0, 1.0, anchor_y],
+            [0.0, 0.0, 1.0],
+        ], dtype=np.float64)
         translate_back = np.array([
             [1.0, 0.0, center_x],
             [0.0, 1.0, center_y],
@@ -914,7 +966,8 @@ class CalibrationThread(QThread):
         ], dtype=np.float64)
 
         rotation_about_center = translate_back @ rotation_matrix @ translate_to_origin
-        return translation_matrix @ rotation_about_center
+        scale_about_left_anchor = translate_scale_back @ scale_matrix @ translate_scale_to_anchor
+        return translation_matrix @ rotation_about_center @ scale_about_left_anchor
 
     def apply_homography_adjustment(self, homography_matrix, adjustment_matrix):
         homography_matrix = normalize_homography_matrix(homography_matrix)
@@ -932,7 +985,11 @@ class CalibrationThread(QThread):
                 camera_adjustment.get("x_offset", 0.0),
                 camera_adjustment.get("y_offset", 0.0),
                 camera_adjustment.get("rotation_deg", 0.0),
+                camera_adjustment.get("x_scale", 1.0),
+                camera_adjustment.get("y_scale", 1.0),
                 self.homography_size,
+                base_matrix,
+                self.get_camera_source_size(scaled=False),
             )
             setattr(self, f"H{camera_index}", self.apply_homography_adjustment(base_matrix, adjustment_matrix))
 
@@ -942,7 +999,11 @@ class CalibrationThread(QThread):
                 camera_adjustment.get("x_offset", 0.0) / self.scale_factor,
                 camera_adjustment.get("y_offset", 0.0) / self.scale_factor,
                 camera_adjustment.get("rotation_deg", 0.0),
+                camera_adjustment.get("x_scale", 1.0),
+                camera_adjustment.get("y_scale", 1.0),
                 self.homography_size_scaled,
+                base_matrix_scaled,
+                self.get_camera_source_size(scaled=True),
             )
             setattr(self, f"H{camera_index}_scaled", self.apply_homography_adjustment(base_matrix_scaled, adjustment_matrix_scaled))
 
@@ -956,6 +1017,8 @@ class CalibrationThread(QThread):
             "x_offset": 0.0,
             "y_offset": 0.0,
             "rotation_deg": 0.0,
+            "x_scale": 1.0,
+            "y_scale": 1.0,
         })
         camera_adjustment["x_offset"] = float(camera_adjustment.get("x_offset", 0.0) + x_delta)
         camera_adjustment["y_offset"] = float(camera_adjustment.get("y_offset", 0.0) + y_delta)

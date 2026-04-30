@@ -28,7 +28,7 @@ text_offset = 40
 endoffset_y = 0
 bbox_offset = 10
 
-pixelMultiplier = 0.15893
+pixelMultiplier = 0.1589
 #
 
 
@@ -229,7 +229,7 @@ def partcheck(image, sahi_predictionList):
     #     status = "NG"
 
     xy_pairs = list(zip(detectedposX, detectedposY))
-    draw_pitch_line(image, xy_pairs, resultPitch, thickness=6)
+    draw_pitch_line(image, xy_pairs, resultPitch, thickness=12)
     
     return image, measuredPitch, resultPitch, resultid, status, ngreason
 
@@ -309,7 +309,7 @@ def check_id(detectedid, idSpec):
             result[i] = 1
     return result
 
-def draw_pitch_line(image, xy_pairs, pitchresult, thickness=2):
+def draw_pitch_line(image, xy_pairs, pitchresult, thickness=6):
     xy_pairs = [(int(x), int(y)) for x, y in xy_pairs]
 
     if len(xy_pairs) != 0:
@@ -441,7 +441,7 @@ def drawcircle(image, pos, class_id): #for ire and hanire
     #check if pos is tupple
     pos = (int(pos[0]), int(pos[1]))
 
-    cv2.circle(img=image, center=pos, radius=30, color=color, thickness=2, lineType=cv2.LINE_8)
+    cv2.circle(img=image, center=pos, radius=30, color=color, thickness=6, lineType=cv2.LINE_8)
 
     return image
 
@@ -479,7 +479,7 @@ def calclength(p1, p2, onlyX = False):
         length = abs(p1[0] - p2[0])
     return length
 
-def draw_bounding_box(image, x, y, w, h, img_size, color=(0, 255, 0), thickness=4, bbox_offset=bbox_offset):
+def draw_bounding_box(image, x, y, w, h, img_size, color=(0, 255, 0), thickness=6, bbox_offset=bbox_offset):
     x = int(x)
     y = int(y)
     w = int(w)
