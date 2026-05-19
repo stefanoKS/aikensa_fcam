@@ -1163,27 +1163,38 @@ class InspectionThread(QThread):
                             #Only do inspectino on the one with kouden sensor ons
                             self.inspection_config.kouden_sensor[i] = 1 #forcefully make it 1
                             if self.inspection_config.kouden_sensor[i] == 1:
-                                self.InspectionResult_ClipDetection[i] = get_sliced_prediction(
-                                    self.InspectionImages[i],
-                                    self.P658207YA0A_clipDetectionModel,
-                                    slice_height=497, slice_width=1960,
-                                    overlap_height_ratio=0.0, overlap_width_ratio=0.2,
-                                    postprocess_match_metric="IOS",
-                                    postprocess_match_threshold=0.005,
-                                    postprocess_class_agnostic=True,
-                                    postprocess_type="GREEDYNMM",
-                                    verbose=0,
-                                    perform_standard_pred=False
-                                )
+                                part_exists = self.classify_P658207YA0A_part_existence(self.InspectionImages[i])
 
-                                #Crop image from 0 to 1024 width for the left and width-1024 to 1024 for the right
-                                # self.InspectionImages_endSegmentation_Left[i] = self.InspectionImages[i][:, :1024, :]
-                                # self.InspectionImages_endSegmentation_Right[i] = self.InspectionImages[i][:, -1024:, :]
+                                if part_exists:
+                                    self.InspectionResult_ClipDetection[i] = get_sliced_prediction(
+                                        self.InspectionImages[i],
+                                        self.P658207YA0A_clipDetectionModel,
+                                        slice_height=497, slice_width=1960,
+                                        overlap_height_ratio=0.0, overlap_width_ratio=0.2,
+                                        postprocess_match_metric="IOS",
+                                        postprocess_match_threshold=0.005,
+                                        postprocess_class_agnostic=True,
+                                        postprocess_type="GREEDYNMM",
+                                        verbose=0,
+                                        perform_standard_pred=False
+                                    )
 
-                                # self.InspectionResult_EndSegmentation_Left[i] = self.hoodFR_endSegmentationModel(source=self.InspectionImages_endSegmentation_Left[i], conf=0.5, imgsz=960, verbose=False)
-                                # self.InspectionResult_EndSegmentation_Right[i] = self.hoodFR_endSegmentationModel(source=self.InspectionImages_endSegmentation_Right[i], conf=0.5, imgsz=960, verbose=False)
+                                    #Crop image from 0 to 1024 width for the left and width-1024 to 1024 for the right
+                                    # self.InspectionImages_endSegmentation_Left[i] = self.InspectionImages[i][:, :1024, :]
+                                    # self.InspectionImages_endSegmentation_Right[i] = self.InspectionImages[i][:, -1024:, :]
 
-                                self.InspectionImages[i], self.InspectionResult_PitchMeasured[i], self.InspectionResult_PitchResult[i], self.InspectionResult_DetectionID[i], self.InspectionResult_Status[i], self.InspectionResult_NGReason[i] = P658207YA0A_partcheck(self.InspectionImages[i], self.InspectionResult_ClipDetection[i].object_prediction_list)
+                                    # self.InspectionResult_EndSegmentation_Left[i] = self.hoodFR_endSegmentationModel(source=self.InspectionImages_endSegmentation_Left[i], conf=0.5, imgsz=960, verbose=False)
+                                    # self.InspectionResult_EndSegmentation_Right[i] = self.hoodFR_endSegmentationModel(source=self.InspectionImages_endSegmentation_Right[i], conf=0.5, imgsz=960, verbose=False)
+
+                                    self.InspectionImages[i], self.InspectionResult_PitchMeasured[i], self.InspectionResult_PitchResult[i], self.InspectionResult_DetectionID[i], self.InspectionResult_Status[i], self.InspectionResult_NGReason[i] = P658207YA0A_partcheck(self.InspectionImages[i], self.InspectionResult_ClipDetection[i].object_prediction_list)
+                                else:
+                                    self.InspectionResult_ClipDetection[i] = None
+                                    self.InspectionResult_PitchMeasured[i] = None
+                                    self.InspectionResult_PitchResult[i] = None
+                                    self.InspectionResult_DetectionID[i] = None
+                                    self.InspectionResult_Status[i] = None
+                                    self.InspectionResult_NGReason[i] = None
+                                    self.InspectionStatus[i] = "製品未検出"
                             else:
                                 #Make pure black image
                                 self.InspectionImages[i] = np.full((24, 1771, 3), (10, 10, 20), dtype=np.uint8)
@@ -1203,8 +1214,8 @@ class InspectionThread(QThread):
                                 self.inspection_config.current_numofPart[self.inspection_config.widget][0] += 1
                                 self.inspection_config.today_numofPart[self.inspection_config.widget][0] += 1
 
-                                #Play konpou sound if the current_numofPart is dividable by 25
-                                if self.inspection_config.current_numofPart[self.inspection_config.widget][0] % 25 == 0 and self.inspection_config.current_numofPart[self.inspection_config.widget][0] != 0:
+                                #Play konpou sound if the current_numofPart is dividable by 15
+                                if self.inspection_config.current_numofPart[self.inspection_config.widget][0] % 15 == 0 and self.inspection_config.current_numofPart[self.inspection_config.widget][0] != 0:
                                     play_konpou_sound()
 
                                 self.InspectionStatus[i] = "OK"
@@ -1223,17 +1234,18 @@ class InspectionThread(QThread):
                                 self.ethernet_status_red_tenmetsu_status[i] = 0
                                 self.ethernet_status_red_hold_status[i] = 0
 
-                            self.save_result_database(partname = self.widget_dir_map[self.inspection_config.widget],
-                                numofPart = self.inspection_config.today_numofPart[self.inspection_config.widget],
-                                currentnumofPart = self.inspection_config.current_numofPart[self.inspection_config.widget],
-                                deltaTime = 0.0,
-                                kensainName = self.inspection_config.kensainNumber,
-                                detected_pitch_str = self.InspectionResult_PitchMeasured[i],
-                                delta_pitch_str = self.InspectionResult_DeltaPitch[i],
-                                total_length=0,
-                                resultPitch = self.InspectionResult_PitchResult[i],
-                                status = self.InspectionStatus[i],
-                                NGreason = self.InspectionResult_NGReason[i])
+                            if self.InspectionResult_Status[i] in ("OK", "NG"):
+                                self.save_result_database(partname = self.widget_dir_map[self.inspection_config.widget],
+                                    numofPart = self.inspection_config.today_numofPart[self.inspection_config.widget],
+                                    currentnumofPart = self.inspection_config.current_numofPart[self.inspection_config.widget],
+                                    deltaTime = 0.0,
+                                    kensainName = self.inspection_config.kensainNumber,
+                                    detected_pitch_str = self.InspectionResult_PitchMeasured[i],
+                                    delta_pitch_str = self.InspectionResult_DeltaPitch[i],
+                                    total_length=0,
+                                    resultPitch = self.InspectionResult_PitchResult[i],
+                                    status = self.InspectionStatus[i],
+                                    NGreason = self.InspectionResult_NGReason[i])
 
 
                             # #save hole image
@@ -1245,11 +1257,9 @@ class InspectionThread(QThread):
 
                             self.P658207YA0A_InspectionStatus.emit(self.InspectionStatus)
 
-                        self.save_image_result(self.part1Crop, self.InspectionImages[0], self.InspectionResult_Status[0], True, "P1")
-                        self.save_image_result(self.part2Crop, self.InspectionImages[1], self.InspectionResult_Status[1], True, "P2")
-                        self.save_image_result(self.part3Crop, self.InspectionImages[2], self.InspectionResult_Status[2], True, "P3")
-                        self.save_image_result(self.part4Crop, self.InspectionImages[3], self.InspectionResult_Status[3], True, "P4")
-                        self.save_image_result(self.part5Crop, self.InspectionImages[4], self.InspectionResult_Status[4], True, "P5")
+                        for i, part_crop in enumerate((self.part1Crop, self.part2Crop, self.part3Crop, self.part4Crop, self.part5Crop)):
+                            if self.InspectionResult_Status[i] in ("OK", "NG"):
+                                self.save_image_result(part_crop, self.InspectionImages[i], self.InspectionResult_Status[i], True, f"P{i + 1}")
 
                         self.InspectionImages[0] = self.downSampling(self.InspectionImages[0], width=1771, height=24)
                         self.InspectionImages[1] = self.downSampling(self.InspectionImages[1], width=1771, height=24)
@@ -2565,6 +2575,30 @@ class InspectionThread(QThread):
     def has_required_models(self, widget_index):
         return self.widget_model_ready.get(widget_index, True)
 
+    def classify_P658207YA0A_part_existence(self, image):
+        if image is None or image.size == 0:
+            return False
+
+        if self.P658207YA0A_existClassificationModel is None:
+            return True
+
+        squeezed_image = cv2.resize(image, (512, 512), interpolation=cv2.INTER_LINEAR)
+        squeezed_image = cv2.cvtColor(squeezed_image, cv2.COLOR_BGR2RGB)
+
+        try:
+            classification_results = self.P658207YA0A_existClassificationModel(
+                squeezed_image,
+                stream=True,
+                imgsz=512,
+                verbose=False,
+            )
+            predicted_class = list(classification_results)[0].probs.data.argmax().item()
+        except Exception as error:
+            print(f"Failed to run 658207YA0A exist classification: {error}")
+            return True
+
+        return predicted_class == 0
+
     def create_blank_qimage(self, width, height):
         blank_image = np.zeros((max(1, height), max(1, width), 3), dtype=np.uint8)
         return self.convertQImage(blank_image)
@@ -2744,11 +2778,13 @@ class InspectionThread(QThread):
         hoodFR_hanireDetectionModel = None
         hoodFR_endSegmentationModel = None
         P658207YA0A_clipDetectionModel = None
+        P658207YA0A_existClassificationModel = None
 
         #Classification Model
         path_hoodFR_clipDetectionModel = "./aikensa/models/65820W030P_CLIP.pt"
         path_hoodFR_holeDetectionModel = "./aikensa/models/65820W030P_MIZUANA.pt"
         path_P658207YA0A_clipDetectionModel = "./aikensa/models/658207YA0A_CLIP.pt"
+        path_P658207YA0A_existClassificationModel = "./aikensa/models/658207YA0A_EXIST.pt"
         #Segmentation Model
         path_hoodFR_endSegmentationModel = "./aikensa/models/65820W030P_END_SEGMENTATION.pt"
 
@@ -2783,19 +2819,29 @@ class InspectionThread(QThread):
             except Exception as error:
                 print(f"Failed to load 658207YA0A clip model: {error}")
 
+        if os.path.exists(path_P658207YA0A_existClassificationModel):
+            try:
+                P658207YA0A_existClassificationModel = YOLO(path_P658207YA0A_existClassificationModel)
+            except Exception as error:
+                print(f"Failed to load 658207YA0A exist model: {error}")
+
         self.hoodFR_holeDetectionModel = hoodFR_holeDetectionModel
         self.hoodFR_clipDetectionModel = hoodFR_clipDetectionModel
         self.hoodFR_hanireDetectionModel = hoodFR_hanireDetectionModel
         self.hoodFR_endSegmentationModel = hoodFR_endSegmentationModel
 
         self.P658207YA0A_clipDetectionModel = P658207YA0A_clipDetectionModel
+        self.P658207YA0A_existClassificationModel = P658207YA0A_existClassificationModel
         self.widget_model_ready = {
             8: all(model is not None for model in (
                 self.hoodFR_holeDetectionModel,
                 self.hoodFR_clipDetectionModel,
                 self.hoodFR_endSegmentationModel,
             )),
-            9: self.P658207YA0A_clipDetectionModel is not None,
+            9: all(model is not None for model in (
+                self.P658207YA0A_clipDetectionModel,
+                self.P658207YA0A_existClassificationModel,
+            )),
             21: all(model is not None for model in (
                 self.hoodFR_clipDetectionModel,
                 self.hoodFR_endSegmentationModel,

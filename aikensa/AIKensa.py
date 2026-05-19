@@ -653,7 +653,11 @@ class AIKensa(QMainWindow):
             label = widget.findChild(QLabel, label_names[i])
             if label:
                 label.setText(status)
-                if status == "検査準備完了":
+                if status == "製品検出済み":
+                    label.setStyleSheet("QLabel { background-color: lightblue; }")
+                elif status == "製品未検出":
+                    label.setStyleSheet("QLabel { background-color: pink; }")
+                elif status == "検査準備完了":
                     label.setStyleSheet("QLabel { background-color: lightblue; }")
                 elif status == "検査中":
                     label.setStyleSheet("QLabel { background-color: pink; }")
