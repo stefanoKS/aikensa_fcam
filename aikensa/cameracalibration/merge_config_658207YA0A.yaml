@@ -15,13 +15,13 @@ manual_planarize_points:
   y4: 2276.0
 homography_adjustment:
   camera_1:
-    x_offset: 0.0
+    x_offset: -4.0
     y_offset: 5.0
     rotation_deg: 0.0
     x_scale: 1.0
     y_scale: 1.0
   camera_2:
-    x_offset: -11.0
+    x_offset: -15.0
     y_offset: 0.0
     rotation_deg: 0.0
     x_scale: 1.00212427
@@ -39,7 +39,7 @@ homography_adjustment:
     x_scale: 0.9952531
     y_scale: 1.0
   camera_5:
-    x_offset: -49.0
+    x_offset: -48.0
     y_offset: 0.0
     rotation_deg: 0.0
     x_scale: 0.99155118
