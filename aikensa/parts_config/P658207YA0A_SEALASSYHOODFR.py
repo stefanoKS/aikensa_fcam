@@ -38,6 +38,7 @@ BLACK_CLIP_CLASS_ID = 0
 V_CUT_CLASS_ID = 1
 WRONG_CLIP_COLOR_CLASS_IDS = {2, 3}
 MISSING_CLIP_CLASS_ID = 4
+DEBUG_PASS_CLIP_CLASS_IDS = {BLACK_CLIP_CLASS_ID, *WRONG_CLIP_COLOR_CLASS_IDS}
 
 NG_REASON_BY_CLASS_ID = {
     2: "WRONG CLIP COLOR",
@@ -52,7 +53,7 @@ DETECTION_COLOR_BY_CLASS_ID = {
     3: (0, 220, 220),
     4: (0, 0, 255),
 }
-def partcheck(image, sahi_predictionList, clipheight_model=None):
+def partcheck(image, sahi_predictionList, clipheight_model=None, debug_clip_mode=False):
 
     base_image = image.copy()
 
@@ -112,7 +113,7 @@ def partcheck(image, sahi_predictionList, clipheight_model=None):
 
     for i, detection in enumerate(sorted_detections):
         detectedid.append(detection.category.id)
-        if detection.category.id == BLACK_CLIP_CLASS_ID:
+        if is_black_clip_detection(detection.category.id, debug_clip_mode):
             bbox = detection.bbox
             clip_boxes.append(bbox)
             x, y = get_center(bbox)
@@ -134,7 +135,7 @@ def partcheck(image, sahi_predictionList, clipheight_model=None):
                 w,
                 h,
                 [image.shape[1], image.shape[0]],
-                color=DETECTION_COLOR_BY_CLASS_ID[BLACK_CLIP_CLASS_ID],
+                color=DETECTION_COLOR_BY_CLASS_ID.get(detection.category.id, DETECTION_COLOR_BY_CLASS_ID[BLACK_CLIP_CLASS_ID]),
             )
 
             if prev_center is not None:
@@ -183,8 +184,8 @@ def partcheck(image, sahi_predictionList, clipheight_model=None):
             )
     
     
-    clip_ng_reasons = get_clip_ng_reasons(detectedid, idSpec)
-    resultid = check_id(detectedid, idSpec)
+    clip_ng_reasons = get_clip_ng_reasons(detectedid, idSpec, debug_clip_mode=debug_clip_mode)
+    resultid = check_id(detectedid, idSpec, debug_clip_mode=debug_clip_mode)
 
     if clip_ng_reasons:
         status = "NG"
@@ -197,7 +198,7 @@ def partcheck(image, sahi_predictionList, clipheight_model=None):
 
     #Calculate the extra necessary dimension (the V cut dimension). If the order of the ID is correct
 
-    if detectedid == idSpec:
+    if matches_id_sequence(detectedid, idSpec, debug_clip_mode=debug_clip_mode):
         resultid = [1] * len(idSpec)
         # print("Correct ID order is Detected")
 
@@ -359,14 +360,36 @@ def draw_flag_status(image, flag_pitchfuryou, flag_clip_furyou, flag_clip_hanire
 
     return image
 
-def check_id(detectedid, idSpec):
+def is_black_clip_detection(detected_id, debug_clip_mode=False):
+    if debug_clip_mode:
+        return detected_id in DEBUG_PASS_CLIP_CLASS_IDS
+    return detected_id == BLACK_CLIP_CLASS_ID
+
+
+def is_expected_detection(expected_id, detected_id, debug_clip_mode=False):
+    if debug_clip_mode and expected_id == BLACK_CLIP_CLASS_ID:
+        return detected_id in DEBUG_PASS_CLIP_CLASS_IDS
+    return expected_id == detected_id
+
+
+def matches_id_sequence(detectedid, idSpec, debug_clip_mode=False):
+    if len(detectedid) != len(idSpec):
+        return False
+
+    return all(
+        is_expected_detection(spec, detected, debug_clip_mode=debug_clip_mode)
+        for spec, detected in zip(idSpec, detectedid)
+    )
+
+
+def check_id(detectedid, idSpec, debug_clip_mode=False):
     result = [0] * len(idSpec)
     for i, (spec, detected) in enumerate(zip(idSpec, detectedid)):
-        if spec == detected:
+        if is_expected_detection(spec, detected, debug_clip_mode=debug_clip_mode):
             result[i] = 1
     return result
 
-def get_clip_ng_reasons(detectedid, idSpec):
+def get_clip_ng_reasons(detectedid, idSpec, debug_clip_mode=False):
     ng_reasons = []
 
     for index, expected_id in enumerate(idSpec):
@@ -374,6 +397,8 @@ def get_clip_ng_reasons(detectedid, idSpec):
             continue
 
         detected_id = detectedid[index]
+        if debug_clip_mode and detected_id in DEBUG_PASS_CLIP_CLASS_IDS:
+            continue
         if detected_id in WRONG_CLIP_COLOR_CLASS_IDS:
             ng_reasons.append(NG_REASON_BY_CLASS_ID[detected_id])
         elif detected_id == MISSING_CLIP_CLASS_ID:

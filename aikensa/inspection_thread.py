@@ -38,6 +38,7 @@ from aikensa.tools.opencv_tools import add_imageborder
 class InspectionConfig:
     widget: int = 0
     cameraID: int = -1 # -1 indicates no camera selected
+    P658207YA0A_debug_clip_mode: bool = True
 
     mapCalculated: list = field(default_factory=lambda: [False]*10) #for 10 cameras
     map1: list = field(default_factory=lambda: [None]*10) #for 10 cameras
@@ -1190,6 +1191,7 @@ class InspectionThread(QThread):
                                         self.InspectionImages[i],
                                         self.InspectionResult_ClipDetection[i].object_prediction_list,
                                         self.P658207YA0A_clipHeightModel,
+                                        debug_clip_mode=self.inspection_config.P658207YA0A_debug_clip_mode,
                                     )
 
                                     if self.InspectionResult_Status[i] == "OK":
