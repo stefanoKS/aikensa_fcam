@@ -621,6 +621,18 @@ class AIKensa(QMainWindow):
 
         label.setStyleSheet(merged_stylesheet)
 
+    def _format_measurement_value(self, value):
+        if value is None:
+            return "0.0"
+
+        if isinstance(value, bool):
+            return str(value)
+
+        try:
+            return f"{float(value):.1f}"
+        except (TypeError, ValueError):
+            return str(value)
+
     def _update_measurement_text_labels(self, widget_index, label_count, measurement_value):
         all_label_names = self._measurement_label_groups(label_count)
 
@@ -636,7 +648,7 @@ class AIKensa(QMainWindow):
             for label_index, label_name in enumerate(labels):
                 label = self.stackedWidget.widget(widget_index).findChild(QLabel, label_name)
                 if label:
-                    label.setText(str(part_measurements[label_index]))
+                    label.setText(self._format_measurement_value(part_measurements[label_index]))
 
     def _update_measurement_text_colors(self, widget_index, label_count, pitch_result):
         all_label_names = self._measurement_label_groups(label_count)
