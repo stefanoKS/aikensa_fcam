@@ -693,7 +693,7 @@ background-color: rgb(211, 215, 207);</string>
        <x>380</x>
        <y>90</y>
        <width>82</width>
-       <height>31</height>
+       <height>58</height>
       </rect>
      </property>
      <layout class="QVBoxLayout" name="verticalLayout">
@@ -722,7 +722,7 @@ background-color: rgb(211, 215, 207);</string>
        <x>380</x>
        <y>240</y>
        <width>82</width>
-       <height>31</height>
+       <height>58</height>
       </rect>
      </property>
      <layout class="QVBoxLayout" name="verticalLayout_3">
@@ -751,7 +751,7 @@ background-color: rgb(211, 215, 207);</string>
        <x>380</x>
        <y>390</y>
        <width>82</width>
-       <height>31</height>
+       <height>58</height>
       </rect>
      </property>
      <layout class="QVBoxLayout" name="verticalLayout_4">
@@ -780,7 +780,7 @@ background-color: rgb(211, 215, 207);</string>
        <x>380</x>
        <y>530</y>
        <width>82</width>
-       <height>31</height>
+       <height>58</height>
       </rect>
      </property>
      <layout class="QVBoxLayout" name="verticalLayout_6">
@@ -809,7 +809,7 @@ background-color: rgb(211, 215, 207);</string>
        <x>380</x>
        <y>670</y>
        <width>82</width>
-       <height>31</height>
+       <height>58</height>
       </rect>
      </property>
      <layout class="QVBoxLayout" name="verticalLayout_5">
@@ -1033,7 +1033,9 @@ border-color: rgb(36, 36, 36);</string>
         </property>
         <property name="styleSheet">
          <string notr="true">background-color: rgb(255, 255, 255);
-border-color: rgb(36, 36, 36);</string>
+border-width: 3px;
+border-style: solid;
+border-color: rgb(136, 136, 36);</string>
         </property>
         <property name="text">
          <string>XXX</string>
@@ -1099,7 +1101,9 @@ border-color: rgb(36, 36, 36);</string>
         </property>
         <property name="styleSheet">
          <string notr="true">background-color: rgb(255, 255, 255);
-border-color: rgb(36, 36, 36);</string>
+border-width: 3px;
+border-style: solid;
+border-color: rgb(136, 136, 36);</string>
         </property>
         <property name="text">
          <string>XXX</string>
@@ -1143,7 +1147,9 @@ border-color: rgb(36, 36, 36);</string>
         </property>
         <property name="styleSheet">
          <string notr="true">background-color: rgb(255, 255, 255);
-border-color: rgb(36, 36, 36);</string>
+border-width: 3px;
+border-style: solid;
+border-color: rgb(136, 136, 36);</string>
         </property>
         <property name="text">
          <string>XXX</string>
@@ -1165,7 +1171,9 @@ border-color: rgb(36, 36, 36);</string>
         </property>
         <property name="styleSheet">
          <string notr="true">background-color: rgb(255, 255, 255);
-border-color: rgb(36, 36, 36);</string>
+border-width: 3px;
+border-style: solid;
+border-color: rgb(136, 136, 36);</string>
         </property>
         <property name="text">
          <string>XXX</string>
@@ -1231,7 +1239,9 @@ border-color: rgb(36, 36, 36);</string>
         </property>
         <property name="styleSheet">
          <string notr="true">background-color: rgb(255, 255, 255);
-border-color: rgb(36, 36, 36);</string>
+border-width: 3px;
+border-style: solid;
+border-color: rgb(136, 136, 36);</string>
         </property>
         <property name="text">
          <string>XXX</string>
@@ -1382,7 +1392,9 @@ border-color: rgb(36, 36, 36);</string>
         </property>
         <property name="styleSheet">
          <string notr="true">background-color: rgb(255, 255, 255);
-border-color: rgb(36, 36, 36);</string>
+border-width: 3px;
+border-style: solid;
+border-color: rgb(136, 136, 36);</string>
         </property>
         <property name="text">
          <string>XXX</string>
@@ -1491,7 +1503,9 @@ border-color: rgb(36, 36, 36);</string>
         </property>
         <property name="styleSheet">
          <string notr="true">background-color: rgb(255, 255, 255);
-border-color: rgb(36, 36, 36);</string>
+border-width: 3px;
+border-style: solid;
+border-color: rgb(136, 136, 36);</string>
         </property>
         <property name="text">
          <string>XXX</string>
@@ -1513,7 +1527,9 @@ border-color: rgb(36, 36, 36);</string>
         </property>
         <property name="styleSheet">
          <string notr="true">background-color: rgb(255, 255, 255);
-border-color: rgb(36, 36, 36);</string>
+border-width: 3px;
+border-style: solid;
+border-color: rgb(136, 136, 36);</string>
         </property>
         <property name="text">
          <string>XXX</string>
@@ -1579,7 +1595,9 @@ border-color: rgb(36, 36, 36);</string>
         </property>
         <property name="styleSheet">
          <string notr="true">background-color: rgb(255, 255, 255);
-border-color: rgb(36, 36, 36);</string>
+border-width: 3px;
+border-style: solid;
+border-color: rgb(136, 136, 36);</string>
         </property>
         <property name="text">
          <string>XXX</string>
@@ -1689,7 +1707,9 @@ border-color: rgb(36, 36, 36);</string>
         </property>
         <property name="styleSheet">
          <string notr="true">background-color: rgb(255, 255, 255);
-border-color: rgb(36, 36, 36);</string>
+border-width: 3px;
+border-style: solid;
+border-color: rgb(136, 136, 36);</string>
         </property>
         <property name="text">
          <string>XXX</string>
@@ -2369,7 +2389,9 @@ border-color: rgb(36, 36, 36);</string>
         </property>
         <property name="styleSheet">
          <string notr="true">background-color: rgb(255, 255, 255);
-border-color: rgb(36, 36, 36);</string>
+border-width: 3px;
+border-style: solid;
+border-color: rgb(136, 136, 36);</string>
         </property>
         <property name="text">
          <string>XXX</string>
@@ -2391,7 +2413,9 @@ border-color: rgb(36, 36, 36);</string>
         </property>
         <property name="styleSheet">
          <string notr="true">background-color: rgb(255, 255, 255);
-border-color: rgb(36, 36, 36);</string>
+border-width: 3px;
+border-style: solid;
+border-color: rgb(136, 136, 36);</string>
         </property>
         <property name="text">
          <string>XXX</string>
@@ -2413,7 +2437,9 @@ border-color: rgb(36, 36, 36);</string>
         </property>
         <property name="styleSheet">
          <string notr="true">background-color: rgb(255, 255, 255);
-border-color: rgb(36, 36, 36);</string>
+border-width: 3px;
+border-style: solid;
+border-color: rgb(136, 136, 36);</string>
         </property>
         <property name="text">
          <string>XXX</string>
@@ -2435,7 +2461,9 @@ border-color: rgb(36, 36, 36);</string>
         </property>
         <property name="styleSheet">
          <string notr="true">background-color: rgb(255, 255, 255);
-border-color: rgb(36, 36, 36);</string>
+border-width: 3px;
+border-style: solid;
+border-color: rgb(136, 136, 36);</string>
         </property>
         <property name="text">
          <string>XXX</string>
@@ -2457,7 +2485,9 @@ border-color: rgb(36, 36, 36);</string>
         </property>
         <property name="styleSheet">
          <string notr="true">background-color: rgb(255, 255, 255);
-border-color: rgb(36, 36, 36);</string>
+border-width: 3px;
+border-style: solid;
+border-color: rgb(136, 136, 36);</string>
         </property>
         <property name="text">
          <string>XXX</string>
@@ -2479,7 +2509,9 @@ border-color: rgb(36, 36, 36);</string>
         </property>
         <property name="styleSheet">
          <string notr="true">background-color: rgb(255, 255, 255);
-border-color: rgb(36, 36, 36);</string>
+border-width: 3px;
+border-style: solid;
+border-color: rgb(136, 136, 36);</string>
         </property>
         <property name="text">
          <string>XXX</string>
@@ -2501,7 +2533,9 @@ border-color: rgb(36, 36, 36);</string>
         </property>
         <property name="styleSheet">
          <string notr="true">background-color: rgb(255, 255, 255);
-border-color: rgb(36, 36, 36);</string>
+border-width: 3px;
+border-style: solid;
+border-color: rgb(136, 136, 36);</string>
         </property>
         <property name="text">
          <string>XXX</string>
@@ -2523,7 +2557,9 @@ border-color: rgb(36, 36, 36);</string>
         </property>
         <property name="styleSheet">
          <string notr="true">background-color: rgb(255, 255, 255);
-border-color: rgb(36, 36, 36);</string>
+border-width: 3px;
+border-style: solid;
+border-color: rgb(136, 136, 36);</string>
         </property>
         <property name="text">
          <string>XXX</string>
@@ -2545,7 +2581,9 @@ border-color: rgb(36, 36, 36);</string>
         </property>
         <property name="styleSheet">
          <string notr="true">background-color: rgb(255, 255, 255);
-border-color: rgb(36, 36, 36);</string>
+border-width: 3px;
+border-style: solid;
+border-color: rgb(136, 136, 36);</string>
         </property>
         <property name="text">
          <string>XXX</string>
@@ -2567,7 +2605,9 @@ border-color: rgb(36, 36, 36);</string>
         </property>
         <property name="styleSheet">
          <string notr="true">background-color: rgb(255, 255, 255);
-border-color: rgb(36, 36, 36);</string>
+border-width: 3px;
+border-style: solid;
+border-color: rgb(136, 136, 36);</string>
         </property>
         <property name="text">
          <string>XXX</string>
@@ -3247,7 +3287,9 @@ border-color: rgb(36, 36, 36);</string>
         </property>
         <property name="styleSheet">
          <string notr="true">background-color: rgb(255, 255, 255);
-border-color: rgb(36, 36, 36);</string>
+border-width: 3px;
+border-style: solid;
+border-color: rgb(136, 136, 36);</string>
         </property>
         <property name="text">
          <string>XXX</string>
@@ -3269,7 +3311,9 @@ border-color: rgb(36, 36, 36);</string>
         </property>
         <property name="styleSheet">
          <string notr="true">background-color: rgb(255, 255, 255);
-border-color: rgb(36, 36, 36);</string>
+border-width: 3px;
+border-style: solid;
+border-color: rgb(136, 136, 36);</string>
         </property>
         <property name="text">
          <string>XXX</string>
@@ -3291,7 +3335,9 @@ border-color: rgb(36, 36, 36);</string>
         </property>
         <property name="styleSheet">
          <string notr="true">background-color: rgb(255, 255, 255);
-border-color: rgb(36, 36, 36);</string>
+border-width: 3px;
+border-style: solid;
+border-color: rgb(136, 136, 36);</string>
         </property>
         <property name="text">
          <string>XXX</string>
@@ -3313,7 +3359,9 @@ border-color: rgb(36, 36, 36);</string>
         </property>
         <property name="styleSheet">
          <string notr="true">background-color: rgb(255, 255, 255);
-border-color: rgb(36, 36, 36);</string>
+border-width: 3px;
+border-style: solid;
+border-color: rgb(136, 136, 36);</string>
         </property>
         <property name="text">
          <string>XXX</string>
@@ -3335,7 +3383,9 @@ border-color: rgb(36, 36, 36);</string>
         </property>
         <property name="styleSheet">
          <string notr="true">background-color: rgb(255, 255, 255);
-border-color: rgb(36, 36, 36);</string>
+border-width: 3px;
+border-style: solid;
+border-color: rgb(136, 136, 36);</string>
         </property>
         <property name="text">
          <string>XXX</string>
@@ -3357,7 +3407,9 @@ border-color: rgb(36, 36, 36);</string>
         </property>
         <property name="styleSheet">
          <string notr="true">background-color: rgb(255, 255, 255);
-border-color: rgb(36, 36, 36);</string>
+border-width: 3px;
+border-style: solid;
+border-color: rgb(136, 136, 36);</string>
         </property>
         <property name="text">
          <string>XXX</string>
@@ -3379,7 +3431,9 @@ border-color: rgb(36, 36, 36);</string>
         </property>
         <property name="styleSheet">
          <string notr="true">background-color: rgb(255, 255, 255);
-border-color: rgb(36, 36, 36);</string>
+border-width: 3px;
+border-style: solid;
+border-color: rgb(136, 136, 36);</string>
         </property>
         <property name="text">
          <string>XXX</string>
@@ -3401,7 +3455,9 @@ border-color: rgb(36, 36, 36);</string>
         </property>
         <property name="styleSheet">
          <string notr="true">background-color: rgb(255, 255, 255);
-border-color: rgb(36, 36, 36);</string>
+border-width: 3px;
+border-style: solid;
+border-color: rgb(136, 136, 36);</string>
         </property>
         <property name="text">
          <string>XXX</string>
@@ -3423,7 +3479,9 @@ border-color: rgb(36, 36, 36);</string>
         </property>
         <property name="styleSheet">
          <string notr="true">background-color: rgb(255, 255, 255);
-border-color: rgb(36, 36, 36);</string>
+border-width: 3px;
+border-style: solid;
+border-color: rgb(136, 136, 36);</string>
         </property>
         <property name="text">
          <string>XXX</string>
@@ -3445,7 +3503,9 @@ border-color: rgb(36, 36, 36);</string>
         </property>
         <property name="styleSheet">
          <string notr="true">background-color: rgb(255, 255, 255);
-border-color: rgb(36, 36, 36);</string>
+border-width: 3px;
+border-style: solid;
+border-color: rgb(136, 136, 36);</string>
         </property>
         <property name="text">
          <string>XXX</string>
@@ -4128,7 +4188,9 @@ border-color: rgb(36, 36, 36);</string>
         </property>
         <property name="styleSheet">
          <string notr="true">background-color: rgb(255, 255, 255);
-border-color: rgb(36, 36, 36);</string>
+border-width: 3px;
+border-style: solid;
+border-color: rgb(136, 136, 36);</string>
         </property>
         <property name="text">
          <string>XXX</string>
@@ -4150,7 +4212,9 @@ border-color: rgb(36, 36, 36);</string>
         </property>
         <property name="styleSheet">
          <string notr="true">background-color: rgb(255, 255, 255);
-border-color: rgb(36, 36, 36);</string>
+border-width: 3px;
+border-style: solid;
+border-color: rgb(136, 136, 36);</string>
         </property>
         <property name="text">
          <string>XXX</string>
@@ -4172,7 +4236,9 @@ border-color: rgb(36, 36, 36);</string>
         </property>
         <property name="styleSheet">
          <string notr="true">background-color: rgb(255, 255, 255);
-border-color: rgb(36, 36, 36);</string>
+border-width: 3px;
+border-style: solid;
+border-color: rgb(136, 136, 36);</string>
         </property>
         <property name="text">
          <string>XXX</string>
@@ -4194,7 +4260,9 @@ border-color: rgb(36, 36, 36);</string>
         </property>
         <property name="styleSheet">
          <string notr="true">background-color: rgb(255, 255, 255);
-border-color: rgb(36, 36, 36);</string>
+border-width: 3px;
+border-style: solid;
+border-color: rgb(136, 136, 36);</string>
         </property>
         <property name="text">
          <string>XXX</string>
@@ -4216,7 +4284,9 @@ border-color: rgb(36, 36, 36);</string>
         </property>
         <property name="styleSheet">
          <string notr="true">background-color: rgb(255, 255, 255);
-border-color: rgb(36, 36, 36);</string>
+border-width: 3px;
+border-style: solid;
+border-color: rgb(136, 136, 36);</string>
         </property>
         <property name="text">
          <string>XXX</string>
@@ -4238,7 +4308,9 @@ border-color: rgb(36, 36, 36);</string>
         </property>
         <property name="styleSheet">
          <string notr="true">background-color: rgb(255, 255, 255);
-border-color: rgb(36, 36, 36);</string>
+border-width: 3px;
+border-style: solid;
+border-color: rgb(136, 136, 36);</string>
         </property>
         <property name="text">
          <string>XXX</string>
@@ -4260,7 +4332,9 @@ border-color: rgb(36, 36, 36);</string>
         </property>
         <property name="styleSheet">
          <string notr="true">background-color: rgb(255, 255, 255);
-border-color: rgb(36, 36, 36);</string>
+border-width: 3px;
+border-style: solid;
+border-color: rgb(136, 136, 36);</string>
         </property>
         <property name="text">
          <string>XXX</string>
@@ -4282,7 +4356,9 @@ border-color: rgb(36, 36, 36);</string>
         </property>
         <property name="styleSheet">
          <string notr="true">background-color: rgb(255, 255, 255);
-border-color: rgb(36, 36, 36);</string>
+border-width: 3px;
+border-style: solid;
+border-color: rgb(136, 136, 36);</string>
         </property>
         <property name="text">
          <string>XXX</string>
@@ -4304,7 +4380,9 @@ border-color: rgb(36, 36, 36);</string>
         </property>
         <property name="styleSheet">
          <string notr="true">background-color: rgb(255, 255, 255);
-border-color: rgb(36, 36, 36);</string>
+border-width: 3px;
+border-style: solid;
+border-color: rgb(136, 136, 36);</string>
         </property>
         <property name="text">
          <string>XXX</string>
@@ -4326,7 +4404,9 @@ border-color: rgb(36, 36, 36);</string>
         </property>
         <property name="styleSheet">
          <string notr="true">background-color: rgb(255, 255, 255);
-border-color: rgb(36, 36, 36);</string>
+border-width: 3px;
+border-style: solid;
+border-color: rgb(136, 136, 36);</string>
         </property>
         <property name="text">
          <string>XXX</string>
@@ -5673,7 +5753,9 @@ border-color: rgb(36, 36, 36);</string>
        </property>
        <property name="styleSheet">
         <string notr="true">background-color: rgb(255, 255, 255);
-border-color: rgb(36, 36, 36);</string>
+border-width: 3px;
+border-style: solid;
+border-color: rgb(136, 136, 36);</string>
        </property>
        <property name="text">
         <string>XXX</string>
@@ -5844,7 +5926,9 @@ border-color: rgb(36, 36, 36);</string>
        </property>
        <property name="styleSheet">
         <string notr="true">background-color: rgb(255, 255, 255);
-border-color: rgb(36, 36, 36);</string>
+border-width: 3px;
+border-style: solid;
+border-color: rgb(136, 136, 36);</string>
        </property>
        <property name="text">
         <string>XXX</string>
@@ -5952,7 +6036,9 @@ border-color: rgb(36, 36, 36);</string>
        </property>
        <property name="styleSheet">
         <string notr="true">background-color: rgb(255, 255, 255);
-border-color: rgb(36, 36, 36);</string>
+border-width: 3px;
+border-style: solid;
+border-color: rgb(136, 136, 36);</string>
        </property>
        <property name="text">
         <string>XXX</string>
@@ -6081,7 +6167,9 @@ border-color: rgb(36, 36, 36);</string>
        </property>
        <property name="styleSheet">
         <string notr="true">background-color: rgb(255, 255, 255);
-border-color: rgb(36, 36, 36);</string>
+border-width: 3px;
+border-style: solid;
+border-color: rgb(136, 136, 36);</string>
        </property>
        <property name="text">
         <string>XXX</string>
@@ -6124,7 +6212,9 @@ border-color: rgb(36, 36, 36);</string>
        </property>
        <property name="styleSheet">
         <string notr="true">background-color: rgb(255, 255, 255);
-border-color: rgb(36, 36, 36);</string>
+border-width: 3px;
+border-style: solid;
+border-color: rgb(136, 136, 36);</string>
        </property>
        <property name="text">
         <string>XXX</string>
@@ -6404,7 +6494,9 @@ border-color: rgb(36, 36, 36);</string>
        </property>
        <property name="styleSheet">
         <string notr="true">background-color: rgb(255, 255, 255);
-border-color: rgb(36, 36, 36);</string>
+border-width: 3px;
+border-style: solid;
+border-color: rgb(136, 136, 36);</string>
        </property>
        <property name="text">
         <string>XXX</string>
@@ -6469,7 +6561,9 @@ border-color: rgb(36, 36, 36);</string>
        </property>
        <property name="styleSheet">
         <string notr="true">background-color: rgb(255, 255, 255);
-border-color: rgb(36, 36, 36);</string>
+border-width: 3px;
+border-style: solid;
+border-color: rgb(136, 136, 36);</string>
        </property>
        <property name="text">
         <string>XXX</string>
@@ -6491,7 +6585,9 @@ border-color: rgb(36, 36, 36);</string>
        </property>
        <property name="styleSheet">
         <string notr="true">background-color: rgb(255, 255, 255);
-border-color: rgb(36, 36, 36);</string>
+border-width: 3px;
+border-style: solid;
+border-color: rgb(136, 136, 36);</string>
        </property>
        <property name="text">
         <string>XXX</string>
@@ -6769,7 +6865,9 @@ border-color: rgb(36, 36, 36);</string>
        </property>
        <property name="styleSheet">
         <string notr="true">background-color: rgb(255, 255, 255);
-border-color: rgb(36, 36, 36);</string>
+border-width: 3px;
+border-style: solid;
+border-color: rgb(136, 136, 36);</string>
        </property>
        <property name="text">
         <string>XXX</string>

@@ -594,6 +594,33 @@ class AIKensa(QMainWindow):
             return "red"
         return "white"
 
+    def _parse_stylesheet_declarations(self, stylesheet):
+        declarations = {}
+        for rule in stylesheet.split(";"):
+            if ":" not in rule:
+                continue
+            key, value = rule.split(":", 1)
+            declarations[key.strip()] = value.strip()
+        return declarations
+
+    def _apply_measurement_label_style(self, label, pitch_result):
+        base_stylesheet = label.property("baseMeasurementStyle")
+        if base_stylesheet is None:
+            base_stylesheet = label.styleSheet() or ""
+            label.setProperty("baseMeasurementStyle", base_stylesheet)
+
+        declarations = self._parse_stylesheet_declarations(base_stylesheet)
+        declarations["background-color"] = self._measurement_text_color(pitch_result)
+        declarations["color"] = "black"
+
+        merged_stylesheet = ";\n".join(
+            f"{key}: {value}" for key, value in declarations.items()
+        )
+        if merged_stylesheet:
+            merged_stylesheet += ";"
+
+        label.setStyleSheet(merged_stylesheet)
+
     def _update_measurement_text_labels(self, widget_index, label_count, measurement_value):
         all_label_names = self._measurement_label_groups(label_count)
 
@@ -626,9 +653,7 @@ class AIKensa(QMainWindow):
             for label_index, label_name in enumerate(labels):
                 label = self.stackedWidget.widget(widget_index).findChild(QLabel, label_name)
                 if label:
-                    label.setStyleSheet(
-                        f"color: {self._measurement_text_color(part_results[label_index])};"
-                    )
+                    self._apply_measurement_label_style(label, part_results[label_index])
 
     def _update_OKNG_label(self, numofPart):
         for widget_key, part_name in self.widget_dir_map.items():
