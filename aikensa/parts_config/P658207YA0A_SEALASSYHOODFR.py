@@ -29,10 +29,32 @@ endoffset_y = 0
 bbox_offset = 10
 
 pixelMultiplier = 0.1589
+clip_height_padding_px = 10
+clip_height_model_imgsz = 256
+TARGET_CLIP_HEIGHT_INDEXES = [6, 7, 8, 11, 12, 13]
 #
 
+BLACK_CLIP_CLASS_ID = 0
+V_CUT_CLASS_ID = 1
+WRONG_CLIP_COLOR_CLASS_IDS = {2, 3}
+MISSING_CLIP_CLASS_ID = 4
 
-def partcheck(image, sahi_predictionList):
+NG_REASON_BY_CLASS_ID = {
+    2: "WRONG CLIP COLOR",
+    3: "WRONG CLIP COLOR",
+    4: "CLIP MISSING",
+}
+
+DETECTION_COLOR_BY_CLASS_ID = {
+    BLACK_CLIP_CLASS_ID: color,
+    V_CUT_CLASS_ID: color2,
+    2: (30, 140, 255),
+    3: (0, 220, 220),
+    4: (0, 0, 255),
+}
+def partcheck(image, sahi_predictionList, clipheight_model=None):
+
+    base_image = image.copy()
 
     sorted_detections = sorted(sahi_predictionList, key=lambda d: d.bbox.minx)
 
@@ -52,6 +74,7 @@ def partcheck(image, sahi_predictionList):
     detectedposY_cut = []
 
     detectedWidth = []
+    clip_boxes = []
 
     prev_center = None
 
@@ -89,8 +112,9 @@ def partcheck(image, sahi_predictionList):
 
     for i, detection in enumerate(sorted_detections):
         detectedid.append(detection.category.id)
-        if detection.category.id == 0:
+        if detection.category.id == BLACK_CLIP_CLASS_ID:
             bbox = detection.bbox
+            clip_boxes.append(bbox)
             x, y = get_center(bbox)
             w = bbox.maxx - bbox.minx
             h = bbox.maxy - bbox.miny
@@ -103,14 +127,22 @@ def partcheck(image, sahi_predictionList):
             #id 1 object is V cut
             #id 0 object is black clip
 
-            center = draw_bounding_box(image, x, y, w, h, [image.shape[1], image.shape[0]], color=color)
+            center = draw_bounding_box(
+                image,
+                x,
+                y,
+                w,
+                h,
+                [image.shape[1], image.shape[0]],
+                color=DETECTION_COLOR_BY_CLASS_ID[BLACK_CLIP_CLASS_ID],
+            )
 
             if prev_center is not None:
                 length = calclength(prev_center, center, onlyX = True)*pixelMultiplier
                 measuredPitch.append(length)
             prev_center = center
 
-        if detection.category.id == 1:
+        if detection.category.id == V_CUT_CLASS_ID:
             bbox = detection.bbox
             x, y = get_center(bbox)
             w = bbox.maxx - bbox.minx
@@ -124,9 +156,45 @@ def partcheck(image, sahi_predictionList):
             #id 1 object is V cuts
             #id 0 object is black clip
 
-            center = draw_bounding_box(image, x, y, w, h, [image.shape[1], image.shape[0]], color=color2)
+            center = draw_bounding_box(
+                image,
+                x,
+                y,
+                w,
+                h,
+                [image.shape[1], image.shape[0]],
+                color=DETECTION_COLOR_BY_CLASS_ID[V_CUT_CLASS_ID],
+            )
+
+        if detection.category.id in WRONG_CLIP_COLOR_CLASS_IDS or detection.category.id == MISSING_CLIP_CLASS_ID:
+            bbox = detection.bbox
+            x, y = get_center(bbox)
+            w = bbox.maxx - bbox.minx
+            h = bbox.maxy - bbox.miny
+
+            draw_bounding_box(
+                image,
+                x,
+                y,
+                w,
+                h,
+                [image.shape[1], image.shape[0]],
+                color=DETECTION_COLOR_BY_CLASS_ID[detection.category.id],
+            )
     
     
+    clip_ng_reasons = get_clip_ng_reasons(detectedid, idSpec)
+    resultid = check_id(detectedid, idSpec)
+
+    if clip_ng_reasons:
+        status = "NG"
+        ngreason = ", ".join(clip_ng_reasons)
+        resultPitch = [0] * len(pitchSpec)
+        print(
+            f"P658207YA0A clip class NG: detected={detectedid}, reason={ngreason}"
+        )
+        return image, measuredPitch, resultPitch, resultid, status, ngreason
+
     #Calculate the extra necessary dimension (the V cut dimension). If the order of the ID is correct
 
     if detectedid == idSpec:
@@ -170,25 +238,15 @@ def partcheck(image, sahi_predictionList):
         measuredPitch.append(cutdim9)
         measuredPitch.append(cutdim10)
 
-        posY1 = (detectedposY[6] - detectedposY[5])*pixelMultiplier*-1
-        posY2 = (detectedposY[7] - detectedposY[9])*pixelMultiplier*-1
-        posy3 = (detectedposY[8] - detectedposY[9])*pixelMultiplier*-1
-
-        posY4 = (detectedposY[11] - detectedposY[10])*pixelMultiplier*-1
-        posY5 = (detectedposY[12] - detectedposY[10])*pixelMultiplier*-1
-        posY6 = (detectedposY[13] - detectedposY[15])*pixelMultiplier*-1
-
-        measuredPitch.append(posY1)
-        measuredPitch.append(posY2)
-        measuredPitch.append(posy3)
-        measuredPitch.append(posY4)
-        measuredPitch.append(posY5)
-        measuredPitch.append(posY6)
-
-
+        clip_height_measurements = measure_selected_clip_heights(
+            base_image,
+            clip_boxes,
+            clipheight_model,
+        )
+        measuredPitch.extend(clip_height_measurements)
 
     #round the value to 1 decimal
-    measuredPitch = [round(pitch, 1) for pitch in measuredPitch]
+    measuredPitch = [round(pitch, 1) if pitch is not None else None for pitch in measuredPitch]
     # print (f"Measured Pistch: {measuredPitch}")
     # print (f"Detected ID: {detectedid}")
 
@@ -196,7 +254,6 @@ def partcheck(image, sahi_predictionList):
 
     if len(measuredPitch) == len(pitchSpec):
         resultPitch = check_tolerance(measuredPitch, pitchSpec, tolerance_pitch)
-        resultid = check_id(detectedid, idSpec)
 
     # print (f"Result Pitch: {resultPitch}")
 
@@ -309,6 +366,129 @@ def check_id(detectedid, idSpec):
             result[i] = 1
     return result
 
+def get_clip_ng_reasons(detectedid, idSpec):
+    ng_reasons = []
+
+    for index, expected_id in enumerate(idSpec):
+        if expected_id != BLACK_CLIP_CLASS_ID or index >= len(detectedid):
+            continue
+
+        detected_id = detectedid[index]
+        if detected_id in WRONG_CLIP_COLOR_CLASS_IDS:
+            ng_reasons.append(NG_REASON_BY_CLASS_ID[detected_id])
+        elif detected_id == MISSING_CLIP_CLASS_ID:
+            ng_reasons.append(NG_REASON_BY_CLASS_ID[detected_id])
+
+    ordered_unique_reasons = []
+    for reason in ng_reasons:
+        if reason not in ordered_unique_reasons:
+            ordered_unique_reasons.append(reason)
+
+    return ordered_unique_reasons
+
+
+def measure_selected_clip_heights(image, clip_boxes, clipheight_model):
+    measurements = []
+
+    for clip_index in TARGET_CLIP_HEIGHT_INDEXES:
+        clip_number = clip_index + 1
+        if clip_index >= len(clip_boxes):
+            measurements.append(None)
+            print(
+                f"P658207YA0A clip height NG: clip_no={clip_number} bbox missing"
+            )
+            continue
+
+        point = extract_clip_height_keypoint(
+            image,
+            clip_boxes[clip_index],
+            clipheight_model,
+            clip_number,
+        )
+        if point is None:
+            measurements.append(None)
+            continue
+
+        crop_center_y = point["crop_height"] / 2.0
+        vertical_distance_mm = abs(point["y"] - crop_center_y) * pixelMultiplier
+        measurements.append(vertical_distance_mm)
+        print(
+            "P658207YA0A clip height measured: "
+            f"clip_no={clip_number} keypoint_y={point['y']:.1f} "
+            f"center_y={crop_center_y:.1f} distance_mm={vertical_distance_mm:.2f}"
+        )
+
+    return measurements
+
+
+def extract_clip_height_keypoint(image, bbox, clipheight_model, clip_number):
+    if clipheight_model is None:
+        print(
+            f"P658207YA0A clip height model missing for clip_no={clip_number}"
+        )
+        return None
+
+    image_height, image_width = image.shape[:2]
+    x1 = max(int(math.floor(bbox.minx)) - clip_height_padding_px, 0)
+    y1 = max(int(math.floor(bbox.miny)) - clip_height_padding_px, 0)
+    x2 = min(int(math.ceil(bbox.maxx)) + clip_height_padding_px, image_width)
+    y2 = min(int(math.ceil(bbox.maxy)) + clip_height_padding_px, image_height)
+
+    if x2 <= x1 or y2 <= y1:
+        print(
+            f"P658207YA0A clip height crop invalid for clip_no={clip_number}"
+        )
+        return None
+
+    crop = image[y1:y2, x1:x2]
+    if crop.size == 0:
+        print(f"P658207YA0A clip height crop empty for clip_no={clip_number}")
+        return None
+
+    result = normalize_result_object(
+        clipheight_model(
+            source=crop,
+            conf=0.2,
+            imgsz=clip_height_model_imgsz,
+            verbose=False,
+        )
+    )
+    if result is None or not hasattr(result, "keypoints"):
+        print(
+            f"P658207YA0A clip height keypoint missing for clip_no={clip_number}"
+        )
+        return None
+
+    try:
+        xy = result.keypoints.xy
+        if xy is None or len(xy) == 0:
+            print(
+                f"P658207YA0A clip height keypoint empty for clip_no={clip_number}"
+            )
+            return None
+
+        kpt = xy[0][0]
+        return {
+            "x": float(kpt[0]),
+            "y": float(kpt[1]),
+            "crop_height": crop.shape[0],
+        }
+    except (AttributeError, IndexError, TypeError, ValueError):
+        print(
+            f"P658207YA0A clip height keypoint parse failed for clip_no={clip_number}"
+        )
+        return None
+
+
+def normalize_result_object(result_object):
+    if result_object is None:
+        return None
+    if isinstance(result_object, (list, tuple)):
+        if len(result_object) == 0:
+            return None
+        return result_object[0]
+    return result_object
+
 def draw_pitch_line(image, xy_pairs, pitchresult, thickness=6):
     xy_pairs = [(int(x), int(y)) for x, y in xy_pairs]
 
@@ -363,6 +543,8 @@ def draw_status_text(image, status, size = "normal"):
 def check_tolerance(checkedPitchResult, pitchSpec, pitchTolerance):
     result = [0] * len(pitchSpec)
     for i, (spec, detected) in enumerate(zip(pitchSpec, checkedPitchResult)):
+        if detected is None:
+            continue
         if abs(spec - detected) <= pitchTolerance[i]:
             result[i] = 1
     return result

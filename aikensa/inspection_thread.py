@@ -1186,7 +1186,19 @@ class InspectionThread(QThread):
                                     # self.InspectionResult_EndSegmentation_Left[i] = self.hoodFR_endSegmentationModel(source=self.InspectionImages_endSegmentation_Left[i], conf=0.5, imgsz=960, verbose=False)
                                     # self.InspectionResult_EndSegmentation_Right[i] = self.hoodFR_endSegmentationModel(source=self.InspectionImages_endSegmentation_Right[i], conf=0.5, imgsz=960, verbose=False)
 
-                                    self.InspectionImages[i], self.InspectionResult_PitchMeasured[i], self.InspectionResult_PitchResult[i], self.InspectionResult_DetectionID[i], self.InspectionResult_Status[i], self.InspectionResult_NGReason[i] = P658207YA0A_partcheck(self.InspectionImages[i], self.InspectionResult_ClipDetection[i].object_prediction_list)
+                                    self.InspectionImages[i], self.InspectionResult_PitchMeasured[i], self.InspectionResult_PitchResult[i], self.InspectionResult_DetectionID[i], self.InspectionResult_Status[i], self.InspectionResult_NGReason[i] = P658207YA0A_partcheck(
+                                        self.InspectionImages[i],
+                                        self.InspectionResult_ClipDetection[i].object_prediction_list,
+                                        self.P658207YA0A_clipHeightModel,
+                                    )
+
+                                    if self.InspectionResult_Status[i] == "OK":
+                                        self.InspectionResult_NGReason[i] = ""
+                                    elif self.InspectionResult_Status[i] == "NG":
+                                        self.InspectionResult_NGReason[i] = self.InspectionResult_NGReason[i] or "UNKNOWN NG"
+                                        print(
+                                            f"P658207YA0A inspection NG at P{i + 1}: {self.InspectionResult_NGReason[i]}"
+                                        )
                                 else:
                                     self.InspectionResult_ClipDetection[i] = None
                                     self.InspectionResult_PitchMeasured[i] = None
@@ -2778,12 +2790,14 @@ class InspectionThread(QThread):
         hoodFR_hanireDetectionModel = None
         hoodFR_endSegmentationModel = None
         P658207YA0A_clipDetectionModel = None
+        P658207YA0A_clipHeightModel = None
         P658207YA0A_existClassificationModel = None
 
         #Classification Model
         path_hoodFR_clipDetectionModel = "./aikensa/models/65820W030P_CLIP.pt"
         path_hoodFR_holeDetectionModel = "./aikensa/models/65820W030P_MIZUANA.pt"
         path_P658207YA0A_clipDetectionModel = "./aikensa/models/658207YA0A_CLIP.pt"
+        path_P658207YA0A_clipHeightModel = "./aikensa/models/658207YA0A_CLIP_HEIGHT.pt"
         path_P658207YA0A_existClassificationModel = "./aikensa/models/658207YA0A_EXIST.pt"
         #Segmentation Model
         path_hoodFR_endSegmentationModel = "./aikensa/models/65820W030P_END_SEGMENTATION.pt"
@@ -2819,6 +2833,12 @@ class InspectionThread(QThread):
             except Exception as error:
                 print(f"Failed to load 658207YA0A clip model: {error}")
 
+        if os.path.exists(path_P658207YA0A_clipHeightModel):
+            try:
+                P658207YA0A_clipHeightModel = YOLO(path_P658207YA0A_clipHeightModel)
+            except Exception as error:
+                print(f"Failed to load 658207YA0A clip height model: {error}")
+
         if os.path.exists(path_P658207YA0A_existClassificationModel):
             try:
                 P658207YA0A_existClassificationModel = YOLO(path_P658207YA0A_existClassificationModel)
@@ -2831,6 +2851,7 @@ class InspectionThread(QThread):
         self.hoodFR_endSegmentationModel = hoodFR_endSegmentationModel
 
         self.P658207YA0A_clipDetectionModel = P658207YA0A_clipDetectionModel
+        self.P658207YA0A_clipHeightModel = P658207YA0A_clipHeightModel
         self.P658207YA0A_existClassificationModel = P658207YA0A_existClassificationModel
         self.widget_model_ready = {
             8: all(model is not None for model in (
@@ -2840,6 +2861,7 @@ class InspectionThread(QThread):
             )),
             9: all(model is not None for model in (
                 self.P658207YA0A_clipDetectionModel,
+                self.P658207YA0A_clipHeightModel,
                 self.P658207YA0A_existClassificationModel,
             )),
             21: all(model is not None for model in (

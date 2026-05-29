@@ -149,11 +149,13 @@ class AIKensa(QMainWindow):
         self.inspection_thread.dailytenkenCam.connect(self._dailyTenkenFrame)
 
         self.inspection_thread.hoodFR_InspectionResult_PitchMeasured.connect(self._outputMeasurementText)
+        self.inspection_thread.hoodFR_InspectionResult_PitchResult.connect(self._outputMeasurementTextColor)
         self.inspection_thread.hoodFR_InspectionStatus.connect(self._inspectionStatusText)
 
         self.inspection_thread.hoodFR_HoleStatus.connect(self._inspectionStatusHole)
 
         self.inspection_thread.P658207YA0A_InspectionResult_PitchMeasured.connect(self._P658207YA0A_outputMeasurementText)
+        self.inspection_thread.P658207YA0A_InspectionResult_PitchResult.connect(self._P658207YA0A_outputMeasurementTextColor)
         self.inspection_thread.P658207YA0A_InspectionStatus.connect(self._P658207YA0A_inspectionStatusText)
 
 
@@ -578,6 +580,56 @@ class AIKensa(QMainWindow):
             self.initial_colors[widget_index][label.objectName()] = color
             # print(f"Stored initial color for {label.objectName()} in widget {widget_index}: {color}")
 
+    def _measurement_label_groups(self, label_count):
+        part_suffixes = ("A", "B", "C", "D", "E")
+        return [
+            [f"R_{part_suffix}_{label_index}" for label_index in range(1, label_count + 1)]
+            for part_suffix in part_suffixes
+        ]
+
+    def _measurement_text_color(self, pitch_result):
+        if pitch_result == 1:
+            return "green"
+        if pitch_result == 0:
+            return "red"
+        return "white"
+
+    def _update_measurement_text_labels(self, widget_index, label_count, measurement_value):
+        all_label_names = self._measurement_label_groups(label_count)
+
+        for part_index, labels in enumerate(all_label_names):
+            if part_index >= len(measurement_value) or measurement_value[part_index] is None:
+                part_measurements = [0] * len(labels)
+            else:
+                part_measurements = list(measurement_value[part_index])
+
+            if len(part_measurements) < len(labels):
+                part_measurements.extend([0] * (len(labels) - len(part_measurements)))
+
+            for label_index, label_name in enumerate(labels):
+                label = self.stackedWidget.widget(widget_index).findChild(QLabel, label_name)
+                if label:
+                    label.setText(str(part_measurements[label_index]))
+
+    def _update_measurement_text_colors(self, widget_index, label_count, pitch_result):
+        all_label_names = self._measurement_label_groups(label_count)
+
+        for part_index, labels in enumerate(all_label_names):
+            if part_index >= len(pitch_result) or pitch_result[part_index] is None:
+                part_results = [None] * len(labels)
+            else:
+                part_results = list(pitch_result[part_index])
+
+            if len(part_results) < len(labels):
+                part_results.extend([None] * (len(labels) - len(part_results)))
+
+            for label_index, label_name in enumerate(labels):
+                label = self.stackedWidget.widget(widget_index).findChild(QLabel, label_name)
+                if label:
+                    label.setStyleSheet(
+                        f"color: {self._measurement_text_color(part_results[label_index])};"
+                    )
+
     def _update_OKNG_label(self, numofPart):
         for widget_key, part_name in self.widget_dir_map.items():
             # Get OK and NG values using widget_key as index
@@ -681,73 +733,17 @@ class AIKensa(QMainWindow):
                     label.setStyleSheet("QLabel { background-color: yellow; }")
 
     def _outputMeasurementText(self, measurementValue):
+        self._update_measurement_text_labels(8, 27, measurementValue)
 
-        # label_names_part_A = ["R_A_1", "R_A_2", "R_A_3", ......, "R_A_27"]
-        # label_names_part_B = ["R_B_1", "R_B_2", "R_B_3", ......, "R_B_27"]
-        # label_names_part_C = ["R_C_1", "R_C_2", "R_C_3", ......, "R_C_27"]
-        # label_names_part_D = ["R_D_1", "R_D_2", "R_D_3", ......, "R_D_27"]
-        # label_names_part_E = ["R_E_1", "R_E_2", "R_E_3", ......, "R_E_27"]
-
-        label_names_part_A = ["R_A_1", "R_A_2", "R_A_3", "R_A_4", "R_A_5", "R_A_6", "R_A_7", "R_A_8", "R_A_9", "R_A_10", "R_A_11", "R_A_12", "R_A_13", "R_A_14", "R_A_15", "R_A_16", "R_A_17", "R_A_18", "R_A_19", "R_A_20", "R_A_21", "R_A_22", "R_A_23", "R_A_24", "R_A_25", "R_A_26", "R_A_27"]
-        label_names_part_B = ["R_B_1", "R_B_2", "R_B_3", "R_B_4", "R_B_5", "R_B_6", "R_B_7", "R_B_8", "R_B_9", "R_B_10", "R_B_11", "R_B_12", "R_B_13", "R_B_14", "R_B_15", "R_B_16", "R_B_17", "R_B_18", "R_B_19", "R_B_20", "R_B_21", "R_B_22", "R_B_23", "R_B_24", "R_B_25", "R_B_26", "R_B_27"]
-        label_names_part_C = ["R_C_1", "R_C_2", "R_C_3", "R_C_4", "R_C_5", "R_C_6", "R_C_7", "R_C_8", "R_C_9", "R_C_10", "R_C_11", "R_C_12", "R_C_13", "R_C_14", "R_C_15", "R_C_16", "R_C_17", "R_C_18", "R_C_19", "R_C_20", "R_C_21", "R_C_22", "R_C_23", "R_C_24", "R_C_25", "R_C_26", "R_C_27"]
-        label_names_part_D = ["R_D_1", "R_D_2", "R_D_3", "R_D_4", "R_D_5", "R_D_6", "R_D_7", "R_D_8", "R_D_9", "R_D_10", "R_D_11", "R_D_12", "R_D_13", "R_D_14", "R_D_15", "R_D_16", "R_D_17", "R_D_18", "R_D_19", "R_D_20", "R_D_21", "R_D_22", "R_D_23", "R_D_24", "R_D_25", "R_D_26", "R_D_27"]
-        label_names_part_E = ["R_E_1", "R_E_2", "R_E_3", "R_E_4", "R_E_5", "R_E_6", "R_E_7", "R_E_8", "R_E_9", "R_E_10", "R_E_11", "R_E_12", "R_E_13", "R_E_14", "R_E_15", "R_E_16", "R_E_17", "R_E_18", "R_E_19", "R_E_20", "R_E_21", "R_E_22", "R_E_23", "R_E_24", "R_E_25", "R_E_26", "R_E_27"]
-
-        all_label_names = [label_names_part_A, label_names_part_B, label_names_part_C, label_names_part_D, label_names_part_E]
-
-        # Loop over each part (A, B, C, D, E)
-        for part_index, labels in enumerate(all_label_names):
-            if part_index >= len(measurementValue) or measurementValue[part_index] is None:
-                part_measurements = [0] * len(labels)  # If not enough parts or None, fill with zeros
-            else:
-                part_measurements = measurementValue[part_index]
-
-            # Ensure part_measurements is a list and extend with zeros if necessary
-            if part_measurements is None or len(part_measurements) < len(labels):
-                part_measurements = (part_measurements or []) + [0] * (len(labels) - len(part_measurements))
-
-            # Update each label with the corresponding measurement value
-            for i, label_name in enumerate(labels):
-                # Find the QLabel by name and set the text to the corresponding measurement value
-                label = self.stackedWidget.widget(8).findChild(QLabel, label_name)
-                if label:
-                    label.setText(str(part_measurements[i]))
+    def _outputMeasurementTextColor(self, pitchResult):
+        self._update_measurement_text_colors(8, 27, pitchResult)
 
 
     def _P658207YA0A_outputMeasurementText(self, measurementValue):
+        self._update_measurement_text_labels(9, 35, measurementValue)
 
-        # label_names_part_A = ["R_A_1", "R_A_2", "R_A_3", ......, "R_A_29"]
-        # label_names_part_B = ["R_B_1", "R_B_2", "R_B_3", ......, "R_B_29"]
-        # label_names_part_C = ["R_C_1", "R_C_2", "R_C_3", ......, "R_C_29"]
-        # label_names_part_D = ["R_D_1", "R_D_2", "R_D_3", ......, "R_D_29"]
-        # label_names_part_E = ["R_E_1", "R_E_2", "R_E_3", ......, "R_E_29"]
-
-        label_names_part_A = ["R_A_1", "R_A_2", "R_A_3", "R_A_4", "R_A_5", "R_A_6", "R_A_7", "R_A_8", "R_A_9", "R_A_10", "R_A_11", "R_A_12", "R_A_13", "R_A_14", "R_A_15", "R_A_16", "R_A_17", "R_A_18", "R_A_19", "R_A_20", "R_A_21", "R_A_22", "R_A_23", "R_A_24", "R_A_25", "R_A_26", "R_A_27", "R_A_28", "R_A_29", "R_A_30", "R_A_31", "R_A_32", "R_A_33", "R_A_34", "R_A_35"]
-        label_names_part_B = ["R_B_1", "R_B_2", "R_B_3", "R_B_4", "R_B_5", "R_B_6", "R_B_7", "R_B_8", "R_B_9", "R_B_10", "R_B_11", "R_B_12", "R_B_13", "R_B_14", "R_B_15", "R_B_16", "R_B_17", "R_B_18", "R_B_19", "R_B_20", "R_B_21", "R_B_22", "R_B_23", "R_B_24", "R_B_25", "R_B_26", "R_B_27", "R_B_28", "R_B_29", "R_B_30", "R_B_31", "R_B_32", "R_B_33", "R_B_34", "R_B_35"]
-        label_names_part_C = ["R_C_1", "R_C_2", "R_C_3", "R_C_4", "R_C_5", "R_C_6", "R_C_7", "R_C_8", "R_C_9", "R_C_10", "R_C_11", "R_C_12", "R_C_13", "R_C_14", "R_C_15", "R_C_16", "R_C_17", "R_C_18", "R_C_19", "R_C_20", "R_C_21", "R_C_22", "R_C_23", "R_C_24", "R_C_25", "R_C_26", "R_C_27", "R_C_28", "R_C_29", "R_C_30", "R_C_31", "R_C_32", "R_C_33", "R_C_34", "R_C_35"]
-        label_names_part_D = ["R_D_1", "R_D_2", "R_D_3", "R_D_4", "R_D_5", "R_D_6", "R_D_7", "R_D_8", "R_D_9", "R_D_10", "R_D_11", "R_D_12", "R_D_13", "R_D_14", "R_D_15", "R_D_16", "R_D_17", "R_D_18", "R_D_19", "R_D_20", "R_D_21", "R_D_22", "R_D_23", "R_D_24", "R_D_25", "R_D_26", "R_D_27", "R_D_28", "R_D_29", "R_D_30", "R_D_31", "R_D_32", "R_D_33", "R_D_34", "R_D_35"]
-        label_names_part_E = ["R_E_1", "R_E_2", "R_E_3", "R_E_4", "R_E_5", "R_E_6", "R_E_7", "R_E_8", "R_E_9", "R_E_10", "R_E_11", "R_E_12", "R_E_13", "R_E_14", "R_E_15", "R_E_16", "R_E_17", "R_E_18", "R_E_19", "R_E_20", "R_E_21", "R_E_22", "R_E_23", "R_E_24", "R_E_25", "R_E_26", "R_E_27", "R_E_28", "R_E_29", "R_E_30", "R_E_31", "R_E_32", "R_E_33", "R_E_34", "R_E_35"]
-
-        all_label_names = [label_names_part_A, label_names_part_B, label_names_part_C, label_names_part_D, label_names_part_E]
-
-        # Loop over each part (A, B, C, D, E)
-        for part_index, labels in enumerate(all_label_names):
-            if part_index >= len(measurementValue) or measurementValue[part_index] is None:
-                part_measurements = [0] * len(labels)  # If not enough parts or None, fill with zeros
-            else:
-                part_measurements = measurementValue[part_index]
-
-            # Ensure part_measurements is a list and extend with zeros if necessary
-            if part_measurements is None or len(part_measurements) < len(labels):
-                part_measurements = (part_measurements or []) + [0] * (len(labels) - len(part_measurements))
-
-            # Update each label with the corresponding measurement value
-            for i, label_name in enumerate(labels):
-                # Find the QLabel by name and set the text to the corresponding measurement value
-                label = self.stackedWidget.widget(9).findChild(QLabel, label_name)
-                if label:
-                    label.setText(str(part_measurements[i]))
+    def _P658207YA0A_outputMeasurementTextColor(self, pitchResult):
+        self._update_measurement_text_colors(9, 35, pitchResult)
 
 
     def _sentInputToInspectionThread(self, input):
