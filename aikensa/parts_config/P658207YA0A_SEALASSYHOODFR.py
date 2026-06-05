@@ -466,6 +466,8 @@ def extract_clip_height_keypoint(image, bbox, clipheight_model, clip_number):
         return None
 
     crop = image[y1:y2, x1:x2]
+    #convert crop rgb to bgr
+    crop = cv2.cvtColor(crop, cv2.COLOR_BGR2RGB)
     if crop.size == 0:
         print(f"P658207YA0A clip height crop empty for clip_no={clip_number}")
         return None
