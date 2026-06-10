@@ -703,10 +703,10 @@ class InspectionThread(QThread):
                 #Crop the image scaled for each part
                 self.part3Crop_scaled = self.combinedImage_scaled[self.part3Crop_YPos_scaled : self.part3Crop_YPos_scaled + self.part_height_offset_scaled, 0 : self.homography_size_scaled[1]]
                 #crop the image again, taking the center area with the width of self.dailyTenken_cropWidth only
-                cv2.imwrite("part3Crop_scaled.png", self.part3Crop_scaled)
+                # cv2.imwrite("part3Crop_scaled.png", self.part3Crop_scaled)
 
                 self.part3Crop_scaled = self.part3Crop_scaled[:, int((self.part3Crop_scaled.shape[1] - self.dailyTenken_cropWidth_scaled)/2) : int((self.part3Crop_scaled.shape[1] + self.dailyTenken_cropWidth_scaled)/2)]
-                cv2.imwrite("part3Crop2_scaled.png", self.part3Crop_scaled)
+                # cv2.imwrite("part3Crop2_scaled.png", self.part3Crop_scaled)
 
 
                 self.part3Crop_scaled = self.downSampling(self.part3Crop_scaled, width=1710, height=198)
@@ -1082,15 +1082,15 @@ class InspectionThread(QThread):
                 self.InspectionResult_PitchResult = [None]*5
 
                 if self.part1Crop_scaled is not None:
-                    self.part1Cam.emit(self.convertQImage(self.part1Crop_scaled))
+                    self.part1Cam.emit(self.converQImageRGB(self.part1Crop_scaled))
                 if self.part2Crop_scaled is not None:
-                    self.part2Cam.emit(self.convertQImage(self.part2Crop_scaled))
+                    self.part2Cam.emit(self.converQImageRGB(self.part2Crop_scaled))
                 if self.part3Crop_scaled is not None:
-                    self.part3Cam.emit(self.convertQImage(self.part3Crop_scaled))
+                    self.part3Cam.emit(self.converQImageRGB(self.part3Crop_scaled))
                 if self.part4Crop_scaled is not None:
-                    self.part4Cam.emit(self.convertQImage(self.part4Crop_scaled))
+                    self.part4Cam.emit(self.converQImageRGB(self.part4Crop_scaled))
                 if self.part5Crop_scaled is not None:
-                    self.part5Cam.emit(self.convertQImage(self.part5Crop_scaled))
+                    self.part5Cam.emit(self.converQImageRGB(self.part5Crop_scaled))
 
                 #Empty the Inspection Result
 
@@ -1160,11 +1160,11 @@ class InspectionThread(QThread):
                         self.part5Crop = self.combinedImage[int(self.part5Crop_YPos_hoodFR*1.48) : int((self.part5Crop_YPos_hoodFR + self.part_height_offset_nissanhoodFR)*1.48), 0 : int(self.homography_size[1]*1.48)]
 
                         #Need to convert to BGR for SAHI Inspection
-                        self.part1Crop = cv2.cvtColor(self.part1Crop, cv2.COLOR_RGB2BGR)
-                        self.part2Crop = cv2.cvtColor(self.part2Crop, cv2.COLOR_RGB2BGR)
-                        self.part3Crop = cv2.cvtColor(self.part3Crop, cv2.COLOR_RGB2BGR)
-                        self.part4Crop = cv2.cvtColor(self.part4Crop, cv2.COLOR_RGB2BGR)
-                        self.part5Crop = cv2.cvtColor(self.part5Crop, cv2.COLOR_RGB2BGR)
+                        # self.part1Crop = cv2.cvtColor(self.part1Crop, cv2.COLOR_RGB2BGR)
+                        # self.part2Crop = cv2.cvtColor(self.part2Crop, cv2.COLOR_RGB2BGR)
+                        # self.part3Crop = cv2.cvtColor(self.part3Crop, cv2.COLOR_RGB2BGR)
+                        # self.part4Crop = cv2.cvtColor(self.part4Crop, cv2.COLOR_RGB2BGR)
+                        # self.part5Crop = cv2.cvtColor(self.part5Crop, cv2.COLOR_RGB2BGR)
 
                         #Put the All the image into a list
                         self.InspectionImages[0] = self.part1Crop.copy()
@@ -1526,11 +1526,11 @@ class InspectionThread(QThread):
 
                 if self.InspectionImages_prev[0] is not None and any(sensor != 0 for sensor in self.inspection_config.kouden_sensor):
                     #convert to bgr
-                    self.part1Crop_scaled = cv2.cvtColor(self.InspectionImages_prev[0], cv2.COLOR_RGB2BGR)
-                    self.part2Crop_scaled = cv2.cvtColor(self.InspectionImages_prev[1], cv2.COLOR_RGB2BGR)
-                    self.part3Crop_scaled = cv2.cvtColor(self.InspectionImages_prev[2], cv2.COLOR_RGB2BGR)
-                    self.part4Crop_scaled = cv2.cvtColor(self.InspectionImages_prev[3], cv2.COLOR_RGB2BGR)
-                    self.part5Crop_scaled = cv2.cvtColor(self.InspectionImages_prev[4], cv2.COLOR_RGB2BGR)
+                    # self.part1Crop_scaled = cv2.cvtColor(self.InspectionImages_prev[0], cv2.COLOR_RGB2BGR)
+                    # self.part2Crop_scaled = cv2.cvtColor(self.InspectionImages_prev[1], cv2.COLOR_RGB2BGR)
+                    # self.part3Crop_scaled = cv2.cvtColor(self.InspectionImages_prev[2], cv2.COLOR_RGB2BGR)
+                    # self.part4Crop_scaled = cv2.cvtColor(self.InspectionImages_prev[3], cv2.COLOR_RGB2BGR)
+                    # self.part5Crop_scaled = cv2.cvtColor(self.InspectionImages_prev[4], cv2.COLOR_RGB2BGR)
 
                     self.ethernet_status_red_tenmetsu_status = self.ethernet_status_red_tenmetsu_status_prev.copy()
                     self.ethernet_status_green_hold_status = self.ethernet_status_green_hold_status_prev.copy()
@@ -1559,15 +1559,15 @@ class InspectionThread(QThread):
                     self.InspectionImages_prev[0] = None
 
                 if self.part1Crop_scaled is not None:
-                    self.part1Cam.emit(self.convertQImage(self.part1Crop_scaled))
+                    self.part1Cam.emit(self.converQImageRGB(self.part1Crop_scaled))
                 if self.part2Crop_scaled is not None:
-                    self.part2Cam.emit(self.convertQImage(self.part2Crop_scaled))
+                    self.part2Cam.emit(self.converQImageRGB(self.part2Crop_scaled))
                 if self.part3Crop_scaled is not None:
-                    self.part3Cam.emit(self.convertQImage(self.part3Crop_scaled))
+                    self.part3Cam.emit(self.converQImageRGB(self.part3Crop_scaled))
                 if self.part4Crop_scaled is not None:
-                    self.part4Cam.emit(self.convertQImage(self.part4Crop_scaled))
+                    self.part4Cam.emit(self.converQImageRGB(self.part4Crop_scaled))
                 if self.part5Crop_scaled is not None:
-                    self.part5Cam.emit(self.convertQImage(self.part5Crop_scaled))
+                    self.part5Cam.emit(self.converQImageRGB(self.part5Crop_scaled))
 
                 if self.holeFrame1 is not None:
                     self.hole1Cam.emit(self.convertQImage(self.holeFrame1))
@@ -1649,11 +1649,11 @@ class InspectionThread(QThread):
                         self.part5Crop = self.combinedImage[int(self.part5Crop_YPos*1.48) : int((self.part5Crop_YPos + self.part_height_offset)*1.48), 0 : int(self.homography_size[1]*1.48)]
 
                         #Need to convert to BGR for SAHI Inspection
-                        self.part1Crop = cv2.cvtColor(self.part1Crop, cv2.COLOR_RGB2BGR)
-                        self.part2Crop = cv2.cvtColor(self.part2Crop, cv2.COLOR_RGB2BGR)
-                        self.part3Crop = cv2.cvtColor(self.part3Crop, cv2.COLOR_RGB2BGR)
-                        self.part4Crop = cv2.cvtColor(self.part4Crop, cv2.COLOR_RGB2BGR)
-                        self.part5Crop = cv2.cvtColor(self.part5Crop, cv2.COLOR_RGB2BGR)
+                        # self.part1Crop = cv2.cvtColor(self.part1Crop, cv2.COLOR_RGB2BGR)
+                        # self.part2Crop = cv2.cvtColor(self.part2Crop, cv2.COLOR_RGB2BGR)
+                        # self.part3Crop = cv2.cvtColor(self.part3Crop, cv2.COLOR_RGB2BGR)
+                        # self.part4Crop = cv2.cvtColor(self.part4Crop, cv2.COLOR_RGB2BGR)
+                        # self.part5Crop = cv2.cvtColor(self.part5Crop, cv2.COLOR_RGB2BGR)
 
                         #Put the All the image into a list
                         self.InspectionImages[0] = self.part1Crop.copy()
@@ -1804,6 +1804,12 @@ class InspectionThread(QThread):
                         self.part3Cam.emit(self.converQImageRGB(self.InspectionImages[2]))
                         self.part4Cam.emit(self.converQImageRGB(self.InspectionImages[3]))
                         self.part5Cam.emit(self.converQImageRGB(self.InspectionImages[4]))
+
+                        # self.part1Cam.emit(self.convertQImage(self.InspectionImages[0]))
+                        # self.part2Cam.emit(self.convertQImage(self.InspectionImages[1]))
+                        # self.part3Cam.emit(self.convertQImage(self.InspectionImages[2]))
+                        # self.part4Cam.emit(self.convertQImage(self.InspectionImages[3]))
+                        # self.part5Cam.emit(self.convertQImage(self.InspectionImages[4]))
 
                         # self.hoodFR_InspectionStatus.emit(self.InspectionStatus)
 

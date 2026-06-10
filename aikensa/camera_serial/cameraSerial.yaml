@@ -1,5 +1,9 @@
 ic4_rotate_180: false
 
+inspection_defaults:
+  fps: 5
+  exposure_us: 10000
+
 # Replace the numeric placeholders below with stable IC4 serial numbers.
 # For real IC4 deployments, prefer `serial: 21520069` style entries.
 # The numeric identifier values below keep the previous index-based behavior until the real serials are filled in.
@@ -12,41 +16,36 @@ cam0:
   rotate_180: false
 
 cam1:
-  identifier: 1
+  identifier: 48320175
   role: inspection
   width: 3072
   height: 2048
-  fps: 5
   rotate_180: false
 
 cam2:
-  identifier: 2
+  identifier: 25420433
   role: inspection
   width: 3072
   height: 2048
-  fps: 5
   rotate_180: false
 
 cam3:
-  identifier: 3
+  identifier: 25420436
   role: inspection
   width: 3072
   height: 2048
-  fps: 5
   rotate_180: false
 
 cam4:
-  identifier: 4
+  identifier: 10420749
   role: inspection
   width: 3072
   height: 2048
-  fps: 5
   rotate_180: false
 
 cam5:
-  identifier: 5
+  identifier: 25420298
   role: inspection
   width: 3072
   height: 2048
-  fps: 5
   rotate_180: false

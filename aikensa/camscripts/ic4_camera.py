@@ -93,6 +93,10 @@ def get_camera_settings(logical_camera_id: int) -> dict:
     if not isinstance(loaded_entry, dict):
         loaded_entry = {"identifier": loaded_entry}
 
+    shared_inspection_settings = config.get("inspection_defaults", {}) if logical_camera_id != 0 else {}
+    if not isinstance(shared_inspection_settings, dict):
+        shared_inspection_settings = {}
+
     normalized_entry = dict(loaded_entry)
     if "serial" in normalized_entry and "identifier" not in normalized_entry:
         serial_value = normalized_entry["serial"]
@@ -105,8 +109,12 @@ def get_camera_settings(logical_camera_id: int) -> dict:
     top_level_rotate = bool(config.get("ic4_rotate_180", False))
     settings = _default_camera_settings(logical_camera_id)
     settings["rotate_180"] = top_level_rotate
+    settings.update({k: v for k, v in shared_inspection_settings.items() if v is not None})
     settings.update({k: v for k, v in normalized_entry.items() if v is not None})
     settings["identifier"] = _coerce_identifier(settings.get("identifier"))
+
+    if logical_camera_id != 0 and settings["identifier"] is not None:
+        settings["identifier"] = str(settings["identifier"]).strip()
 
     return settings
 
@@ -212,7 +220,7 @@ class DummyCapture:
         self._height = int(height)
         self._label = label
         self._rotate_180 = bool(rotate_180)
-        self._open = True
+        self._open = False
 
     def isOpened(self) -> bool:
         return self._open
@@ -372,7 +380,10 @@ def initialize_camera_ic4(logical_camera_id: int):
 
     try:
         capture = IC4Capture(settings)
-        print(f"[IC4] Initialized camera cam{logical_camera_id} using identifier {settings['identifier']}")
+        print(
+            f"[IC4] Initialized camera cam{logical_camera_id} using identifier {settings['identifier']} "
+            f"(fps={settings['fps']}, exposure_us={settings['exposure_us']})"
+        )
         return capture
     except Exception as error:
         print(f"[IC4] Failed to initialize cam{logical_camera_id}: {error}")
