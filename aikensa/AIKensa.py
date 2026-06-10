@@ -33,7 +33,7 @@ UI_FILES = [
     'aikensa/qtui/edgedetection.ui',        # index 7
     "aikensa/qtui/P65820W030P.ui",           # Mitsubishi 5A45 Hood FR index 8
     "aikensa/qtui/P658207YA0A.ui" ,          # Nissan Hood FR index 9
-    "aikensa/qtui/empty.ui", #empty 10
+    "aikensa/qtui/P658207YA0A_katabu_nashi.ui", # Nissan Hood FR katabu nashi index 10
     "aikensa/qtui/empty.ui", #empty 11
     "aikensa/qtui/empty.ui", #empty 12
     "aikensa/qtui/empty.ui", #empty 13
@@ -82,7 +82,9 @@ class AIKensa(QMainWindow):
         self.widget_dir_map = {
             8: "65820W030P",
             9: "658207YA0A",
+            10: "658207YA0A_katabu_nashi",
         }
+        self.P658207YA0A_widget_indices = [9, 10]
 
         self.prevTriggerStates = 0
         self.TriggerWaitTime = 2.0
@@ -198,6 +200,7 @@ class AIKensa(QMainWindow):
         button_config = {
             "P65820W030Pbutton": {"widget_index": 8, "inspection_param": 8},
             "P658207LE0Abutton": {"widget_index": 9, "inspection_param": 9},
+            "P658207LE0A_katabunashi_button": {"widget_index": 10, "inspection_param": 10},
         }
 
         for button_name, config in button_config.items():
@@ -216,7 +219,7 @@ class AIKensa(QMainWindow):
         dailytenken01_P65820W030P_kanryou_button = dailytenken01_P65820W030P_widget.findChild(QPushButton, "finishButton")
 
         self.siostatus = main_widget.findChild(QLabel, "status_sio")
-        self.timeLabel = [self.stackedWidget.widget(i).findChild(QLabel, "timeLabel") for i in [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]]
+        self.timeLabel = [self.stackedWidget.widget(i).findChild(QLabel, "timeLabel") for i in [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]]
 
         if cameraCalibration1_button:
             cameraCalibration1_button.clicked.connect(lambda: self.stackedWidget.setCurrentIndex(1))
@@ -292,7 +295,7 @@ class AIKensa(QMainWindow):
             self.connect_camera_merge_adjustment_button(6, f"CAM{camera_index}_RLEFT", camera_index, rotation_delta=-0.1)
             self.connect_camera_merge_adjustment_button(6, f"CAM{camera_index}_RRIGHT", camera_index, rotation_delta=0.1)
 
-        self.siostatus_server = [self.stackedWidget.widget(i).findChild(QLabel, "status_sio") for i in [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 21, 22, 23]]
+        self.siostatus_server = [self.stackedWidget.widget(i).findChild(QLabel, "status_sio") for i in [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 21, 22, 23]]
 
         # self.inspection_widget_indices = [8]
 
@@ -301,7 +304,7 @@ class AIKensa(QMainWindow):
         # if self.Inspect_button:
         #     self.Inspect_button.clicked.connect(lambda: self._set_inspection_params(self.inspection_thread, "doInspection", True))
 
-        self.inspection_widget_indices = [8, 9]
+        self.inspection_widget_indices = [8, 9, 10]
 
         for i in self.inspection_widget_indices:
             self.Inspect_button = self.stackedWidget.widget(i).findChild(QPushButton, "InspectButton")
@@ -309,7 +312,7 @@ class AIKensa(QMainWindow):
                 self.Inspect_button.clicked.connect(lambda: self._set_inspection_params(self.inspection_thread, "doInspection", True))
 
 
-        for i in [8, 9]:
+        for i in [8, 9, 10]:
             self.connect_inspectionConfig_button(i, "kansei_plus", "kansei_plus", True)
             self.connect_inspectionConfig_button(i, "kansei_minus", "kansei_minus", True)
             self.connect_inspectionConfig_button(i, "furyou_plus", "furyou_plus", True)
@@ -324,7 +327,8 @@ class AIKensa(QMainWindow):
                 self.connect_crop_adjustment_button(i, f"P{part_index}UP", part_index, -1)
                 self.connect_crop_adjustment_button(i, f"P{part_index}DOWN", part_index, 1)
 
-        self.connect_line_edit_text_changed(widget_index=8, line_edit_name="kensain_name", inspection_param="kensainNumber")
+        for widget_index in [8, 9, 10]:
+            self.connect_line_edit_text_changed(widget_index=widget_index, line_edit_name="kensain_name", inspection_param="kensainNumber")
 
 
        # Find and connect quit buttons and main menu buttons in all widgets
@@ -501,31 +505,31 @@ class AIKensa(QMainWindow):
         label1.setPixmap(QPixmap.fromImage(image))
         
     def _setPartFrame1(self, image):
-        for i in [8, 9]:
+        for i in [8, 9, 10]:
             widget = self.stackedWidget.widget(i)
             label1 = widget.findChild(QLabel, "FramePart1")
             label1.setPixmap(QPixmap.fromImage(image))
 
     def _setPartFrame2(self, image):
-        for i in [8, 9]:
+        for i in [8, 9, 10]:
             widget = self.stackedWidget.widget(i)
             label2 = widget.findChild(QLabel, "FramePart2")
             label2.setPixmap(QPixmap.fromImage(image))
 
     def _setPartFrame3(self, image):
-        for i in [8, 9]:
+        for i in [8, 9, 10]:
             widget = self.stackedWidget.widget(i)
             label3 = widget.findChild(QLabel, "FramePart3")
             label3.setPixmap(QPixmap.fromImage(image))
 
     def _setPartFrame4(self, image):
-        for i in [8, 9]:
+        for i in [8, 9, 10]:
             widget = self.stackedWidget.widget(i)
             label4 = widget.findChild(QLabel, "FramePart4")
             label4.setPixmap(QPixmap.fromImage(image))
 
     def _setPartFrame5(self, image):
-        for i in [8, 9]:
+        for i in [8, 9, 10]:
             widget = self.stackedWidget.widget(i)
             label5 = widget.findChild(QLabel, "FramePart5")
             label5.setPixmap(QPixmap.fromImage(image))
@@ -738,22 +742,23 @@ class AIKensa(QMainWindow):
         label_names = ["StatusP1", "StatusP2", "StatusP3", "StatusP4", "StatusP5"]
 
         for i, status in enumerate(inspectionStatus):
-            widget = self.stackedWidget.widget(9)
-            label = widget.findChild(QLabel, label_names[i])
-            if label:
-                label.setText(status)
-                if status == "製品検出済み":
-                    label.setStyleSheet("QLabel { background-color: lightblue; }")
-                elif status == "製品未検出":
-                    label.setStyleSheet("QLabel { background-color: pink; }")
-                elif status == "検査準備完了":
-                    label.setStyleSheet("QLabel { background-color: lightblue; }")
-                elif status == "検査中":
-                    label.setStyleSheet("QLabel { background-color: pink; }")
-                elif status == "OK":
-                    label.setStyleSheet("QLabel { background-color: green; }")
-                elif status == "NG":
-                    label.setStyleSheet("QLabel { background-color: red; }")
+            for widget_index in self.P658207YA0A_widget_indices:
+                widget = self.stackedWidget.widget(widget_index)
+                label = widget.findChild(QLabel, label_names[i])
+                if label:
+                    label.setText(status)
+                    if status == "製品検出済み":
+                        label.setStyleSheet("QLabel { background-color: lightblue; }")
+                    elif status == "製品未検出":
+                        label.setStyleSheet("QLabel { background-color: pink; }")
+                    elif status == "検査準備完了":
+                        label.setStyleSheet("QLabel { background-color: lightblue; }")
+                    elif status == "検査中":
+                        label.setStyleSheet("QLabel { background-color: pink; }")
+                    elif status == "OK":
+                        label.setStyleSheet("QLabel { background-color: green; }")
+                    elif status == "NG":
+                        label.setStyleSheet("QLabel { background-color: red; }")
 
     def _inspectionStatusHole(self, holeStatus):
         label_names = ["MizuAnaStatus1", "MizuAnaStatus2", "MizuAnaStatus3", "MizuAnaStatus4", "MizuAnaStatus5"]
@@ -777,10 +782,12 @@ class AIKensa(QMainWindow):
 
 
     def _P658207YA0A_outputMeasurementText(self, measurementValue):
-        self._update_measurement_text_labels(9, 35, measurementValue)
+        for widget_index in self.P658207YA0A_widget_indices:
+            self._update_measurement_text_labels(widget_index, 35, measurementValue)
 
     def _P658207YA0A_outputMeasurementTextColor(self, pitchResult):
-        self._update_measurement_text_colors(9, 35, pitchResult)
+        for widget_index in self.P658207YA0A_widget_indices:
+            self._update_measurement_text_colors(widget_index, 35, pitchResult)
 
 
     def _sentInputToInspectionThread(self, input):

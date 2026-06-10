@@ -555,7 +555,7 @@ Camera Merge</string>
    <widget class="QLabel" name="label_7">
     <property name="geometry">
      <rect>
-      <x>1185</x>
+      <x>1115</x>
       <y>655</y>
       <width>211</width>
       <height>31</height>
@@ -582,8 +582,8 @@ Camera Merge</string>
    <widget class="QPushButton" name="P658207LE0Abutton">
     <property name="geometry">
      <rect>
-      <x>1180</x>
-      <y>545</y>
+      <x>1110</x>
+      <y>550</y>
       <width>231</width>
       <height>101</height>
      </rect>
@@ -603,6 +603,31 @@ Camera Merge</string>
  SEAL-ASSY HOOD FR</string>
     </property>
    </widget>
+   <widget class="QPushButton" name="P658207LE0A_katabunashi_button">
+    <property name="geometry">
+     <rect>
+      <x>1350</x>
+      <y>550</y>
+      <width>231</width>
+      <height>101</height>
+     </rect>
+    </property>
+    <property name="font">
+     <font>
+      <family>Ubuntu Mono</family>
+      <pointsize>15</pointsize>
+     </font>
+    </property>
+    <property name="styleSheet">
+     <string notr="true">background-color: rgb(192, 97, 203);</string>
+    </property>
+    <property name="text">
+     <string>J42U
+65820 7YA0A
+ SEAL-ASSY HOOD FR
+クリップ挿入機用</string>
+    </property>
+   </widget>
   </widget>
   <widget class="QMenuBar" name="menubar">
    <property name="geometry">
@@ -610,7 +635,7 @@ Camera Merge</string>
      <x>0</x>
      <y>0</y>
      <width>1920</width>
-     <height>21</height>
+     <height>22</height>
     </rect>
    </property>
   </widget>

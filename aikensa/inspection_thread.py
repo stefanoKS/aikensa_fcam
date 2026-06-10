@@ -28,6 +28,7 @@ from aikensa.parts_config.sound import play_do_sound, play_picking_sound, play_r
 from ultralytics import YOLO
 from aikensa.parts_config.hoodFR_65820W030P import partcheck
 from aikensa.parts_config.P658207YA0A_SEALASSYHOODFR import partcheck as P658207YA0A_partcheck
+from aikensa.parts_config.P658207YA0A_SEALASSYHOODFR_katabu_nashi import partcheck as P658207YA0A_katabu_nashi_partcheck
 
 from PIL import ImageFont, ImageDraw, Image
 
@@ -232,6 +233,7 @@ class InspectionThread(QThread):
         self.part_merge_config_paths = {
             8: os.path.join("aikensa", "cameracalibration", "merge_config_65820W030P.yaml"),
             9: os.path.join("aikensa", "cameracalibration", "merge_config_658207YA0A.yaml"),
+            10: os.path.join("aikensa", "cameracalibration", "merge_config_658207YA0A.yaml"),
         }
         self.base_planarize_reference = {
             "left_offset": 0.0,
@@ -260,6 +262,16 @@ class InspectionThread(QThread):
                 },
                 "legacy_homography_adjustment_path": os.path.join("aikensa", "cameracalibration", "homography_adjustment_FR.yaml"),
             },
+            10: {
+                "part_name": "658207YA0A_katabu_nashi",
+                "planarize_defaults": {
+                    "left_offset": 0.0,
+                    "right_offset": 0.0,
+                    "top_offset": 0.0,
+                    "bottom_offset": 0.0,
+                },
+                "legacy_homography_adjustment_path": os.path.join("aikensa", "cameracalibration", "homography_adjustment_FR.yaml"),
+            },
         }
         self.part_merge_configs = {}
         self.crop_position_profiles = {
@@ -274,6 +286,16 @@ class InspectionThread(QThread):
                 "defaults": [45, 300, 580, 860, 1130],
             },
             "658207YA0A": {
+                "attrs": [
+                    "part1Crop_YPos_hoodFR",
+                    "part2Crop_YPos_hoodFR",
+                    "part3Crop_YPos_hoodFR",
+                    "part4Crop_YPos_hoodFR",
+                    "part5Crop_YPos_hoodFR",
+                ],
+                "defaults": [63 * 5, 101 * 5, 139 * 5, 174 * 5, 212 * 5],
+            },
+            "658207YA0A_katabu_nashi": {
                 "attrs": [
                     "part1Crop_YPos_hoodFR",
                     "part2Crop_YPos_hoodFR",
@@ -368,6 +390,7 @@ class InspectionThread(QThread):
         self.widget_dir_map = {
             8: "65820W030P",
             9: "658207YA0A",
+            10: "658207YA0A_katabu_nashi",
         }
 
         self.InspectionWaitTime = 15.0
@@ -609,6 +632,10 @@ class InspectionThread(QThread):
 
             if self.inspection_config.widget == 9:
                 if self._handle_widget_9():
+                    continue
+
+            if self.inspection_config.widget == 10:
+                if self._handle_widget_10():
                     continue
 
 
@@ -902,6 +929,9 @@ class InspectionThread(QThread):
         self.hoodFR_HoleStatus.emit(self.DetectionResult_HoleDetection)
         return False
 
+    def _handle_widget_10(self):
+        return self._handle_widget_9()
+
     def _handle_widget_9(self):
 
         if self.inspection_config.furyou_plus or self.inspection_config.furyou_minus or self.inspection_config.kansei_plus or self.inspection_config.kansei_minus or self.inspection_config.furyou_plus_10 or self.inspection_config.furyou_minus_10 or self.inspection_config.kansei_plus_10 or self.inspection_config.kansei_minus_10:
@@ -1079,10 +1109,10 @@ class InspectionThread(QThread):
             # print(f"InspectionConfig: {self.inspection_config.doInspection}")
 
             if self.inspection_config.doInspection is True:
-                if not self.has_required_models(9):
+                if not self.has_required_models(self.inspection_config.widget):
                     self.inspection_config.doInspection = False
                     self.emit_blank_part_frames()
-                    print("Skipping widget 9 inspection because required model weights are missing.")
+                    print(f"Skipping widget {self.inspection_config.widget} inspection because required model weights are missing.")
                     return True
 
                 self.inspection_config.doInspection = False
@@ -1129,17 +1159,6 @@ class InspectionThread(QThread):
                         self.part4Crop = self.combinedImage[int(self.part4Crop_YPos_hoodFR*1.48) : int((self.part4Crop_YPos_hoodFR + self.part_height_offset_nissanhoodFR)*1.48), 0 : int(self.homography_size[1]*1.48)]
                         self.part5Crop = self.combinedImage[int(self.part5Crop_YPos_hoodFR*1.48) : int((self.part5Crop_YPos_hoodFR + self.part_height_offset_nissanhoodFR)*1.48), 0 : int(self.homography_size[1]*1.48)]
 
-                        # self.save_image(self.part1Crop)
-                        # time.sleep(1.5)
-                        # self.save_image(self.part2Crop)
-                        # time.sleep(1.5)
-                        # self.save_image(self.part3Crop)
-                        # time.sleep(1.5)
-                        # self.save_image(self.part4Crop)
-                        # time.sleep(1.5)
-                        # self.save_image(self.part5Crop)
-                        # time.sleep(1.5)
-
                         #Need to convert to BGR for SAHI Inspection
                         self.part1Crop = cv2.cvtColor(self.part1Crop, cv2.COLOR_RGB2BGR)
                         self.part2Crop = cv2.cvtColor(self.part2Crop, cv2.COLOR_RGB2BGR)
@@ -1180,14 +1199,14 @@ class InspectionThread(QThread):
                                         perform_standard_pred=False
                                     )
 
-                                    #Crop image from 0 to 1024 width for the left and width-1024 to 1024 for the right
-                                    # self.InspectionImages_endSegmentation_Left[i] = self.InspectionImages[i][:, :1024, :]
-                                    # self.InspectionImages_endSegmentation_Right[i] = self.InspectionImages[i][:, -1024:, :]
 
-                                    # self.InspectionResult_EndSegmentation_Left[i] = self.hoodFR_endSegmentationModel(source=self.InspectionImages_endSegmentation_Left[i], conf=0.5, imgsz=960, verbose=False)
-                                    # self.InspectionResult_EndSegmentation_Right[i] = self.hoodFR_endSegmentationModel(source=self.InspectionImages_endSegmentation_Right[i], conf=0.5, imgsz=960, verbose=False)
+                                    partcheck_handler = (
+                                        P658207YA0A_katabu_nashi_partcheck
+                                        if self.inspection_config.widget == 10
+                                        else P658207YA0A_partcheck
+                                    )
 
-                                    self.InspectionImages[i], self.InspectionResult_PitchMeasured[i], self.InspectionResult_PitchResult[i], self.InspectionResult_DetectionID[i], self.InspectionResult_Status[i], self.InspectionResult_NGReason[i] = P658207YA0A_partcheck(
+                                    self.InspectionImages[i], self.InspectionResult_PitchMeasured[i], self.InspectionResult_PitchResult[i], self.InspectionResult_DetectionID[i], self.InspectionResult_Status[i], self.InspectionResult_NGReason[i] = partcheck_handler(
                                         self.InspectionImages[i],
                                         self.InspectionResult_ClipDetection[i].object_prediction_list,
                                         self.P658207YA0A_clipHeightModel,
@@ -2862,6 +2881,11 @@ class InspectionThread(QThread):
                 self.hoodFR_endSegmentationModel,
             )),
             9: all(model is not None for model in (
+                self.P658207YA0A_clipDetectionModel,
+                self.P658207YA0A_clipHeightModel,
+                self.P658207YA0A_existClassificationModel,
+            )),
+            10: all(model is not None for model in (
                 self.P658207YA0A_clipDetectionModel,
                 self.P658207YA0A_clipHeightModel,
                 self.P658207YA0A_existClassificationModel,
