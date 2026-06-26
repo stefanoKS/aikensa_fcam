@@ -1,7 +1,7 @@
 ic4_rotate_180: false
 
 inspection_defaults:
-  fps: 5
+  fps: 30
   exposure_us: 10000
 
 # Replace the numeric placeholders below with stable IC4 serial numbers.
