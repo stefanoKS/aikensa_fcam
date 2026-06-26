@@ -91,12 +91,15 @@ class InspectionThread(QThread):
     
     hoodFR_InspectionResult_PitchMeasured = pyqtSignal(list)
     P658207YA0A_InspectionResult_PitchMeasured = pyqtSignal(list)
+    P658207YA0A_katabu_nashi_InspectionResult_PitchMeasured = pyqtSignal(list)
 
     hoodFR_InspectionResult_PitchResult = pyqtSignal(list)
     P658207YA0A_InspectionResult_PitchResult = pyqtSignal(list)
+    P658207YA0A_katabu_nashi_InspectionResult_PitchResult = pyqtSignal(list)
     
     hoodFR_InspectionStatus = pyqtSignal(list)
     P658207YA0A_InspectionStatus = pyqtSignal(list)
+    P658207YA0A_katabu_nashi_InspectionStatus = pyqtSignal(list)
 
     hoodFR_HoleStatus = pyqtSignal(list)
 
@@ -318,6 +321,8 @@ class InspectionThread(QThread):
 
         self.part_height_offset_nissanhoodFR = 180
         self.part_height_offset_nissanhoodFR_scaled = int(self.part_height_offset_nissanhoodFR//self.scale_factor)
+        self.part_width_offset_katabu_nashi = 1920
+        self.part_width_offset_katabu_nashi_scaled = int(self.part_width_offset_katabu_nashi // self.scale_factor)
 
         self.dailyTenken_cropWidth = 950
         self.dailyTenken_cropWidth_scaled = int(self.dailyTenken_cropWidth//self.scale_factor)
@@ -930,9 +935,25 @@ class InspectionThread(QThread):
         return False
 
     def _handle_widget_10(self):
-        return self._handle_widget_9()
+        return self._handle_P658207YA0A_widget(
+            status_signal=self.P658207YA0A_katabu_nashi_InspectionStatus,
+            pitch_measured_signal=self.P658207YA0A_katabu_nashi_InspectionResult_PitchMeasured,
+            pitch_result_signal=self.P658207YA0A_katabu_nashi_InspectionResult_PitchResult,
+            partcheck_handler=P658207YA0A_katabu_nashi_partcheck,
+            crop_width=self.part_width_offset_katabu_nashi,
+            crop_width_scaled=self.part_width_offset_katabu_nashi_scaled,
+            end_keypoint_model=self.P658207YA0A_end_keypointModel,
+        )
 
     def _handle_widget_9(self):
+        return self._handle_P658207YA0A_widget(
+            status_signal=self.P658207YA0A_InspectionStatus,
+            pitch_measured_signal=self.P658207YA0A_InspectionResult_PitchMeasured,
+            pitch_result_signal=self.P658207YA0A_InspectionResult_PitchResult,
+            partcheck_handler=P658207YA0A_partcheck,
+        )
+
+    def _handle_P658207YA0A_widget(self, status_signal, pitch_measured_signal, pitch_result_signal, partcheck_handler, crop_width=None, crop_width_scaled=None, end_keypoint_model=None):
 
         if self.inspection_config.furyou_plus or self.inspection_config.furyou_minus or self.inspection_config.kansei_plus or self.inspection_config.kansei_minus or self.inspection_config.furyou_plus_10 or self.inspection_config.furyou_minus_10 or self.inspection_config.kansei_plus_10 or self.inspection_config.kansei_minus_10:
             self.inspection_config.current_numofPart[self.inspection_config.widget], self.inspection_config.today_numofPart[self.inspection_config.widget] = self.manual_adjustment(
@@ -1070,6 +1091,13 @@ class InspectionThread(QThread):
                 self.part4Crop_scaled = self.combinedImage_scaled[self.part4Crop_Ypos_hoodFR_scaled : self.part4Crop_Ypos_hoodFR_scaled + self.part_height_offset_nissanhoodFR_scaled, 0 : self.homography_size_scaled[1]]
                 self.part5Crop_scaled = self.combinedImage_scaled[self.part5Crop_Ypos_hoodFR_scaled : self.part5Crop_Ypos_hoodFR_scaled + self.part_height_offset_nissanhoodFR_scaled, 0 : self.homography_size_scaled[1]]
 
+                if crop_width_scaled is not None:
+                    self.part1Crop_scaled = self.center_crop_width(self.part1Crop_scaled, crop_width_scaled)
+                    self.part2Crop_scaled = self.center_crop_width(self.part2Crop_scaled, crop_width_scaled)
+                    self.part3Crop_scaled = self.center_crop_width(self.part3Crop_scaled, crop_width_scaled)
+                    self.part4Crop_scaled = self.center_crop_width(self.part4Crop_scaled, crop_width_scaled)
+                    self.part5Crop_scaled = self.center_crop_width(self.part5Crop_scaled, crop_width_scaled)
+
                 # cv2.imwrite("part1Crop_scaled_inference.png", self.part1Crop_scaled)
 
                 self.part1Crop_scaled = self.downSampling(self.part1Crop_scaled, width=1771, height=24)
@@ -1094,7 +1122,7 @@ class InspectionThread(QThread):
 
                 #Empty the Inspection Result
 
-                self.P658207YA0A_InspectionResult_PitchMeasured.emit(self.InspectionResult_PitchMeasured)
+                pitch_measured_signal.emit(self.InspectionResult_PitchMeasured)
                 # self.hoodFR_InspectionResult_PitchResult.emit(self.InspectionResult_PitchResult)
 
             if self.InspectionTimeStart is None:
@@ -1134,7 +1162,7 @@ class InspectionThread(QThread):
 
                         for i in range (len(self.InspectionStatus)):
                             self.InspectionStatus[i] = "検査中"
-                        self.P658207YA0A_InspectionStatus.emit(self.InspectionStatus)
+                        status_signal.emit(self.InspectionStatus)
 
                         self.mergeframe1 = cv2.remap(self.mergeframe1, self.inspection_config.map1[1], self.inspection_config.map2[1], interpolation=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT)
                         self.mergeframe2 = cv2.remap(self.mergeframe2, self.inspection_config.map1[2], self.inspection_config.map2[2], interpolation=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT)
@@ -1158,6 +1186,13 @@ class InspectionThread(QThread):
                         self.part3Crop = self.combinedImage[int(self.part3Crop_YPos_hoodFR*1.48) : int((self.part3Crop_YPos_hoodFR + self.part_height_offset_nissanhoodFR)*1.48), 0 : int(self.homography_size[1]*1.48)]
                         self.part4Crop = self.combinedImage[int(self.part4Crop_YPos_hoodFR*1.48) : int((self.part4Crop_YPos_hoodFR + self.part_height_offset_nissanhoodFR)*1.48), 0 : int(self.homography_size[1]*1.48)]
                         self.part5Crop = self.combinedImage[int(self.part5Crop_YPos_hoodFR*1.48) : int((self.part5Crop_YPos_hoodFR + self.part_height_offset_nissanhoodFR)*1.48), 0 : int(self.homography_size[1]*1.48)]
+
+                        if crop_width is not None:
+                            self.part1Crop = self.center_crop_width(self.part1Crop, crop_width)
+                            self.part2Crop = self.center_crop_width(self.part2Crop, crop_width)
+                            self.part3Crop = self.center_crop_width(self.part3Crop, crop_width)
+                            self.part4Crop = self.center_crop_width(self.part4Crop, crop_width)
+                            self.part5Crop = self.center_crop_width(self.part5Crop, crop_width)
 
                         #Need to convert to BGR for SAHI Inspection
                         # self.part1Crop = cv2.cvtColor(self.part1Crop, cv2.COLOR_RGB2BGR)
@@ -1200,17 +1235,17 @@ class InspectionThread(QThread):
                                     )
 
 
-                                    partcheck_handler = (
-                                        P658207YA0A_katabu_nashi_partcheck
-                                        if self.inspection_config.widget == 10
-                                        else P658207YA0A_partcheck
-                                    )
+                                    partcheck_kwargs = {
+                                        "debug_clip_mode": self.inspection_config.P658207YA0A_debug_clip_mode,
+                                    }
+                                    if end_keypoint_model is not None:
+                                        partcheck_kwargs["end_keypoint_model"] = end_keypoint_model
 
                                     self.InspectionImages[i], self.InspectionResult_PitchMeasured[i], self.InspectionResult_PitchResult[i], self.InspectionResult_DetectionID[i], self.InspectionResult_Status[i], self.InspectionResult_NGReason[i] = partcheck_handler(
                                         self.InspectionImages[i],
                                         self.InspectionResult_ClipDetection[i].object_prediction_list,
                                         self.P658207YA0A_clipHeightModel,
-                                        debug_clip_mode=self.inspection_config.P658207YA0A_debug_clip_mode,
+                                        **partcheck_kwargs,
                                     )
 
                                     if self.InspectionResult_Status[i] == "OK":
@@ -1288,7 +1323,7 @@ class InspectionThread(QThread):
                             # self.save_image_hole(self.holeFrame4, False, "P4")
                             # self.save_image_hole(self.holeFrame5, False, "P5")
 
-                            self.P658207YA0A_InspectionStatus.emit(self.InspectionStatus)
+                            status_signal.emit(self.InspectionStatus)
 
                         for i, part_crop in enumerate((self.part1Crop, self.part2Crop, self.part3Crop, self.part4Crop, self.part5Crop)):
                             if self.InspectionResult_Status[i] in ("OK", "NG"):
@@ -1300,8 +1335,8 @@ class InspectionThread(QThread):
                         self.InspectionImages[3] = self.downSampling(self.InspectionImages[3], width=1771, height=24)
                         self.InspectionImages[4] = self.downSampling(self.InspectionImages[4], width=1771, height=24)
 
-                        self.P658207YA0A_InspectionResult_PitchMeasured.emit(self.InspectionResult_PitchMeasured)
-                        self.P658207YA0A_InspectionResult_PitchResult.emit(self.InspectionResult_PitchResult)
+                        pitch_measured_signal.emit(self.InspectionResult_PitchMeasured)
+                        pitch_result_signal.emit(self.InspectionResult_PitchResult)
 
                         print("Inspection Finished")
                         #Remember that list is mutable
@@ -1343,7 +1378,7 @@ class InspectionThread(QThread):
 
         # Emit status based on the red tenmetsu status
 
-        self.P658207YA0A_InspectionStatus.emit(self.InspectionStatus)
+        status_signal.emit(self.InspectionStatus)
         return False
 
     def _handle_widget_8(self):
@@ -1829,7 +1864,6 @@ class InspectionThread(QThread):
         self.hoodFR_HoleStatus.emit(self.DetectionResult_HoleDetection)
         return False
 
-
     def setCounterFalse(self):
         self.inspection_config.furyou_plus = False
         self.inspection_config.furyou_minus = False
@@ -1899,7 +1933,6 @@ class InspectionThread(QThread):
 
         return [ok_count_current, ng_count_current], [ok_count_total, ng_count_total]
     
-    
     def save_result_database(self, partname, numofPart, 
                              currentnumofPart, deltaTime, 
                              kensainName, detected_pitch_str, 
@@ -1941,7 +1974,6 @@ class InspectionThread(QThread):
         VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         ''', (partname, numofPart, currentnumofPart, timestamp_hour, timestamp_date, deltaTime, kensainName, detected_pitch_str, delta_pitch_str, total_length, resultPitch, status, NGreason))
         self.mysql_conn.commit()
-
 
     def get_last_entry_currentnumofPart(self, part_name):
         self.cursor.execute('''
@@ -2556,10 +2588,22 @@ class InspectionThread(QThread):
         if self.homography_size is None:
             return position
 
-        crop_height = self.part_height_offset_nissanhoodFR if widget_index == 9 else self.part_height_offset
+        crop_height = self.part_height_offset_nissanhoodFR if widget_index in (9, 10) else self.part_height_offset
         visible_height = int(self.homography_size[0] / (1.26 * 1.48))
         max_position = max(0, visible_height - crop_height)
         return min(position, max_position)
+
+    def center_crop_width(self, image, crop_width):
+        if image is None or crop_width is None:
+            return image
+
+        width = image.shape[1]
+        if crop_width >= width:
+            return image
+
+        left = max(0, (width - crop_width) // 2)
+        right = left + crop_width
+        return image[:, left:right]
 
     def adjust_crop_position(self, widget_index, part_index, delta):
         profile_key = self.widget_dir_map.get(widget_index)
@@ -2819,6 +2863,7 @@ class InspectionThread(QThread):
         P658207YA0A_clipDetectionModel = None
         P658207YA0A_clipHeightModel = None
         P658207YA0A_existClassificationModel = None
+        P658207YA0A_end_keypointModel = None
 
         #Classification Model
         path_hoodFR_clipDetectionModel = "./aikensa/models/65820W030P_CLIP.pt"
@@ -2828,6 +2873,9 @@ class InspectionThread(QThread):
         path_P658207YA0A_existClassificationModel = "./aikensa/models/658207YA0A_EXIST.pt"
         #Segmentation Model
         path_hoodFR_endSegmentationModel = "./aikensa/models/65820W030P_END_SEGMENTATION.pt"
+
+        #Keypoint Model
+        path_P658207YA0A_end_keypointModel = "./aikensa/models/658207YA0A_END_KEYPOINT.pt"
 
 
         if os.path.exists(path_hoodFR_holeDetectionModel):
@@ -2872,6 +2920,12 @@ class InspectionThread(QThread):
             except Exception as error:
                 print(f"Failed to load 658207YA0A exist model: {error}")
 
+        if os.path.exists(path_P658207YA0A_end_keypointModel):
+            try:
+                P658207YA0A_end_keypointModel = YOLO(path_P658207YA0A_end_keypointModel)
+            except Exception as error:
+                print(f"Failed to load 658207YA0A end keypoint model: {error}")
+
         self.hoodFR_holeDetectionModel = hoodFR_holeDetectionModel
         self.hoodFR_clipDetectionModel = hoodFR_clipDetectionModel
         self.hoodFR_hanireDetectionModel = hoodFR_hanireDetectionModel
@@ -2880,6 +2934,8 @@ class InspectionThread(QThread):
         self.P658207YA0A_clipDetectionModel = P658207YA0A_clipDetectionModel
         self.P658207YA0A_clipHeightModel = P658207YA0A_clipHeightModel
         self.P658207YA0A_existClassificationModel = P658207YA0A_existClassificationModel
+        self.P658207YA0A_end_keypointModel = P658207YA0A_end_keypointModel
+
         self.widget_model_ready = {
             8: all(model is not None for model in (
                 self.hoodFR_holeDetectionModel,
@@ -2895,6 +2951,7 @@ class InspectionThread(QThread):
                 self.P658207YA0A_clipDetectionModel,
                 self.P658207YA0A_clipHeightModel,
                 self.P658207YA0A_existClassificationModel,
+                self.P658207YA0A_end_keypointModel,
             )),
             21: all(model is not None for model in (
                 self.hoodFR_clipDetectionModel,

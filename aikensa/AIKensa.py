@@ -84,7 +84,8 @@ class AIKensa(QMainWindow):
             9: "658207YA0A",
             10: "658207YA0A_katabu_nashi",
         }
-        self.P658207YA0A_widget_indices = [9, 10]
+        self.P658207YA0A_widget_indices = [9]
+        self.P658207YA0A_katabu_nashi_widget_indices = [10]
 
         self.prevTriggerStates = 0
         self.TriggerWaitTime = 2.0
@@ -159,6 +160,9 @@ class AIKensa(QMainWindow):
         self.inspection_thread.P658207YA0A_InspectionResult_PitchMeasured.connect(self._P658207YA0A_outputMeasurementText)
         self.inspection_thread.P658207YA0A_InspectionResult_PitchResult.connect(self._P658207YA0A_outputMeasurementTextColor)
         self.inspection_thread.P658207YA0A_InspectionStatus.connect(self._P658207YA0A_inspectionStatusText)
+        self.inspection_thread.P658207YA0A_katabu_nashi_InspectionResult_PitchMeasured.connect(self._P658207YA0A_katabu_nashi_outputMeasurementText)
+        self.inspection_thread.P658207YA0A_katabu_nashi_InspectionResult_PitchResult.connect(self._P658207YA0A_katabu_nashi_outputMeasurementTextColor)
+        self.inspection_thread.P658207YA0A_katabu_nashi_InspectionStatus.connect(self._P658207YA0A_katabu_nashi_inspectionStatusText)
 
 
         self.inspection_thread.ethernet_status_red_tenmetsu.connect(self._setEthernetStatusTenmetsuRed)
@@ -760,6 +764,28 @@ class AIKensa(QMainWindow):
                     elif status == "NG":
                         label.setStyleSheet("QLabel { background-color: red; }")
 
+    def _P658207YA0A_katabu_nashi_inspectionStatusText(self, inspectionStatus):
+        label_names = ["StatusP1", "StatusP2", "StatusP3", "StatusP4", "StatusP5"]
+
+        for i, status in enumerate(inspectionStatus):
+            for widget_index in self.P658207YA0A_katabu_nashi_widget_indices:
+                widget = self.stackedWidget.widget(widget_index)
+                label = widget.findChild(QLabel, label_names[i])
+                if label:
+                    label.setText(status)
+                    if status == "製品検出済み":
+                        label.setStyleSheet("QLabel { background-color: lightblue; }")
+                    elif status == "製品未検出":
+                        label.setStyleSheet("QLabel { background-color: pink; }")
+                    elif status == "検査準備完了":
+                        label.setStyleSheet("QLabel { background-color: lightblue; }")
+                    elif status == "検査中":
+                        label.setStyleSheet("QLabel { background-color: pink; }")
+                    elif status == "OK":
+                        label.setStyleSheet("QLabel { background-color: green; }")
+                    elif status == "NG":
+                        label.setStyleSheet("QLabel { background-color: red; }")
+
     def _inspectionStatusHole(self, holeStatus):
         label_names = ["MizuAnaStatus1", "MizuAnaStatus2", "MizuAnaStatus3", "MizuAnaStatus4", "MizuAnaStatus5"]
         # print(holeStatus)
@@ -787,6 +813,14 @@ class AIKensa(QMainWindow):
 
     def _P658207YA0A_outputMeasurementTextColor(self, pitchResult):
         for widget_index in self.P658207YA0A_widget_indices:
+            self._update_measurement_text_colors(widget_index, 35, pitchResult)
+
+    def _P658207YA0A_katabu_nashi_outputMeasurementText(self, measurementValue):
+        for widget_index in self.P658207YA0A_katabu_nashi_widget_indices:
+            self._update_measurement_text_labels(widget_index, 35, measurementValue)
+
+    def _P658207YA0A_katabu_nashi_outputMeasurementTextColor(self, pitchResult):
+        for widget_index in self.P658207YA0A_katabu_nashi_widget_indices:
             self._update_measurement_text_colors(widget_index, 35, pitchResult)
 
 
