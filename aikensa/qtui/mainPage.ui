@@ -23,29 +23,6 @@
    <property name="enabled">
     <bool>true</bool>
    </property>
-   <widget class="QPushButton" name="camcalibrationbutton1">
-    <property name="geometry">
-     <rect>
-      <x>60</x>
-      <y>240</y>
-      <width>161</width>
-      <height>61</height>
-     </rect>
-    </property>
-    <property name="font">
-     <font>
-      <family>Ubuntu Mono</family>
-      <pointsize>14</pointsize>
-     </font>
-    </property>
-    <property name="styleSheet">
-     <string notr="true">background-color: rgb(255, 150, 75);</string>
-    </property>
-    <property name="text">
-     <string extracomment="Generate intrinsic camera parameter">カメラ①校正 
-Camera①Calib.</string>
-    </property>
-   </widget>
    <widget class="Line" name="line_1">
     <property name="geometry">
      <rect>
@@ -57,31 +34,6 @@ Camera①Calib.</string>
     </property>
     <property name="orientation">
      <enum>Qt::Horizontal</enum>
-    </property>
-   </widget>
-   <widget class="QPushButton" name="P65820W030Pbutton">
-    <property name="geometry">
-     <rect>
-      <x>60</x>
-      <y>540</y>
-      <width>231</width>
-      <height>101</height>
-     </rect>
-    </property>
-    <property name="font">
-     <font>
-      <family>Ubuntu Mono</family>
-      <pointsize>15</pointsize>
-     </font>
-    </property>
-    <property name="styleSheet">
-     <string notr="true">background-color: rgb(238, 238, 236);
-background-color: rgb(114, 159, 207);</string>
-    </property>
-    <property name="text">
-     <string>5A45
-65820W030P
-SEAL, ASSY-HOOD, FR</string>
     </property>
    </widget>
    <widget class="Line" name="line_2">
@@ -149,29 +101,6 @@ SEAL, ASSY-HOOD, FR</string>
     </property>
     <property name="alignment">
      <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
-    </property>
-   </widget>
-   <widget class="QPushButton" name="edgedetectbutton">
-    <property name="geometry">
-     <rect>
-      <x>300</x>
-      <y>350</y>
-      <width>231</width>
-      <height>91</height>
-     </rect>
-    </property>
-    <property name="font">
-     <font>
-      <family>Ubuntu Mono</family>
-      <pointsize>14</pointsize>
-     </font>
-    </property>
-    <property name="styleSheet">
-     <string notr="true">background-color: rgb(238, 238, 236);</string>
-    </property>
-    <property name="text">
-     <string extracomment="param for canny">エッジ検出パラメータ
-Edge Params</string>
     </property>
    </widget>
    <widget class="QPushButton" name="quitbutton">
@@ -387,149 +316,11 @@ Edge Params</string>
      <set>Qt::AlignCenter</set>
     </property>
    </widget>
-   <widget class="QPushButton" name="dailytenkenbutton">
-    <property name="geometry">
-     <rect>
-      <x>60</x>
-      <y>350</y>
-      <width>231</width>
-      <height>91</height>
-     </rect>
-    </property>
-    <property name="font">
-     <font>
-      <family>Ubuntu Mono</family>
-      <pointsize>14</pointsize>
-     </font>
-    </property>
-    <property name="styleSheet">
-     <string notr="true">background-color: rgb(46, 194, 126);</string>
-    </property>
-    <property name="text">
-     <string extracomment="Generate intrinsic camera parameter">日常点検
-Daily Check</string>
-    </property>
-   </widget>
-   <widget class="QPushButton" name="camcalibrationbutton2">
-    <property name="geometry">
-     <rect>
-      <x>230</x>
-      <y>240</y>
-      <width>161</width>
-      <height>61</height>
-     </rect>
-    </property>
-    <property name="font">
-     <font>
-      <family>Ubuntu Mono</family>
-      <pointsize>14</pointsize>
-     </font>
-    </property>
-    <property name="styleSheet">
-     <string notr="true">background-color: rgb(255, 150, 75);</string>
-    </property>
-    <property name="text">
-     <string extracomment="Generate intrinsic camera parameter">カメラ②校正 
-Camera②Calib.</string>
-    </property>
-   </widget>
-   <widget class="QPushButton" name="camcalibrationbutton3">
-    <property name="geometry">
-     <rect>
-      <x>400</x>
-      <y>240</y>
-      <width>161</width>
-      <height>61</height>
-     </rect>
-    </property>
-    <property name="font">
-     <font>
-      <family>Ubuntu Mono</family>
-      <pointsize>14</pointsize>
-     </font>
-    </property>
-    <property name="styleSheet">
-     <string notr="true">background-color: rgb(255, 150, 75);</string>
-    </property>
-    <property name="text">
-     <string extracomment="Generate intrinsic camera parameter">カメラ③校正 
-Camera③Calib.</string>
-    </property>
-   </widget>
-   <widget class="QPushButton" name="camcalibrationbutton4">
-    <property name="geometry">
-     <rect>
-      <x>570</x>
-      <y>240</y>
-      <width>161</width>
-      <height>61</height>
-     </rect>
-    </property>
-    <property name="font">
-     <font>
-      <family>Ubuntu Mono</family>
-      <pointsize>14</pointsize>
-     </font>
-    </property>
-    <property name="styleSheet">
-     <string notr="true">background-color: rgb(255, 150, 75);</string>
-    </property>
-    <property name="text">
-     <string extracomment="Generate intrinsic camera parameter">カメラ④校正 
-Camera④Calib.</string>
-    </property>
-   </widget>
-   <widget class="QPushButton" name="camcalibrationbutton5">
-    <property name="geometry">
-     <rect>
-      <x>740</x>
-      <y>240</y>
-      <width>161</width>
-      <height>61</height>
-     </rect>
-    </property>
-    <property name="font">
-     <font>
-      <family>Ubuntu Mono</family>
-      <pointsize>14</pointsize>
-     </font>
-    </property>
-    <property name="styleSheet">
-     <string notr="true">background-color: rgb(255, 150, 75);</string>
-    </property>
-    <property name="text">
-     <string extracomment="Generate intrinsic camera parameter">カメラ⑤校正 
-Camera⑤Calib.</string>
-    </property>
-   </widget>
-   <widget class="QPushButton" name="cameraMerge">
-    <property name="geometry">
-     <rect>
-      <x>910</x>
-      <y>240</y>
-      <width>161</width>
-      <height>61</height>
-     </rect>
-    </property>
-    <property name="font">
-     <font>
-      <family>Ubuntu Mono</family>
-      <pointsize>14</pointsize>
-     </font>
-    </property>
-    <property name="styleSheet">
-     <string notr="true">background-color: rgb(161, 255, 111);</string>
-    </property>
-    <property name="text">
-     <string extracomment="Generate intrinsic camera parameter">カメラマージ 
-Camera Merge</string>
-    </property>
-   </widget>
    <widget class="QLabel" name="label_6">
     <property name="geometry">
      <rect>
       <x>65</x>
-      <y>650</y>
+      <y>540</y>
       <width>211</width>
       <height>31</height>
      </rect>
@@ -552,81 +343,222 @@ Camera Merge</string>
      <set>Qt::AlignCenter</set>
     </property>
    </widget>
-   <widget class="QLabel" name="label_7">
+   <widget class="QWidget" name="gridLayoutWidget">
     <property name="geometry">
      <rect>
-      <x>1115</x>
-      <y>655</y>
-      <width>211</width>
-      <height>31</height>
+      <x>70</x>
+      <y>230</y>
+      <width>791</width>
+      <height>161</height>
      </rect>
     </property>
-    <property name="font">
-     <font>
-      <family>Ubuntu Mono</family>
-      <pointsize>22</pointsize>
-      <weight>75</weight>
-      <bold>true</bold>
-     </font>
-    </property>
-    <property name="styleSheet">
-     <string notr="true">color: rgb(238, 238, 236);</string>
-    </property>
-    <property name="text">
-     <string>日産自動車</string>
-    </property>
-    <property name="alignment">
-     <set>Qt::AlignCenter</set>
-    </property>
+    <layout class="QGridLayout" name="gridLayout">
+     <item row="0" column="0">
+      <widget class="QPushButton" name="camcalibrationbutton1">
+       <property name="font">
+        <font>
+         <family>Ubuntu Mono</family>
+         <pointsize>14</pointsize>
+        </font>
+       </property>
+       <property name="styleSheet">
+        <string notr="true">background-color: rgb(255, 150, 75);</string>
+       </property>
+       <property name="text">
+        <string extracomment="Generate intrinsic camera parameter">カメラ①校正 
+Camera①Calib.</string>
+       </property>
+      </widget>
+     </item>
+     <item row="0" column="4">
+      <widget class="QPushButton" name="cameraMerge">
+       <property name="font">
+        <font>
+         <family>Ubuntu Mono</family>
+         <pointsize>14</pointsize>
+        </font>
+       </property>
+       <property name="styleSheet">
+        <string notr="true">background-color: rgb(161, 255, 111);</string>
+       </property>
+       <property name="text">
+        <string extracomment="Generate intrinsic camera parameter">カメラマージ 
+Camera Merge</string>
+       </property>
+      </widget>
+     </item>
+     <item row="0" column="1">
+      <widget class="QPushButton" name="camcalibrationbutton2">
+       <property name="font">
+        <font>
+         <family>Ubuntu Mono</family>
+         <pointsize>14</pointsize>
+        </font>
+       </property>
+       <property name="styleSheet">
+        <string notr="true">background-color: rgb(255, 150, 75);</string>
+       </property>
+       <property name="text">
+        <string extracomment="Generate intrinsic camera parameter">カメラ②校正 
+Camera②Calib.</string>
+       </property>
+      </widget>
+     </item>
+     <item row="0" column="3">
+      <widget class="QPushButton" name="camcalibrationbutton4">
+       <property name="font">
+        <font>
+         <family>Ubuntu Mono</family>
+         <pointsize>14</pointsize>
+        </font>
+       </property>
+       <property name="styleSheet">
+        <string notr="true">background-color: rgb(255, 150, 75);</string>
+       </property>
+       <property name="text">
+        <string extracomment="Generate intrinsic camera parameter">カメラ④校正 
+Camera④Calib.</string>
+       </property>
+      </widget>
+     </item>
+     <item row="0" column="2">
+      <widget class="QPushButton" name="camcalibrationbutton3">
+       <property name="font">
+        <font>
+         <family>Ubuntu Mono</family>
+         <pointsize>14</pointsize>
+        </font>
+       </property>
+       <property name="styleSheet">
+        <string notr="true">background-color: rgb(255, 150, 75);</string>
+       </property>
+       <property name="text">
+        <string extracomment="Generate intrinsic camera parameter">カメラ③校正 
+Camera③Calib.</string>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="0">
+      <widget class="QPushButton" name="dailytenkenbutton">
+       <property name="font">
+        <font>
+         <family>Ubuntu Mono</family>
+         <pointsize>14</pointsize>
+        </font>
+       </property>
+       <property name="styleSheet">
+        <string notr="true">background-color: rgb(46, 194, 126);</string>
+       </property>
+       <property name="text">
+        <string extracomment="Generate intrinsic camera parameter">日常点検
+Daily Check</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
    </widget>
-   <widget class="QPushButton" name="P658207LE0Abutton">
+   <widget class="QWidget" name="gridLayoutWidget_2">
     <property name="geometry">
      <rect>
-      <x>1110</x>
-      <y>550</y>
-      <width>231</width>
-      <height>101</height>
+      <x>70</x>
+      <y>600</y>
+      <width>811</width>
+      <height>221</height>
      </rect>
     </property>
-    <property name="font">
-     <font>
-      <family>Ubuntu Mono</family>
-      <pointsize>15</pointsize>
-     </font>
-    </property>
-    <property name="styleSheet">
-     <string notr="true">background-color: rgb(0, 255, 255);</string>
-    </property>
-    <property name="text">
-     <string>J42U
-65820 7YA0A
- SEAL-ASSY HOOD FR</string>
-    </property>
-   </widget>
-   <widget class="QPushButton" name="P658207LE0A_katabunashi_button">
-    <property name="geometry">
-     <rect>
-      <x>1350</x>
-      <y>550</y>
-      <width>231</width>
-      <height>101</height>
-     </rect>
-    </property>
-    <property name="font">
-     <font>
-      <family>Ubuntu Mono</family>
-      <pointsize>15</pointsize>
-     </font>
-    </property>
-    <property name="styleSheet">
-     <string notr="true">background-color: rgb(192, 97, 203);</string>
-    </property>
-    <property name="text">
-     <string>J42U
-65820 7YA0A
- SEAL-ASSY HOOD FR
-クリップ挿入機用</string>
-    </property>
+    <layout class="QGridLayout" name="gridLayout_2">
+     <item row="0" column="0">
+      <widget class="QPushButton" name="P5725A400button">
+       <property name="font">
+        <font>
+         <family>Ubuntu Mono</family>
+         <pointsize>11</pointsize>
+        </font>
+       </property>
+       <property name="styleSheet">
+        <string notr="true">background-color: rgb(238, 238, 236);
+background-color: rgb(114, 159, 207);</string>
+       </property>
+       <property name="text">
+        <string>4X45
+5725A400
+W/STRIP,DR OPENING OTR LWR</string>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="0">
+      <widget class="QPushButton" name="P5725A465button">
+       <property name="font">
+        <font>
+         <family>Ubuntu Mono</family>
+         <pointsize>11</pointsize>
+        </font>
+       </property>
+       <property name="styleSheet">
+        <string notr="true">background-color: rgb(88, 255, 121);</string>
+       </property>
+       <property name="text">
+        <string>5A45
+5725A465
+W/STRIP,DR OPENING OTR LWR</string>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="1">
+      <widget class="QPushButton" name="P80838W000Pbutton">
+       <property name="font">
+        <font>
+         <family>Ubuntu Mono</family>
+         <pointsize>11</pointsize>
+        </font>
+       </property>
+       <property name="styleSheet">
+        <string notr="true">background-color: rgb(255, 184, 125);</string>
+       </property>
+       <property name="text">
+        <string>5A45
+80838W000P
+W/STRIP,DR OPENING OTR LWR LH</string>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="2">
+      <widget class="QPushButton" name="P80839W000Pbutton">
+       <property name="font">
+        <font>
+         <family>Ubuntu Mono</family>
+         <pointsize>11</pointsize>
+        </font>
+       </property>
+       <property name="styleSheet">
+        <string notr="true">background-color: rgb(226, 153, 255);</string>
+       </property>
+       <property name="text">
+        <string>5A45
+80839W000P
+W/STRIP,DR OPENING OTR LWR RH</string>
+       </property>
+      </widget>
+     </item>
+     <item row="2" column="0">
+      <widget class="QPushButton" name="P5902A352button">
+       <property name="font">
+        <font>
+         <family>Ubuntu Mono</family>
+         <pointsize>11</pointsize>
+        </font>
+       </property>
+       <property name="styleSheet">
+        <string notr="true">background-color: rgb(251, 255, 184);</string>
+       </property>
+       <property name="text">
+        <string>5A45
+5902A352
+W/STRIP, HOOD FR DECK</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
    </widget>
   </widget>
   <widget class="QMenuBar" name="menubar">
@@ -635,7 +567,7 @@ Camera Merge</string>
      <x>0</x>
      <y>0</y>
      <width>1920</width>
-     <height>22</height>
+     <height>21</height>
     </rect>
    </property>
   </widget>

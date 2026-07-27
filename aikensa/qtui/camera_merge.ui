@@ -227,25 +227,6 @@
      <set>Qt::AlignCenter</set>
     </property>
    </widget>
-   <widget class="QLabel" name="camMerge5">
-    <property name="geometry">
-     <rect>
-      <x>1310</x>
-      <y>150</y>
-      <width>246</width>
-      <height>163</height>
-     </rect>
-    </property>
-    <property name="styleSheet">
-     <string notr="true">background-color: rgb(9, 156, 132);</string>
-    </property>
-    <property name="text">
-     <string/>
-    </property>
-    <property name="alignment">
-     <set>Qt::AlignCenter</set>
-    </property>
-   </widget>
    <widget class="QLabel" name="timeLabel">
     <property name="geometry">
      <rect>
@@ -363,29 +344,6 @@ Cam3</string>
      <string>Calculate
 H
 Cam4</string>
-    </property>
-   </widget>
-   <widget class="QPushButton" name="calcH_cam5">
-    <property name="geometry">
-     <rect>
-      <x>1490</x>
-      <y>320</y>
-      <width>61</width>
-      <height>51</height>
-     </rect>
-    </property>
-    <property name="font">
-     <font>
-      <pointsize>9</pointsize>
-     </font>
-    </property>
-    <property name="styleSheet">
-     <string notr="true">background-color: rgb(114, 159, 207);</string>
-    </property>
-    <property name="text">
-     <string>Calculate
-H
-Cam5</string>
     </property>
    </widget>
    <widget class="QLabel" name="camMergeAll">
@@ -519,34 +477,6 @@ Cam5</string>
      <set>Qt::AlignCenter</set>
     </property>
    </widget>
-   <widget class="QLabel" name="label_7">
-    <property name="geometry">
-     <rect>
-      <x>1310</x>
-      <y>120</y>
-      <width>91</width>
-      <height>21</height>
-     </rect>
-    </property>
-    <property name="font">
-     <font>
-      <family>Ubuntu Mono</family>
-      <pointsize>12</pointsize>
-      <weight>50</weight>
-      <bold>false</bold>
-      <underline>false</underline>
-     </font>
-    </property>
-    <property name="styleSheet">
-     <string notr="true">color: rgb(238, 238, 236);</string>
-    </property>
-    <property name="text">
-     <string>CAM5</string>
-    </property>
-    <property name="alignment">
-     <set>Qt::AlignCenter</set>
-    </property>
-   </widget>
    <widget class="QPushButton" name="planarize">
     <property name="geometry">
      <rect>
@@ -643,7 +573,7 @@ Cam5</string>
    <widget class="QWidget" name="gridLayoutWidget_2">
     <property name="geometry">
      <rect>
-      <x>510</x>
+      <x>640</x>
       <y>650</y>
       <width>254</width>
       <height>54</height>
@@ -715,7 +645,7 @@ Cam5</string>
    <widget class="QWidget" name="gridLayoutWidget_3">
     <property name="geometry">
      <rect>
-      <x>860</x>
+      <x>1060</x>
       <y>650</y>
       <width>254</width>
       <height>54</height>
@@ -787,7 +717,7 @@ Cam5</string>
    <widget class="QWidget" name="gridLayoutWidget_4">
     <property name="geometry">
      <rect>
-      <x>1210</x>
+      <x>1490</x>
       <y>650</y>
       <width>254</width>
       <height>54</height>
@@ -855,99 +785,6 @@ Cam5</string>
       </widget>
      </item>
     </layout>
-   </widget>
-   <widget class="QWidget" name="gridLayoutWidget_5">
-    <property name="geometry">
-     <rect>
-      <x>1580</x>
-      <y>650</y>
-      <width>254</width>
-      <height>54</height>
-     </rect>
-    </property>
-    <layout class="QGridLayout" name="gridLayout_5">
-     <item row="0" column="1">
-      <widget class="QPushButton" name="CAM5_LEFT">
-       <property name="styleSheet">
-        <string notr="true">background-color: rgb(255, 203, 112);</string>
-       </property>
-       <property name="text">
-        <string>LEFT</string>
-       </property>
-      </widget>
-     </item>
-     <item row="0" column="0">
-      <widget class="QPushButton" name="CAM5_UP">
-       <property name="styleSheet">
-        <string notr="true">background-color: rgb(175, 255, 47);</string>
-       </property>
-       <property name="text">
-        <string>UP</string>
-       </property>
-      </widget>
-     </item>
-     <item row="1" column="0">
-      <widget class="QPushButton" name="CAM5_DOWN">
-       <property name="styleSheet">
-        <string notr="true">background-color: rgb(128, 117, 255);</string>
-       </property>
-       <property name="text">
-        <string>DOWN</string>
-       </property>
-      </widget>
-     </item>
-     <item row="0" column="2">
-      <widget class="QPushButton" name="CAM5_RIGHT">
-       <property name="styleSheet">
-        <string notr="true">background-color: rgb(255, 76, 163);</string>
-       </property>
-       <property name="text">
-        <string>RIGHT</string>
-       </property>
-      </widget>
-     </item>
-     <item row="1" column="2">
-      <widget class="QPushButton" name="CAM5_RRIGHT">
-       <property name="styleSheet">
-        <string notr="true">background-color: rgb(255, 76, 163);</string>
-       </property>
-       <property name="text">
-        <string>RRIGHT</string>
-       </property>
-      </widget>
-     </item>
-     <item row="1" column="1">
-      <widget class="QPushButton" name="CAM5_RLEFT">
-       <property name="styleSheet">
-        <string notr="true">background-color: rgb(255, 203, 112);</string>
-       </property>
-       <property name="text">
-        <string>RLEFT</string>
-       </property>
-      </widget>
-     </item>
-    </layout>
-   </widget>
-   <widget class="QPushButton" name="planarize_J42U">
-    <property name="geometry">
-     <rect>
-      <x>1660</x>
-      <y>805</y>
-      <width>141</width>
-      <height>51</height>
-     </rect>
-    </property>
-    <property name="font">
-     <font>
-      <pointsize>9</pointsize>
-     </font>
-    </property>
-    <property name="styleSheet">
-     <string notr="true">background-color: rgb(255, 37, 21);</string>
-    </property>
-    <property name="text">
-     <string>Planarize J42U</string>
-    </property>
    </widget>
   </widget>
   <widget class="QMenuBar" name="menubar">
