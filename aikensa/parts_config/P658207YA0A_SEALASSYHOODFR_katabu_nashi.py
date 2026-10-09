@@ -35,6 +35,7 @@ bbox_offset = 10
 pixelMultiplier = 0.1589
 clip_height_padding_px = 10
 clip_height_model_imgsz = 256
+end_keypoint_model_imgsz = 1920
 TARGET_CLIP_HEIGHT_INDEXES = [6, 7, 8, 11, 12, 13]
 #
 
@@ -57,7 +58,7 @@ DETECTION_COLOR_BY_CLASS_ID = {
     3: (0, 220, 220),
     4: (0, 0, 255),
 }
-def partcheck(image, sahi_predictionList, clipheight_model=None, debug_clip_mode=False):
+def partcheck(image, sahi_predictionList, clipheight_model=None, end_keypoint_model=None, debug_clip_mode=False):
 
     base_image = image.copy()
 
@@ -80,8 +81,6 @@ def partcheck(image, sahi_predictionList, clipheight_model=None, debug_clip_mode
 
     detectedWidth = []
     clip_boxes = []
-
-    prev_center = None
 
     flag_pitch_furyou = 0
     flag_clip_furyou = 0
@@ -142,11 +141,6 @@ def partcheck(image, sahi_predictionList, clipheight_model=None, debug_clip_mode
                 color=DETECTION_COLOR_BY_CLASS_ID.get(detection.category.id, DETECTION_COLOR_BY_CLASS_ID[BLACK_CLIP_CLASS_ID]),
             )
 
-            if prev_center is not None:
-                length = calclength(prev_center, center, onlyX = True)*pixelMultiplier
-                measuredPitch.append(length)
-            prev_center = center
-
         if detection.category.id == V_CUT_CLASS_ID:
             bbox = detection.bbox
             x, y = get_center(bbox)
@@ -204,6 +198,17 @@ def partcheck(image, sahi_predictionList, clipheight_model=None, debug_clip_mode
 
     if matches_id_sequence(detectedid, idSpec, debug_clip_mode=debug_clip_mode):
         resultid = [1] * len(idSpec)
+        measurement_points = list(zip(detectedposX, detectedposY))
+        endpoint_points = extract_end_keypoints(base_image, end_keypoint_model)
+        if endpoint_points is not None and len(measurement_points) >= 2:
+            measurement_points[0] = endpoint_points["left"]
+            measurement_points[-1] = endpoint_points["right"]
+            draw_endpoint_anchor(image, endpoint_points["left"])
+            draw_endpoint_anchor(image, endpoint_points["right"])
+
+        for previous_point, current_point in zip(measurement_points, measurement_points[1:]):
+            measuredPitch.append(calclength(previous_point, current_point, onlyX=True) * pixelMultiplier)
+
         # print("Correct ID order is Detected")
 
         #Calculated cutdim1
@@ -519,6 +524,63 @@ def normalize_result_object(result_object):
             return None
         return result_object[0]
     return result_object
+
+
+def extract_end_keypoints(image, end_keypoint_model):
+    if end_keypoint_model is None:
+        return None
+
+    inference_image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+    result = normalize_result_object(
+        end_keypoint_model(
+            source=inference_image,
+            conf=0.2,
+            imgsz=end_keypoint_model_imgsz,
+            verbose=False,
+        )
+    )
+    if result is None or not hasattr(result, "keypoints"):
+        print("P658207YA0A katabu nashi end keypoint missing")
+        return None
+
+    try:
+        xy = result.keypoints.xy
+        if xy is None or len(xy) == 0:
+            print("P658207YA0A katabu nashi end keypoint empty")
+            return None
+
+        flattened_points = []
+        for detection_points in xy:
+            for point in detection_points:
+                point_x = float(point[0])
+                point_y = float(point[1])
+                if point_x <= 0.0 and point_y <= 0.0:
+                    continue
+                flattened_points.append((point_x, point_y))
+
+        if len(flattened_points) < 2:
+            print("P658207YA0A katabu nashi end keypoint needs at least two points")
+            return None
+
+        sorted_points = sorted(flattened_points, key=lambda point: point[0])
+        return {
+            "left": sorted_points[0],
+            "right": sorted_points[-1],
+        }
+    except (AttributeError, IndexError, TypeError, ValueError) as error:
+        print(f"P658207YA0A katabu nashi end keypoint parse failed: {error}")
+        return None
+
+
+def draw_endpoint_anchor(image, point):
+    cv2.circle(
+        image,
+        (int(point[0]), int(point[1])),
+        18,
+        (255, 0, 255),
+        4,
+        lineType=cv2.LINE_AA,
+    )
 
 def draw_pitch_line(image, xy_pairs, pitchresult, thickness=6):
     xy_pairs = [(int(x), int(y)) for x, y in xy_pairs]
