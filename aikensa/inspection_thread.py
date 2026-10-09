@@ -1723,8 +1723,8 @@ class InspectionThread(QThread):
                                 self.inspection_config.current_numofPart[self.inspection_config.widget][0] += 1
                                 self.inspection_config.today_numofPart[self.inspection_config.widget][0] += 1
 
-                                #Play konpou sound if the current_numofPart is dividable by 25
-                                if self.inspection_config.current_numofPart[self.inspection_config.widget][0] % 25 == 0 and self.inspection_config.current_numofPart[self.inspection_config.widget][0] != 0:
+                                #Play konpou sound if the current_numofPart is dividable by 30
+                                if self.inspection_config.current_numofPart[self.inspection_config.widget][0] % 30 == 0 and self.inspection_config.current_numofPart[self.inspection_config.widget][0] != 0:
                                     play_konpou_sound()
 
                                 self.InspectionStatus[i] = "OK"
