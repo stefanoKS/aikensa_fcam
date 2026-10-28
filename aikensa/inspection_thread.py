@@ -321,6 +321,7 @@ class InspectionThread(QThread):
 
         self.part_height_offset_nissanhoodFR = 180
         self.part_height_offset_nissanhoodFR_scaled = int(self.part_height_offset_nissanhoodFR//self.scale_factor)
+
         self.part_width_offset_katabu_nashi = 1920
         self.part_width_offset_katabu_nashi_scaled = int(self.part_width_offset_katabu_nashi // self.scale_factor)
 
@@ -643,8 +644,6 @@ class InspectionThread(QThread):
                 if self._handle_widget_10():
                     continue
 
-
-
             if self.inspection_config.widget == 21:
                 if self._handle_widget_21():
                     continue
@@ -940,9 +939,6 @@ class InspectionThread(QThread):
             pitch_measured_signal=self.P658207YA0A_katabu_nashi_InspectionResult_PitchMeasured,
             pitch_result_signal=self.P658207YA0A_katabu_nashi_InspectionResult_PitchResult,
             partcheck_handler=P658207YA0A_katabu_nashi_partcheck,
-            crop_width=self.part_width_offset_katabu_nashi,
-            crop_width_scaled=self.part_width_offset_katabu_nashi_scaled,
-            end_keypoint_model=self.P658207YA0A_end_keypointModel,
         )
 
     def _handle_widget_9(self):

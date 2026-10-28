@@ -15,16 +15,13 @@ ng_sound = pygame.mixer.Sound("aikensa/sound/mixkit-classic-short-alarm-993.wav"
 ng_sound_v2 = pygame.mixer.Sound("aikensa/sound/mixkit-system-beep-buzzer-fail-2964.wav")
 kanjiFontPath = "aikensa/font/NotoSansJP-ExtraBold.ttf"
 
-pitchSpec = [46, 109, 123, 116, 114, 122, 120, 119, 158.5, 158.5, 158.5, 119, 120, 122, 114, 116, 123, 79, 76, 45, 38, 88, 66, 61, 61, 66, 88, 38, 15, 2, 2, 2, 2, 2, 2]
+pitchSpec = [109, 123, 116, 114, 122, 120, 119, 158.5, 158.5, 158.5, 119, 120, 122, 114, 116, 123, 79, 45, 38, 88, 66, 61, 61, 66, 88, 38, 15, 2, 2, 2, 2, 2, 2]
 # idSpec = [1, 1, 0, 1, 0, 0, 1, 0, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 0, 1, 0, 0, 1, 0, 1, 1]
-idSpec = [0, 0, 1, 0, 1, 1, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 1, 1, 0, 1, 0, 0]
-tolerance_pitch = [2.2] * 35
+idSpec = [0, 1, 0, 1, 1, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 1, 1, 0, 1, 0]
+tolerance_pitch = [2.2] * 33
 tolerance_pitch[-16:-7] = [5.0] * 10
 tolerance_pitch[-6:-1] = [2.5] * 5
 
-# First pitch (46) and 19th pitch (76) need to have plus tolerance (from 0 to + 30) insted of 2.2 (but no less tolerance)
-tolerance_pitch[0] = 30.0
-tolerance_pitch[18] = 30.0
 
 color = (0, 255, 0)
 color2 = (255, 200, 10)
@@ -58,7 +55,7 @@ DETECTION_COLOR_BY_CLASS_ID = {
     3: (0, 220, 220),
     4: (0, 0, 255),
 }
-def partcheck(image, sahi_predictionList, clipheight_model=None, end_keypoint_model=None, debug_clip_mode=False):
+def partcheck(image, sahi_predictionList, clipheight_model=None, debug_clip_mode=False):
 
     base_image = image.copy()
 
@@ -81,6 +78,8 @@ def partcheck(image, sahi_predictionList, clipheight_model=None, end_keypoint_mo
 
     detectedWidth = []
     clip_boxes = []
+
+    prev_center = None
 
     flag_pitch_furyou = 0
     flag_clip_furyou = 0
@@ -141,6 +140,11 @@ def partcheck(image, sahi_predictionList, clipheight_model=None, end_keypoint_mo
                 color=DETECTION_COLOR_BY_CLASS_ID.get(detection.category.id, DETECTION_COLOR_BY_CLASS_ID[BLACK_CLIP_CLASS_ID]),
             )
 
+            if prev_center is not None:
+                length = calclength(prev_center, center, onlyX = True)*pixelMultiplier
+                measuredPitch.append(length)
+            prev_center = center
+
         if detection.category.id == V_CUT_CLASS_ID:
             bbox = detection.bbox
             x, y = get_center(bbox)
@@ -198,17 +202,6 @@ def partcheck(image, sahi_predictionList, clipheight_model=None, end_keypoint_mo
 
     if matches_id_sequence(detectedid, idSpec, debug_clip_mode=debug_clip_mode):
         resultid = [1] * len(idSpec)
-        measurement_points = list(zip(detectedposX, detectedposY))
-        endpoint_points = extract_end_keypoints(base_image, end_keypoint_model)
-        if endpoint_points is not None and len(measurement_points) >= 2:
-            measurement_points[0] = endpoint_points["left"]
-            measurement_points[-1] = endpoint_points["right"]
-            draw_endpoint_anchor(image, endpoint_points["left"])
-            draw_endpoint_anchor(image, endpoint_points["right"])
-
-        for previous_point, current_point in zip(measurement_points, measurement_points[1:]):
-            measuredPitch.append(calclength(previous_point, current_point, onlyX=True) * pixelMultiplier)
-
         # print("Correct ID order is Detected")
 
         #Calculated cutdim1
@@ -524,63 +517,6 @@ def normalize_result_object(result_object):
             return None
         return result_object[0]
     return result_object
-
-
-def extract_end_keypoints(image, end_keypoint_model):
-    if end_keypoint_model is None:
-        return None
-
-    inference_image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-    result = normalize_result_object(
-        end_keypoint_model(
-            source=inference_image,
-            conf=0.2,
-            imgsz=end_keypoint_model_imgsz,
-            verbose=False,
-        )
-    )
-    if result is None or not hasattr(result, "keypoints"):
-        print("P658207YA0A katabu nashi end keypoint missing")
-        return None
-
-    try:
-        xy = result.keypoints.xy
-        if xy is None or len(xy) == 0:
-            print("P658207YA0A katabu nashi end keypoint empty")
-            return None
-
-        flattened_points = []
-        for detection_points in xy:
-            for point in detection_points:
-                point_x = float(point[0])
-                point_y = float(point[1])
-                if point_x <= 0.0 and point_y <= 0.0:
-                    continue
-                flattened_points.append((point_x, point_y))
-
-        if len(flattened_points) < 2:
-            print("P658207YA0A katabu nashi end keypoint needs at least two points")
-            return None
-
-        sorted_points = sorted(flattened_points, key=lambda point: point[0])
-        return {
-            "left": sorted_points[0],
-            "right": sorted_points[-1],
-        }
-    except (AttributeError, IndexError, TypeError, ValueError) as error:
-        print(f"P658207YA0A katabu nashi end keypoint parse failed: {error}")
-        return None
-
-
-def draw_endpoint_anchor(image, point):
-    cv2.circle(
-        image,
-        (int(point[0]), int(point[1])),
-        18,
-        (255, 0, 255),
-        4,
-        lineType=cv2.LINE_AA,
-    )
 
 def draw_pitch_line(image, xy_pairs, pitchresult, thickness=6):
     xy_pairs = [(int(x), int(y)) for x, y in xy_pairs]
