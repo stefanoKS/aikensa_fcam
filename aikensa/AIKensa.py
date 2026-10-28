@@ -817,11 +817,11 @@ class AIKensa(QMainWindow):
 
     def _P658207YA0A_katabu_nashi_outputMeasurementText(self, measurementValue):
         for widget_index in self.P658207YA0A_katabu_nashi_widget_indices:
-            self._update_measurement_text_labels(widget_index, 35, measurementValue)
+            self._update_measurement_text_labels(widget_index, 33, measurementValue)
 
     def _P658207YA0A_katabu_nashi_outputMeasurementTextColor(self, pitchResult):
         for widget_index in self.P658207YA0A_katabu_nashi_widget_indices:
-            self._update_measurement_text_colors(widget_index, 35, pitchResult)
+            self._update_measurement_text_colors(widget_index, 33, pitchResult)
 
 
     def _sentInputToInspectionThread(self, input):

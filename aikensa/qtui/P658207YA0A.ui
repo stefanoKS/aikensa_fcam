@@ -6432,7 +6432,7 @@ border-color: rgb(36, 36, 36);</string>
         <string notr="true">color: rgb(255, 255, 255);</string>
        </property>
        <property name="text">
-        <string> P18:79.2</string>
+        <string> P18:79</string>
        </property>
        <property name="alignment">
         <set>Qt::AlignCenter</set>
@@ -6520,7 +6520,7 @@ border-color: rgb(136, 136, 36);</string>
         <string notr="true">color: rgb(255, 255, 255);</string>
        </property>
        <property name="text">
-        <string> P29:45</string>
+        <string> P29:15</string>
        </property>
        <property name="alignment">
         <set>Qt::AlignCenter</set>
@@ -7199,7 +7199,7 @@ border-color: rgb(36, 36, 236);</string>
      <x>0</x>
      <y>0</y>
      <width>2024</width>
-     <height>22</height>
+     <height>21</height>
     </rect>
    </property>
   </widget>

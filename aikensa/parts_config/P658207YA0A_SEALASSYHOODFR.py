@@ -18,9 +18,14 @@ kanjiFontPath = "aikensa/font/NotoSansJP-ExtraBold.ttf"
 pitchSpec = [77, 109, 123, 116, 114, 122, 120, 119, 158.5, 158.5, 158.5, 119, 120, 122, 114, 116, 123, 79, 107, 45, 38, 88, 66, 61, 61, 66, 88, 38, 15, 2, 2, 2, 2, 2, 2]
 # idSpec = [1, 1, 0, 1, 0, 0, 1, 0, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 0, 1, 0, 0, 1, 0, 1, 1]
 idSpec = [0, 0, 1, 0, 1, 1, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 1, 1, 0, 1, 0, 0]
-tolerance_pitch = [2.2] * 35
-tolerance_pitch[-16:-7] = [5.0] * 10
-tolerance_pitch[-6:-1] = [2.5] * 5
+
+tolerance_pitch = (
+    [2.2] * 19 +   # P1–P19: Clip-to-clip pitch
+    [5.0] * 10 +   # P20–P29: V-cut dimensions
+    [2.5] * 6      # P30–P35: Clip height
+)
+
+assert len(tolerance_pitch) == len(pitchSpec) == 35
 
 color = (0, 255, 0)
 color2 = (255, 200, 10)

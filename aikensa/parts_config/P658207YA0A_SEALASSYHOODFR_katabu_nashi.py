@@ -18,10 +18,14 @@ kanjiFontPath = "aikensa/font/NotoSansJP-ExtraBold.ttf"
 pitchSpec = [109, 123, 116, 114, 122, 120, 119, 158.5, 158.5, 158.5, 119, 120, 122, 114, 116, 123, 79, 45, 38, 88, 66, 61, 61, 66, 88, 38, 15, 2, 2, 2, 2, 2, 2]
 # idSpec = [1, 1, 0, 1, 0, 0, 1, 0, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 0, 1, 0, 0, 1, 0, 1, 1]
 idSpec = [0, 1, 0, 1, 1, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 1, 1, 0, 1, 0]
-tolerance_pitch = [2.2] * 33
-tolerance_pitch[-16:-7] = [5.0] * 10
-tolerance_pitch[-6:-1] = [2.5] * 5
 
+tolerance_pitch = (
+    [2.2] * 17 +   # P1–P17: Clip pitch
+    [5.0] * 10 +   # P18–P27: V-cut
+    [2.5] * 6      # P28–P33: Clip height
+)
+
+assert len(tolerance_pitch) == len(pitchSpec) == 33
 
 color = (0, 255, 0)
 color2 = (255, 200, 10)
@@ -33,7 +37,7 @@ pixelMultiplier = 0.1589
 clip_height_padding_px = 10
 clip_height_model_imgsz = 256
 end_keypoint_model_imgsz = 1920
-TARGET_CLIP_HEIGHT_INDEXES = [6, 7, 8, 11, 12, 13]
+TARGET_CLIP_HEIGHT_INDEXES = [5, 6, 7, 10, 11, 12]
 #
 
 BLACK_CLIP_CLASS_ID = 0
@@ -205,17 +209,17 @@ def partcheck(image, sahi_predictionList, clipheight_model=None, debug_clip_mode
         # print("Correct ID order is Detected")
 
         #Calculated cutdim1
-        cutdim1 = calclength((detectedposX[1], detectedposY[1]), (detectedposX_cut[0], detectedposY_cut[0]), onlyX = False)*pixelMultiplier
-        cutdim2 = calclength((detectedposX[2], detectedposY[2]), (detectedposX_cut[1], detectedposY_cut[1]), onlyX = False)*pixelMultiplier
-        cutdim3 = calclength((detectedposX[2], detectedposY[2]), (detectedposX_cut[2], detectedposY_cut[2]), onlyX = False)*pixelMultiplier
-        cutdim4 = calclength((detectedposX[3], detectedposY[3]), (detectedposX_cut[3], detectedposY_cut[3]), onlyX = False)*pixelMultiplier
-        cutdim5 = calclength((detectedposX[5], detectedposY[5]), (detectedposX_cut[4], detectedposY_cut[4]), onlyX = False)*pixelMultiplier
+        cutdim1 = calclength((detectedposX[0], detectedposY[0]), (detectedposX_cut[0], detectedposY_cut[0]), onlyX = False)*pixelMultiplier
+        cutdim2 = calclength((detectedposX[1], detectedposY[1]), (detectedposX_cut[1], detectedposY_cut[1]), onlyX = False)*pixelMultiplier
+        cutdim3 = calclength((detectedposX[1], detectedposY[1]), (detectedposX_cut[2], detectedposY_cut[2]), onlyX = False)*pixelMultiplier
+        cutdim4 = calclength((detectedposX[2], detectedposY[2]), (detectedposX_cut[3], detectedposY_cut[3]), onlyX = False)*pixelMultiplier
+        cutdim5 = calclength((detectedposX[4], detectedposY[4]), (detectedposX_cut[4], detectedposY_cut[4]), onlyX = False)*pixelMultiplier
 
-        cutdim6 = calclength((detectedposX[14], detectedposY[14]), (detectedposX_cut[5], detectedposY_cut[5]), onlyX = False)*pixelMultiplier
-        cutdim7 = calclength((detectedposX[16], detectedposY[16]), (detectedposX_cut[6], detectedposY_cut[6]), onlyX = False)*pixelMultiplier
-        cutdim8 = calclength((detectedposX[17], detectedposY[17]), (detectedposX_cut[7], detectedposY_cut[7]), onlyX = False)*pixelMultiplier
-        cutdim9 = calclength((detectedposX[17], detectedposY[17]), (detectedposX_cut[8], detectedposY_cut[8]), onlyX = False)*pixelMultiplier
-        cutdim10 = calclength((detectedposX[18], detectedposY[18]), (detectedposX_cut[9], detectedposY_cut[9]), onlyX = False)*pixelMultiplier
+        cutdim6 = calclength((detectedposX[13], detectedposY[13]), (detectedposX_cut[5], detectedposY_cut[5]), onlyX = False)*pixelMultiplier
+        cutdim7 = calclength((detectedposX[15], detectedposY[15]), (detectedposX_cut[6], detectedposY_cut[6]), onlyX = False)*pixelMultiplier
+        cutdim8 = calclength((detectedposX[16], detectedposY[16]), (detectedposX_cut[7], detectedposY_cut[7]), onlyX = False)*pixelMultiplier
+        cutdim9 = calclength((detectedposX[16], detectedposY[16]), (detectedposX_cut[8], detectedposY_cut[8]), onlyX = False)*pixelMultiplier
+        cutdim10 = calclength((detectedposX[17], detectedposY[17]), (detectedposX_cut[9], detectedposY_cut[9]), onlyX = False)*pixelMultiplier
 
         # #print all the cut dimension
         # print(f"Cut Dimension 1: {cutdim1}")
