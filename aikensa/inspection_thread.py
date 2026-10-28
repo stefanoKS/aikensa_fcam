@@ -1,3 +1,5 @@
+import ast
+
 import cv2
 import os
 from datetime import datetime
@@ -413,6 +415,27 @@ class InspectionThread(QThread):
             self.mysqlHost = credentials["host"]
             self.mysqlHostPort = credentials["port"]
 
+    def check_daily_counter_reset(self):
+        today = datetime.now().date()
+
+        if today == self._counter_date:
+            return
+
+        print(f"Daily counter reset: {self._counter_date} -> {today}")
+
+        for widget_index in self.widget_dir_map:
+            self.inspection_config.today_numofPart[widget_index] = [0, 0]
+            self.inspection_config.current_numofPart[widget_index] = [0, 0]
+
+        self._counter_date = today
+
+        # Immediately update all UI counters
+        self.today_numofPart_signal.emit(
+            self.inspection_config.today_numofPart
+        )
+        self.current_numofPart_signal.emit(
+            self.inspection_config.current_numofPart
+        )
 
     def release_all_camera(self):
         if self.cap_cam0 is not None:
@@ -611,6 +634,7 @@ class InspectionThread(QThread):
             self.inspection_config.current_numofPart[key] = self.get_last_entry_currentnumofPart(value)
             self.inspection_config.today_numofPart[key] = self.get_last_entry_total_numofPart(value)
 
+        self._counter_date = datetime.now().date()
 
         #INIT all variables
 
@@ -628,6 +652,15 @@ class InspectionThread(QThread):
 
 
         while self.running:
+
+            
+            # NEW: Reset counters when the date changes
+            self.check_daily_counter_reset()
+
+            if self.inspection_config.widget == 0:
+                self.inspection_config.cameraID = -1
+
+            # Existing widget handlers continue unchanged
 
             if self.inspection_config.widget == 0:
                 self.inspection_config.cameraID = -1
@@ -1972,21 +2005,24 @@ class InspectionThread(QThread):
         self.mysql_conn.commit()
 
     def get_last_entry_currentnumofPart(self, part_name):
+        today_date = datetime.now().strftime("%Y%m%d")
+
         self.cursor.execute('''
-        SELECT currentnumofPart 
-        FROM inspection_results 
-        WHERE partName = ? 
-        ORDER BY id DESC 
-        LIMIT 1
-        ''', (part_name,))
-        
+            SELECT currentnumofPart
+            FROM inspection_results
+            WHERE partName = ?
+            AND timestampDate = ?
+            ORDER BY id DESC
+            LIMIT 1
+        ''', (part_name, today_date))
+
         row = self.cursor.fetchone()
+
         if row:
-            currentnumofPart = eval(row[0])
-            return currentnumofPart
-        else:
-            return [0, 0]
-            
+            return ast.literal_eval(row[0])
+
+        return [0, 0]
+                
     def get_last_entry_total_numofPart(self, part_name):
         # Get today's date in yyyymmdd format
         today_date = datetime.now().strftime("%Y%m%d")
@@ -2947,7 +2983,6 @@ class InspectionThread(QThread):
                 self.P658207YA0A_clipDetectionModel,
                 self.P658207YA0A_clipHeightModel,
                 self.P658207YA0A_existClassificationModel,
-                self.P658207YA0A_end_keypointModel,
             )),
             21: all(model is not None for model in (
                 self.hoodFR_clipDetectionModel,
